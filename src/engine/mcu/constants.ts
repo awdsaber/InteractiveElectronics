@@ -28,6 +28,25 @@ export const HEX = 16
 export const OCT = 8
 export const BIN = 2
 
+// attachInterrupt modes (AVR values)
+export const CHANGE = 1
+export const FALLING = 2
+export const RISING = 3
+export const NOT_AN_INTERRUPT = -1
+
+// analogReference (AVR values)
+export const EXTERNAL = 0
+export const DEFAULT = 1
+export const INTERNAL = 3
+
+// SPI
+export const LSBFIRST = 0
+export const MSBFIRST = 1
+export const SPI_MODE0 = 0
+export const SPI_MODE1 = 1
+export const SPI_MODE2 = 2
+export const SPI_MODE3 = 3
+
 export const ARDUINO_CONSTANTS: Record<string, number> = {
   HIGH,
   LOW,
@@ -52,7 +71,23 @@ export const ARDUINO_CONSTANTS: Record<string, number> = {
   HEX,
   OCT,
   BIN,
+  CHANGE,
+  FALLING,
+  RISING,
+  NOT_AN_INTERRUPT,
+  EXTERNAL,
+  DEFAULT,
+  INTERNAL,
+  LSBFIRST,
+  MSBFIRST,
+  SPI_MODE0,
+  SPI_MODE1,
+  SPI_MODE2,
+  SPI_MODE3,
 }
+
+/** ESP32-S3 analog pins are GPIO numbers: A0..A9 = GPIO1..10 (ADC1), A10..A19 = GPIO11..20 (ADC2). */
+export const ESP32S3_ANALOG: Record<string, number> = Object.fromEntries(Array.from({ length: 20 }, (_, k) => [`A${k}`, k + 1]))
 
 /** Functions and objects the sandbox provides to sketches (used by the transpiler's unknown-name check). */
 export const BUILTIN_NAMES: readonly string[] = [
@@ -60,11 +95,10 @@ export const BUILTIN_NAMES: readonly string[] = [
   'pinMode', 'digitalWrite', 'digitalRead', 'analogWrite', 'analogRead', 'delay', 'delayMicroseconds', 'millis', 'micros',
   'map', 'constrain', 'random', 'randomSeed', 'abs', 'min', 'max', 'sq', 'sqrt', 'pow', 'sin', 'cos', 'tan', 'asin', 'acos',
   'atan', 'atan2', 'exp', 'log', 'log10', 'floor', 'ceil', 'round', 'radians', 'degrees', 'lowByte', 'highByte', 'bitRead',
-  'bit', 'F', 'Serial', 'Wire', 'Servo',
+  'bit', 'F', 'Serial', 'Wire', 'Servo', 'SPI', 'SPISettings',
+  'attachInterrupt', 'detachInterrupt', 'digitalPinToInterrupt', 'interrupts', 'noInterrupts', 'pulseIn', 'pulseInLong',
+  'tone', 'noTone', 'bitWrite', 'bitSet', 'bitClear', 'analogReference', 'analogReadResolution',
 ]
 
 /** Real Arduino functions the simulator does not model (for a friendlier error). */
-export const UNSUPPORTED_API: readonly string[] = [
-  'tone', 'noTone', 'pulseIn', 'attachInterrupt', 'detachInterrupt', 'digitalPinToInterrupt', 'bitWrite', 'bitSet', 'bitClear',
-  'shiftOut', 'shiftIn', 'analogReference', 'analogReadResolution', 'interrupts', 'noInterrupts',
-]
+export const UNSUPPORTED_API: readonly string[] = ['shiftOut', 'shiftIn', 'cli', 'sei', 'analogReadMilliVolts']

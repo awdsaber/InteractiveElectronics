@@ -1,637 +1,655 @@
 {
   ".github/workflows/deploy.yml": {
-    "mtime": 1793999515.0892968,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.508033,
+    "seen": 1794003338.2062347,
     "ast_hash": "2878f0b47a48b3e073f666c4508d1a44",
     "semantic_hash": ""
   },
   ".oxlintrc.json": {
-    "mtime": 1793999413.749264,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.4769692,
+    "seen": 1794003338.2062347,
     "ast_hash": "029f4905006c1fffd96bc863e2d98d3e",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1793999515.178821,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5235639,
+    "seen": 1794003338.2062347,
     "ast_hash": "f11395e19e3d42411a36cd00cdff83fa",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1794000303.306075,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5647306,
+    "seen": 1794003338.2062347,
     "ast_hash": "bc127d4df5fa72a450b62ba4fb5c2f3c",
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794001394.4168127,
-    "seen": 1794001412.1838088,
-    "ast_hash": "71501fec2b6768b5749e4f6738919e2d",
+    "mtime": 1794003131.931533,
+    "seen": 1794003338.2062347,
+    "ast_hash": "2781f4050ffd3f3f223c7f8c1f731b3e",
     "semantic_hash": ""
   },
   "src/main.tsx": {
-    "mtime": 1793999413.7452648,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5265687,
+    "seen": 1794003338.2062347,
     "ast_hash": "787e5a07efeb2bf6209d5937195f2f68",
     "semantic_hash": ""
   },
   "tsconfig.app.json": {
-    "mtime": 1793999413.7462647,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5275629,
+    "seen": 1794003338.2062347,
     "ast_hash": "5f2dafd737dea8a4ddcbb10f5113ac5a",
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1793999413.747265,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5295658,
+    "seen": 1794003338.2062347,
     "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
     "semantic_hash": ""
   },
   "tsconfig.node.json": {
-    "mtime": 1793999413.747265,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5295658,
+    "seen": 1794003338.2062347,
     "ast_hash": "f9cb81ddcea69ffdab672fc8c48dca66",
     "semantic_hash": ""
   },
   "vite.config.ts": {
-    "mtime": 1793999634.6964715,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5305645,
+    "seen": 1794003338.2062347,
     "ast_hash": "b1b6e4318cae3bc99061d6c564c3fa24",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1793999542.4957564,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.486992,
+    "seen": 1794003338.2062347,
     "ast_hash": "754d9c77cffec4673343733fb227c95d",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793999413.7412636,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.4929957,
+    "seen": 1794003338.2062347,
     "ast_hash": "10495bfcc6c568eca4dab6dd5df795d3",
     "semantic_hash": ""
   },
   "docs/spec.md": {
-    "mtime": 1793999582.6827564,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.4959946,
+    "seen": 1794003338.2062347,
     "ast_hash": "8ebf590ba73735e8a0ca05fad92130bb",
     "semantic_hash": ""
   },
   "index.html": {
-    "mtime": 1794000303.3050685,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.563729,
+    "seen": 1794003338.2062347,
     "ast_hash": "1e8b9015b6a79a0a54ae9fe25f1972ce",
     "semantic_hash": ""
   },
   "public/favicon.svg": {
-    "mtime": 1793999413.7402575,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.525562,
+    "seen": 1794003338.2062347,
     "ast_hash": "7e840862161341271697daa99a40d76b",
     "semantic_hash": ""
   },
   "public/icons.svg": {
-    "mtime": 1793999413.7402575,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5265687,
+    "seen": 1794003338.2062347,
     "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
     "semantic_hash": ""
   },
   "src/assets/hero.png": {
-    "mtime": 1793999413.7432623,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5285654,
+    "seen": 1794003338.2062347,
     "ast_hash": "aead493361b27e7510691c5d7072dfc1",
     "semantic_hash": ""
   },
   "src/assets/react.svg": {
-    "mtime": 1793999413.7442627,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5295658,
+    "seen": 1794003338.2062347,
     "ast_hash": "f0402b67b6ce880f65666bb49e841696",
     "semantic_hash": ""
   },
   "src/assets/vite.svg": {
-    "mtime": 1793999413.7442627,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5305645,
+    "seen": 1794003338.2062347,
     "ast_hash": "9960a24288958394ac50e57ff638b036",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
-    "mtime": 1794000303.3070743,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.565729,
+    "seen": 1794003338.2062347,
     "ast_hash": "3ff94e2c4a0fb4c44678e23f6de1040c",
     "semantic_hash": ""
   },
   "src/audio/music.ts": {
-    "mtime": 1794000303.3070743,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5667305,
+    "seen": 1794003338.2062347,
     "ast_hash": "26e1b62bbfaff98228bf7278b5be4aa9",
     "semantic_hash": ""
   },
   "src/audio/sound.ts": {
-    "mtime": 1794000303.3085785,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.56873,
+    "seen": 1794003338.2062347,
     "ast_hash": "c19d3ea266a8b54e4e7e778f2be9bf8b",
     "semantic_hash": ""
   },
   "src/ui/BenchActions.tsx": {
-    "mtime": 1794000303.310583,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5968916,
+    "seen": 1794003338.2062347,
     "ast_hash": "b88b7be217e97514bb97b935c7a557f5",
     "semantic_hash": ""
   },
   "src/ui/Controls.tsx": {
-    "mtime": 1794000303.3115854,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5978894,
+    "seen": 1794003338.2062347,
     "ast_hash": "a9f0d080ac20f57a245877c1b7317f1a",
     "semantic_hash": ""
   },
   "src/ui/Layout.tsx": {
-    "mtime": 1794000303.3125842,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5988927,
+    "seen": 1794003338.2062347,
     "ast_hash": "4d44ba13bcaa5f5bd45e7be009ab435b",
     "semantic_hash": ""
   },
   "src/ui/MeetTheBoard.tsx": {
-    "mtime": 1794000303.3125842,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5988927,
+    "seen": 1794003338.2062347,
     "ast_hash": "e2f618fc3bfe00a41bf60c01f767584a",
     "semantic_hash": ""
   },
   "src/ui/Menu.tsx": {
-    "mtime": 1794000303.3135839,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5998967,
+    "seen": 1794003338.2062347,
     "ast_hash": "10f1a4da1c29a77f6564bc5e5302be7c",
     "semantic_hash": ""
   },
   "src/ui/Quiz.tsx": {
-    "mtime": 1794000303.3135839,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6008947,
+    "seen": 1794003338.2062347,
     "ast_hash": "ce57e8b70bb9486700d3678d4f21d99c",
     "semantic_hash": ""
   },
   "src/ui/Sidebar.tsx": {
-    "mtime": 1794000303.3145828,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6018958,
+    "seen": 1794003338.2062347,
     "ast_hash": "a1414cdccd2d3cbaf2728d7b495fd3a1",
     "semantic_hash": ""
   },
   "src/ui/StatusLine.tsx": {
-    "mtime": 1794000303.3145828,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6028953,
+    "seen": 1794003338.2062347,
     "ast_hash": "2c8a2525a0d48ee238998349f975937e",
     "semantic_hash": ""
   },
   "src/ui/StatusPanel.tsx": {
-    "mtime": 1794000303.3155832,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6028953,
+    "seen": 1794003338.2062347,
     "ast_hash": "8e77b54dec3e1c92fdc7d0904ef043a1",
     "semantic_hash": ""
   },
   "src/ui/Toast.tsx": {
-    "mtime": 1794000303.3155832,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6038923,
+    "seen": 1794003338.2062347,
     "ast_hash": "08ad3a72cde28250e4d4ce313ad2e4ce",
     "semantic_hash": ""
   },
   "src/ui/TryItYourself.tsx": {
-    "mtime": 1794000303.316583,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6048899,
+    "seen": 1794003338.2062347,
     "ast_hash": "d253c89c187e046ad74e1529a2a44c70",
     "semantic_hash": ""
   },
   "src/ui/Tweaks.tsx": {
-    "mtime": 1794000303.316583,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6058955,
+    "seen": 1794003338.2062347,
     "ast_hash": "a90af520a764b1c079dbb63f41e50d59",
     "semantic_hash": ""
   },
   "src/ui/format.test.ts": {
-    "mtime": 1794000303.316583,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6058955,
+    "seen": 1794003338.2062347,
     "ast_hash": "4b69531b293d7428656c7b5e113c581b",
     "semantic_hash": ""
   },
   "src/ui/format.ts": {
-    "mtime": 1794000303.3175833,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6078951,
+    "seen": 1794003338.2062347,
     "ast_hash": "1b22147106f558cfacd9084131e89a48",
     "semantic_hash": ""
   },
   "src/ui/types.ts": {
-    "mtime": 1794000303.3175833,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.6078951,
+    "seen": 1794003338.2062347,
     "ast_hash": "7e71a44733b1866ba0f12d0641a67ae5",
     "semantic_hash": ""
   },
   "src/engine/mcu/constants.ts": {
-    "mtime": 1794001394.408811,
-    "seen": 1794001412.1838088,
-    "ast_hash": "3e2b420645a453173ac95420dfae789c",
+    "mtime": 1794002986.919366,
+    "seen": 1794003338.2062347,
+    "ast_hash": "a70bee3d759191b3d711fde6c3b279d6",
     "semantic_hash": ""
   },
   "src/engine/mcu/index.ts": {
-    "mtime": 1794001394.409813,
-    "seen": 1794001412.1838088,
-    "ast_hash": "23352f7f4e58fbd465385bbc10fdf9df",
+    "mtime": 1794003258.463433,
+    "seen": 1794003338.2062347,
+    "ast_hash": "9566928bbb95153a74136f1b59eaa5cd",
     "semantic_hash": ""
   },
   "src/engine/mcu/runtime.ts": {
-    "mtime": 1794001394.410812,
-    "seen": 1794001412.1838088,
-    "ast_hash": "ae5c57d1aee4314748f6d07b5701d5d4",
+    "mtime": 1794003034.9199858,
+    "seen": 1794003338.2062347,
+    "ast_hash": "d691e44fb15794adfccf162fa606517e",
     "semantic_hash": ""
   },
   "src/engine/mcu/semantics.test.ts": {
-    "mtime": 1794001394.4118147,
-    "seen": 1794001412.1838088,
-    "ast_hash": "24b81873d8d0e0a8dbee1251f22cdb1c",
+    "mtime": 1794003278.8866408,
+    "seen": 1794003338.2062347,
+    "ast_hash": "2aef6003f9e1f7836167e5a646dbbeda",
     "semantic_hash": ""
   },
   "src/engine/mcu/transpile.test.ts": {
-    "mtime": 1794001394.4128156,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5727274,
+    "seen": 1794003338.2062347,
     "ast_hash": "e65c67eb09b41a2a6dcbbed06b089744",
     "semantic_hash": ""
   },
   "src/engine/mcu/transpile.ts": {
-    "mtime": 1794001394.4138129,
-    "seen": 1794001412.1838088,
-    "ast_hash": "8b488e802f7d4a68e6ddb838622ab8b6",
+    "mtime": 1794003127.1008768,
+    "seen": 1794003338.2062347,
+    "ast_hash": "1e4ef468244c0310eaec96746a69fee9",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.test.ts": {
-    "mtime": 1794001394.4148166,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5757315,
+    "seen": 1794003338.2062347,
     "ast_hash": "968518efdd37b5a47b5d069da45846d0",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794001394.4158149,
-    "seen": 1794001412.1838088,
-    "ast_hash": "c9573b2b5130c9f456758f9a21303032",
+    "mtime": 1794003250.1606016,
+    "seen": 1794003338.2062347,
+    "ast_hash": "f0af92dd8710e5bf008c37c1b8dcc8cf",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/batteries.md": {
-    "mtime": 1794001625.746715,
-    "seen": 1794002024.9253578,
-    "ast_hash": "446ffa183cda726008b604b092ceae95",
+    "mtime": 1794002288.5013535,
+    "seen": 1794003338.2062347,
+    "ast_hash": "a5075161a81039f79f8af147b6ec6da0",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/breadboard.md": {
-    "mtime": 1794001625.7517247,
-    "seen": 1794002024.9253578,
-    "ast_hash": "ff9fc9ba36675039fa4970a4c19c8d32",
+    "mtime": 1794002288.502349,
+    "seen": 1794003338.2062347,
+    "ast_hash": "4a4dbccc29377a08be58daaee69180d2",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/charge-voltage-current.md": {
-    "mtime": 1794001625.7547255,
-    "seen": 1794002024.9253578,
-    "ast_hash": "31664cc16a49930d0883567e41059a74",
+    "mtime": 1794002288.5033512,
+    "seen": 1794003338.2062347,
+    "ast_hash": "c6a30de3652963af3c587d69c0732eb5",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/kirchhoff.md": {
-    "mtime": 1794001625.7592518,
-    "seen": 1794002024.9253578,
-    "ast_hash": "6af9d04b1b5c21b84e5a8a102c15ddc1",
+    "mtime": 1794002288.5043492,
+    "seen": 1794003338.2062347,
+    "ast_hash": "f5f78b4be6930165816f6ec118e52a30",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/multimeter.md": {
-    "mtime": 1794001625.7617795,
-    "seen": 1794002024.9253578,
-    "ast_hash": "d0067ebd22e830fbacc3b259a753aba3",
+    "mtime": 1794002288.5053504,
+    "seen": 1794003338.2062347,
+    "ast_hash": "2baab91053edc42dddeda1c64dfdcd44",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/ohms-law.md": {
-    "mtime": 1794001625.7637768,
-    "seen": 1794002024.9253578,
-    "ast_hash": "0c0a67fcf0e2c09920649bc7a413ac08",
+    "mtime": 1794002288.5063508,
+    "seen": 1794003338.2062347,
+    "ast_hash": "10989d5e71e12f3fbdfb209ed5ff0e30",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/power-heat.md": {
-    "mtime": 1794001625.7657773,
-    "seen": 1794002024.9253578,
-    "ast_hash": "4591afb5d681d4a4e5cee7eb25bb24a4",
+    "mtime": 1794002288.507348,
+    "seen": 1794003338.2062347,
+    "ast_hash": "524ce7b84c72617a0038fc1fbaad34fe",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/series-parallel.md": {
-    "mtime": 1794001625.7672875,
-    "seen": 1794002024.9253578,
-    "ast_hash": "bb6ee3c215a44cfab727fce30eadd3bd",
+    "mtime": 1794002288.5083487,
+    "seen": 1794003338.2062347,
+    "ast_hash": "c96b4dd977bd204aa8385093c1baeabb",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/ac-oscilloscope.md": {
-    "mtime": 1794001625.7672875,
-    "seen": 1794002024.9253578,
-    "ast_hash": "42690406191bc347d786d1afb1dba4c6",
+    "mtime": 1794002288.5103521,
+    "seen": 1794003338.2062347,
+    "ast_hash": "d3db3f61c86b1cc20fca86c821ac5d89",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/capacitor-rc.md": {
-    "mtime": 1794001625.7682915,
-    "seen": 1794002024.9253578,
-    "ast_hash": "50b575efdbc560cead7db904c45c3506",
+    "mtime": 1794002288.5103521,
+    "seen": 1794003338.2062347,
+    "ast_hash": "0629ea2709abfc027c18896e7ed3ba51",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/inductor-rl.md": {
-    "mtime": 1794001625.769292,
-    "seen": 1794002024.9253578,
-    "ast_hash": "922ae3a8de953ec0fec2f569d27bb1db",
+    "mtime": 1794002288.512243,
+    "seen": 1794003338.2062347,
+    "ast_hash": "66f8798e3f5297567b3336d2bf7a5664",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/resistor-codes-divider.md": {
-    "mtime": 1794001625.771294,
-    "seen": 1794002024.9253578,
-    "ast_hash": "eed4265712445d37f27ae74d9670984f",
+    "mtime": 1794002288.5132494,
+    "seen": 1794003338.2062347,
+    "ast_hash": "45b747d5da8039a4d65683f876265b8e",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/rlc-resonance.md": {
-    "mtime": 1794001625.7722936,
-    "seen": 1794002024.9253578,
-    "ast_hash": "d4eb85537b45e2462be47df9c96cbb73",
+    "mtime": 1794002288.514257,
+    "seen": 1794003338.2062347,
+    "ast_hash": "e0e2519cb6d4453778d0c1290495725a",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/transformer.md": {
-    "mtime": 1794001625.7732978,
-    "seen": 1794002024.9253578,
-    "ast_hash": "04b2f8040565bb22bbecf9d6ceb95221",
+    "mtime": 1794002288.5152583,
+    "seen": 1794003338.2062347,
+    "ast_hash": "b4effd3e614b1d7231c093da696e9a6f",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/diode-rectifier.md": {
-    "mtime": 1794001625.7742965,
-    "seen": 1794002024.9253578,
-    "ast_hash": "b3e19de9a44d46a6065ae31edb38142d",
+    "mtime": 1794002288.5172603,
+    "seen": 1794003338.2062347,
+    "ast_hash": "2ae6296c3b24103580d960b00d01562b",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/led-resistor.md": {
-    "mtime": 1794001625.7752929,
-    "seen": 1794002024.9253578,
-    "ast_hash": "54c0ea114098dda16961539242a5e138",
+    "mtime": 1794002288.518769,
+    "seen": 1794003338.2062347,
+    "ast_hash": "eb05514ba78b87c828ea19ba1d3de0ac",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/mosfet-switch.md": {
-    "mtime": 1794001625.7777977,
-    "seen": 1794002024.9253578,
-    "ast_hash": "5deb451e5509da06f4cc86e22d7a8392",
+    "mtime": 1794002288.5197845,
+    "seen": 1794003338.2062347,
+    "ast_hash": "d552366be6da1088e1decbda7451579a",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/opamp-basics.md": {
-    "mtime": 1794001625.7828321,
-    "seen": 1794002024.9253578,
-    "ast_hash": "c7d53955026de140b4dcd3569a5e7d1e",
+    "mtime": 1794002288.5207815,
+    "seen": 1794003338.2062347,
+    "ast_hash": "44f623f010a8af4d46fee2c4e5123c0f",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/regulators-linear-buck.md": {
-    "mtime": 1794001625.7838306,
-    "seen": 1794002024.9253578,
-    "ast_hash": "6c7fede19a3b661ce9a6dc0be394fa54",
+    "mtime": 1794002288.522782,
+    "seen": 1794003338.2062347,
+    "ast_hash": "7df910ea8f0d36afdfeab41b21b08059",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/transistor-switch.md": {
-    "mtime": 1794001625.7849114,
-    "seen": 1794002024.9253578,
-    "ast_hash": "23323c23497ff7564b10cdc4b4923f3e",
+    "mtime": 1794002288.5237825,
+    "seen": 1794003338.2062347,
+    "ast_hash": "0f76b3b5321c4ad735d1b3dec915697b",
     "semantic_hash": ""
   },
   "docs/curriculum/T2/zener.md": {
-    "mtime": 1794001625.7869132,
-    "seen": 1794002024.9253578,
-    "ast_hash": "086f9a4c0b43a606114ca22dadda28d6",
+    "mtime": 1794002288.525161,
+    "seen": 1794003338.2062347,
+    "ast_hash": "548396116df31419c16c50fd55991693",
     "semantic_hash": ""
   },
   "docs/curriculum/T4/arduino-uno.md": {
-    "mtime": 1794000809.43816,
-    "seen": 1794001412.1838088,
-    "ast_hash": "95af7fbf9563b5125f22a9267309f40b",
+    "mtime": 1794002288.5306754,
+    "seen": 1794003338.2062347,
+    "ast_hash": "87e9bb81d9ce4a3b778408bc5ac8a592",
     "semantic_hash": ""
   },
   "docs/curriculum/T4/esp32-s3.md": {
-    "mtime": 1794000888.0596406,
-    "seen": 1794001412.1838088,
-    "ast_hash": "e6532a7f88d941732cfa7159f457521d",
+    "mtime": 1794002288.531675,
+    "seen": 1794003338.2062347,
+    "ast_hash": "5cc921f02ba843e5fb48fe49c07662eb",
     "semantic_hash": ""
   },
   "docs/curriculum/T4/interrupts-timers.md": {
-    "mtime": 1794000948.2877994,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5326762,
+    "seen": 1794003338.2062347,
     "ast_hash": "5df33520a1f2ab18b9bba132f47e0625",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/a4988-stepper.md": {
-    "mtime": 1794001185.0243073,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.53368,
+    "seen": 1794003338.2062347,
     "ast_hash": "503d9d8efb0efbb3ae66b7f88cedb871",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/encoders.md": {
-    "mtime": 1794001314.0120633,
-    "seen": 1794001412.1838088,
-    "ast_hash": "3398d395933937f41b7131725ed870ca",
+    "mtime": 1794002288.534681,
+    "seen": 1794003338.2062347,
+    "ast_hash": "f9923a080e8d8e928b00e3fdc6dfd4ff",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/l298n.md": {
-    "mtime": 1794001108.322689,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.53568,
+    "seen": 1794003338.2062347,
     "ast_hash": "78f0790a08d34781700cf37698c19636",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/pca9685-servo.md": {
-    "mtime": 1794001254.3691423,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5366812,
+    "seen": 1794003338.2062347,
     "ast_hash": "d29b425afcdfaefc1d10812151e0368f",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/tb6612fng.md": {
-    "mtime": 1794001019.502003,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.538182,
+    "seen": 1794003338.2062347,
     "ast_hash": "f48d3aadd56695871732ff7c66d52c8e",
     "semantic_hash": ""
   },
   "docs/curriculum/T6/mpu6050-imu.md": {
-    "mtime": 1794001383.564852,
-    "seen": 1794001412.1838088,
-    "ast_hash": "90aed2986c94a04fdfe23d21909f69b3",
+    "mtime": 1794002288.540195,
+    "seen": 1794003338.2062347,
+    "ast_hash": "50d9a103a42bf1f4af25e4676976f752",
     "semantic_hash": ""
   },
   "docs/plans/m1-engine.md": {
-    "mtime": 1793999712.7868087,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002288.5501971,
+    "seen": 1794003338.2062347,
     "ast_hash": "cdc691f1b3184e417f1b9e47e2081a85",
     "semantic_hash": ""
   },
   "docs/curriculum/T3/logic-gates.md": {
-    "mtime": 1794001625.7970934,
-    "seen": 1794002024.9253578,
-    "ast_hash": "2d112aeed7ff5f304dc5aa11375be28c",
+    "mtime": 1794002288.5286822,
+    "seen": 1794003338.2062347,
+    "ast_hash": "bbaa925232b19f8e5ca8a079cca860f0",
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
-    "mtime": 1794002003.3797731,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5782342,
+    "seen": 1794003338.2062347,
     "ast_hash": "175753f9fcf3eb1e3c14a03b6c999144",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.test.ts": {
-    "mtime": 1794002003.3807712,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5782342,
+    "seen": 1794003338.2062347,
     "ast_hash": "8615a1c82b572c594628d6cdd6259e92",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.ts": {
-    "mtime": 1794002003.384276,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5798826,
+    "seen": 1794003338.2062347,
     "ast_hash": "e66eab9ddde4505224aee1e23306eb18",
     "semantic_hash": ""
   },
   "src/engine/sim/format.test.ts": {
-    "mtime": 1794002003.3862872,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5808904,
+    "seen": 1794003338.2062347,
     "ast_hash": "843ce4ab0d3b2cf4957fd2bc2298e7b5",
     "semantic_hash": ""
   },
   "src/engine/sim/format.ts": {
-    "mtime": 1794002003.3872871,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.581892,
+    "seen": 1794003338.2062347,
     "ast_hash": "f024768b9db479015adbc6786aaf9a17",
     "semantic_hash": ""
   },
   "src/engine/sim/index.ts": {
-    "mtime": 1794002003.3882856,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.581892,
+    "seen": 1794003338.2062347,
     "ast_hash": "a14f4bd00dec8771d289f9457eb41d01",
     "semantic_hash": ""
   },
   "src/engine/sim/mna.ts": {
-    "mtime": 1794002003.3902848,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5838933,
+    "seen": 1794003338.2062347,
     "ast_hash": "d1e48fc93f4fb15f4f8aea7052ccac9f",
     "semantic_hash": ""
   },
   "src/engine/sim/perf.test.ts": {
-    "mtime": 1794002003.3912838,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.584894,
+    "seen": 1794003338.2062347,
     "ast_hash": "b4724945aca1ca9bdf934edb75d131d9",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.test.ts": {
-    "mtime": 1794002003.3922856,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.585895,
+    "seen": 1794003338.2062347,
     "ast_hash": "4086dfc6f3351690d1028e646cef968c",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.ts": {
-    "mtime": 1794002003.3932867,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5868926,
+    "seen": 1794003338.2062347,
     "ast_hash": "53138cf006dfdd8efa20b9b03042b565",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.test.ts": {
-    "mtime": 1794002003.3958037,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5878909,
+    "seen": 1794003338.2062347,
     "ast_hash": "def5e6b482499d371520b62f5d5a0b69",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.ts": {
-    "mtime": 1794002003.397808,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5888958,
+    "seen": 1794003338.2062347,
     "ast_hash": "e57ed1c0fc67d99988f607bac854f43f",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.test.ts": {
-    "mtime": 1794002003.3998027,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5898945,
+    "seen": 1794003338.2062347,
     "ast_hash": "29cb40763458c3925fd1fb368168c6a4",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.ts": {
-    "mtime": 1794002003.4008052,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5898945,
+    "seen": 1794003338.2062347,
     "ast_hash": "0e004ec79bcac27da810bf2e987f8b5e",
     "semantic_hash": ""
   },
   "docs/curriculum/README.md": {
-    "mtime": 1794001594.1852095,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5003483,
+    "seen": 1794003338.2062347,
     "ast_hash": "4a9028ef8e45bc71d9aa4ff2aaebafdd",
     "semantic_hash": ""
   },
   "docs/curriculum/T3/adc-dac-pwm.md": {
-    "mtime": 1794001625.789914,
-    "seen": 1794002024.9253578,
-    "ast_hash": "40d4d87d09c759245f52e6d7286ff01a",
+    "mtime": 1794002288.5266676,
+    "seen": 1794003338.2062347,
+    "ast_hash": "07350072a0f1c39abcd8ed87da9025fc",
     "semantic_hash": ""
   },
   "docs/curriculum/T3/flipflops-counters.md": {
-    "mtime": 1794001625.795096,
-    "seen": 1794002024.9253578,
-    "ast_hash": "bb98e78d3eaf2c5f34e02948bdc5cd16",
+    "mtime": 1794002288.527676,
+    "seen": 1794003338.2062347,
+    "ast_hash": "027e143a2e8277d46f7522df0bd398f2",
     "semantic_hash": ""
   },
   "docs/curriculum/T3/timer-555.md": {
-    "mtime": 1794001625.799609,
-    "seen": 1794002024.9253578,
-    "ast_hash": "507d58df6ae17f28534aea8e3f99bba9",
+    "mtime": 1794002288.5296779,
+    "seen": 1794003338.2062347,
+    "ast_hash": "4f0242ece479173e7781fa4b351c2433",
     "semantic_hash": ""
   },
   "docs/curriculum/T6/loadcell-hx711.md": {
-    "mtime": 1794001497.2366052,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5391872,
+    "seen": 1794003338.2062347,
     "ast_hash": "a1f2ef1d243772dcdd73adbd2aa81f2b",
     "semantic_hash": ""
   },
   "docs/curriculum/T6/thermistor.md": {
-    "mtime": 1794001549.674172,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.540195,
+    "seen": 1794003338.2062347,
     "ast_hash": "e40a5dc3992d582f996a8a94c4a7119d",
     "semantic_hash": ""
   },
   "docs/curriculum/T6/ultrasonic-hcsr04.md": {
-    "mtime": 1794001436.4448507,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5411985,
+    "seen": 1794003338.2062347,
     "ast_hash": "77eaaf498e87a8dfbc901e32603d4f3f",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/debugging-instruments.md": {
-    "mtime": 1794001946.3210566,
-    "seen": 1794002024.9253578,
-    "ast_hash": "5e05a695bdf93c3176dbd29a5e65df62",
+    "mtime": 1794002288.5431983,
+    "seen": 1794003338.2062347,
+    "ast_hash": "6df6ff7fd7cd27d322ed44e18b444861",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pcb-design-workflow.md": {
-    "mtime": 1794001819.648094,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5441985,
+    "seen": 1794003338.2062347,
     "ast_hash": "69ef78679f86224636d6ed0ebe382a1c",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pid-motor-control.md": {
-    "mtime": 1794002019.1290822,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5451968,
+    "seen": 1794003338.2062347,
     "ast_hash": "d3051d8b1c0f4ec8414839ee50761225",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/power-grounding-emc.md": {
-    "mtime": 1794001682.5991812,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5451968,
+    "seen": 1794003338.2062347,
     "ast_hash": "6f8ebba47cc14e2a0182fe9c2ab9ca99",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/serial-protocols.md": {
-    "mtime": 1794001619.456588,
-    "seen": 1794002024.9253578,
-    "ast_hash": "03e25bb13bd67c8d249056fd75364eda",
+    "mtime": 1794002288.5461984,
+    "seen": 1794003338.2062347,
+    "ast_hash": "c80437cf001c289d0290f00c833a23f3",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/soldering-rework.md": {
-    "mtime": 1794001882.2966237,
-    "seen": 1794002024.9253578,
-    "ast_hash": "5de5d56d6d1184067da48f010ed60bcd",
+    "mtime": 1794002288.548198,
+    "seen": 1794003338.2062347,
+    "ast_hash": "3b823c4281362c361be373e960e80e56",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/thermal-design.md": {
-    "mtime": 1794001749.661852,
-    "seen": 1794002024.9253578,
+    "mtime": 1794002288.5491982,
+    "seen": 1794003338.2062347,
     "ast_hash": "efd7eaf0de2ef9932a1693ec1b7e0897",
     "semantic_hash": ""
   },
+  "src/engine/mcu/extensions.test.ts": {
+    "mtime": 1794003310.0282698,
+    "seen": 1794003338.2062347,
+    "ast_hash": "2533a732214bd0e027e728da4ec77c2b",
+    "semantic_hash": ""
+  },
+  "docs/curriculum/T7/capstone-balancing-robot.md": {
+    "mtime": 1794002288.542197,
+    "seen": 1794003338.2062347,
+    "ast_hash": "176887a120e08ff47b0e211ae7199e8b",
+    "semantic_hash": ""
+  },
+  "docs/plans/m1.5-engine-extensions.md": {
+    "mtime": 1794002288.5512018,
+    "seen": 1794003338.2062347,
+    "ast_hash": "849f24cf6ef75b8da9c64f30b36dc790",
+    "semantic_hash": ""
+  },
   "package-lock.json": {
-    "mtime": 1793999499.1183953,
-    "seen": 1794001412.1838088,
+    "mtime": 1794002281.5070353,
+    "seen": 1794003338.2062347,
     "ast_hash": "c6e11995aa35bf87a5953dcaa8b099a9",
     "semantic_hash": ""
   }

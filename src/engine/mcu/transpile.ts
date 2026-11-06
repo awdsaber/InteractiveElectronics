@@ -1,4 +1,5 @@
 import { ARDUINO_CONSTANTS, BUILTIN_NAMES, UNSUPPORTED_API } from './constants'
+import { STRING_FLOAT_METHODS, STRING_INPLACE, STRING_INT_METHODS, STRING_METHOD_NAMES } from './runtime'
 
 // Arduino-C subset -> JavaScript async function body.
 //
@@ -20,6 +21,10 @@ export interface TranspileOptions {
   classTypes?: string[]
   /** library names whose `#include` is silently accepted, with or without `.h` */
   knownLibraries?: string[]
+  /** width of `int`: 16 (Uno) or 32 (ESP32) makes integer variables wrap like the board; omitted = unbounded (legacy) */
+  intBits?: 16 | 32
+  /** extra global names the sandbox provides (board constants such as ESP32 A10) */
+  extraGlobals?: string[]
 }
 
 export interface TranspileResult {
@@ -272,7 +277,11 @@ const INT_FUNCS = new Set(['map', 'analogRead', 'digitalRead', 'millis', 'micros
 const CONTROL_KW = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break', 'continue', 'return', 'true', 'false', 'sizeof'])
 const COMPOUND = new Set(['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>='])
 const isFloatLit = (v: string): boolean => !/^0[xXbB]/.test(v) && (v.includes('.') || /[eE]/.test(v))
-const TICK = '(++__g.n>__g.limit?await __g.pause():0)'
+/** loop guard + interrupt check, run on every loop iteration: pauses a loop that never waits, and services pending ISRs */
+const TICK = '(++__g.n>__g.limit||__g.irq?await __g.pause():0)'
+/** builtins that can block (virtual time passes or ISRs run), so calls to them are awaited */
+const AWAITED = new Set(['delay', 'delayMicroseconds', 'interrupts', 'pulseIn', 'pulseInLong'])
+const BIT_OPS: Record<string, [string, number]> = { bitSet: ['__bitSet', 2], bitClear: ['__bitClear', 2], bitWrite: ['__bitWrite', 3] }
 
 const jsName = (v: string) => (JS_RESERVED.has(v) ? `${v}_c` : v)
 
@@ -288,16 +297,37 @@ function kindOf(words: string[]): Kind {
   return 'int'
 }
 
-function castPrefix(words: string[]): string | null {
+function castPrefix(words: string[], intBits?: 16 | 32): string | null {
   const w = new Set(words)
   if (w.has('float') || w.has('double')) return null // JS numbers are already floating point
   if (w.has('bool') || w.has('boolean')) return 'Boolean'
   if (w.has('String')) return 'String'
-  if (w.has('char')) return '__u8' // chars are numeric codes
+  if (w.has('char') && !w.has('signed')) return '__u8' // chars are numeric codes
   if (w.has('byte') || w.has('uint8_t')) return '__u8'
-  if (w.has('uint16_t') || w.has('word')) return '__u16'
   if (w.has('void')) return null
+  if (intBits) return intWrapper(words, intBits)
+  if (w.has('uint16_t') || w.has('word')) return '__u16'
   return '__cast'
+}
+
+/** Runtime helper that converts a value to the integer type `words` (with wrap-around when the board is known). */
+function intWrapper(words: string[], intBits?: 16 | 32): string {
+  const w = new Set(words)
+  if (w.has('byte') || w.has('uint8_t') || (w.has('unsigned') && w.has('char'))) return '__u8'
+  if (!intBits) return '__int'
+  if (w.has('int8_t') || (w.has('signed') && w.has('char'))) return '__i8'
+  const longs = words.filter((x) => x === 'long').length
+  if (w.has('int64_t') || w.has('uint64_t') || longs >= 2) return '__int'
+  if (w.has('uint32_t')) return '__u32'
+  if (w.has('int32_t')) return '__i32'
+  if (w.has('uint16_t') || w.has('word')) return '__u16w'
+  if (w.has('int16_t')) return '__i16'
+  const uns = w.has('unsigned')
+  if (longs === 1) return uns ? '__u32' : '__i32'
+  if (w.has('short')) return uns ? '__u16w' : '__i16'
+  if (w.has('size_t')) return intBits === 16 ? '__u16w' : '__u32'
+  if (intBits === 16) return uns ? '__u16w' : '__i16'
+  return uns ? '__u32' : '__i32'
 }
 
 function sizeOfType(words: string[]): number {
@@ -333,7 +363,9 @@ class Transpiler {
   private charNames = new Set<string>()
   private charArrays = new Set<string>()
   private stringNames = new Set<string>()
-  private byteNames = new Set<string>()
+  /** integer variables whose assignments go through a wrapping helper (__u8, __i16, ...) */
+  private wrapNames = new Map<string, string>()
+  private intBits: 16 | 32 | undefined
   private declared = new Set<string>()
   private known: Set<string>
   /** source token index -> position in an output array just before that token was emitted */
@@ -349,8 +381,9 @@ class Transpiler {
   constructor(toks: Tok[], match: number[], opts: TranspileOptions) {
     this.toks = toks
     this.match = match
-    this.classTypes = new Set(['Servo', ...(opts.classTypes ?? [])])
-    this.known = new Set([...BUILTIN_NAMES, ...(opts.knownLibraries ?? []), ...(opts.classTypes ?? [])])
+    this.classTypes = new Set(['Servo', 'SPISettings', ...(opts.classTypes ?? [])])
+    this.known = new Set([...BUILTIN_NAMES, ...(opts.knownLibraries ?? []), ...(opts.classTypes ?? []), ...(opts.extraGlobals ?? [])])
+    this.intBits = opts.intBits
     this.knownLibs = new Set([...KNOWN_INCLUDES, ...(opts.knownLibraries ?? []).map((l) => l.replace(/\.h$/, ''))])
   }
 
@@ -546,12 +579,23 @@ class Transpiler {
         if (!isMember && next?.v === '(') {
           if (TYPE_WORDS.has(v)) {
             // function-style cast: int(x), float(x), byte(x)
-            const p = castPrefix([v])
+            const p = castPrefix([v], this.intBits)
             if (p) this.emit(p, 'id')
             i++
             continue
           }
-          if (this.funcs.has(v) || v === 'delay' || v === 'delayMicroseconds') {
+          if (this.classTypes.has(v)) {
+            // Foo(args) outside a declaration constructs the class: SPISettings(...), Adafruit_PWMServoDriver(0x40)
+            this.emit('new', 'id')
+            this.emit(v, 'id')
+            i++
+            continue
+          }
+          if (Object.prototype.hasOwnProperty.call(BIT_OPS, v) && !this.funcs.has(v)) {
+            i = this.bitOp(i)
+            continue
+          }
+          if (this.funcs.has(v) || AWAITED.has(v)) {
             this.emit('await', 'id')
             this.emit(jsName(v), 'id')
             i++
@@ -564,7 +608,7 @@ class Transpiler {
           continue
         }
         if (!isMember && next?.t === 'p' && this.intNames.has(v) && !this.floatNames.has(v)) {
-          const wrap = this.byteNames.has(v) ? '__u8' : '__int'
+          const wrap = this.wrapNames.get(v) ?? '__int'
           if (wasStart && next.v === '=') {
             const e = this.exprEnd(i + 2, end)
             this.emit(jsName(v), 'id')
@@ -594,14 +638,14 @@ class Transpiler {
           }
           const before = toks[i - 1]
           if (
-            this.byteNames.has(v) &&
+            this.wrapNames.has(v) &&
             (next.v === '++' || next.v === '--') &&
             [';', ')', ','].includes(toks[i + 2]?.v) &&
             (wasStart || before?.v === ';' || before?.v === ',')
           ) {
             this.emit(jsName(v), 'id')
             this.emit('=')
-            this.emit('__u8', 'id')
+            this.emit(wrap, 'id')
             this.emit('(')
             this.emit(jsName(v), 'id')
             this.emit(next.v === '++' ? '+' : '-')
@@ -720,6 +764,14 @@ class Transpiler {
           }
           i++
           continue
+        case '.':
+          if (toks[i + 1]?.t === 'id' && STRING_METHOD_NAMES.has(toks[i + 1].v) && toks[i + 2]?.v === '(' && this.stringMethod(i)) {
+            i = this.match[i + 2] + 1
+            continue
+          }
+          this.emit('.')
+          i++
+          continue
         case '->':
         case '::':
           throw new TranspileError(tk.line, `'${tk.v}' is not supported in this Arduino subset`)
@@ -791,7 +843,7 @@ class Transpiler {
     const startsOperand =
       after.t === 'id' || after.t === 'num' || after.t === 'str' || after.t === 'chr' || (after.t === 'p' && ['(', '-', '+', '!', '~', '++', '--'].includes(after.v))
     if (!startsOperand) return null
-    const prefix = castPrefix(words)
+    const prefix = castPrefix(words, this.intBits)
     if (prefix) {
       const e = this.operandEnd(j + 1)
       this.emit(prefix, 'id')
@@ -883,7 +935,17 @@ class Transpiler {
             k += 3
             continue
           }
+          if (next?.v === '(' && (STRING_INT_METHODS.has(v) || STRING_FLOAT_METHODS.has(v))) {
+            if (STRING_FLOAT_METHODS.has(v)) sawF = true
+            else sawI = true
+            k = match[k + 1] + 1
+            continue
+          }
           return bail()
+        }
+        if (next?.v === '.') {
+          k++ // a receiver: the member that follows decides the type
+          continue
         }
         if (next?.v === '(') {
           if (TYPE_WORDS.has(v)) {
@@ -1005,6 +1067,82 @@ class Transpiler {
     return true
   }
 
+  /** bitSet(x, n) / bitClear(x, n) / bitWrite(x, n, b) -> (x = helper(x, n[, b])), as the Arduino macros assign to x. */
+  private bitOp(i: number): number {
+    const { toks } = this
+    const [helper, argc] = BIT_OPS[toks[i].v]
+    const open = i + 1
+    const close = this.match[open]
+    const parts = this.splitTop(open + 1, close)
+    if (parts.length !== argc || parts.some(([a, b]) => a >= b)) throw new TranspileError(toks[i].line, `${toks[i].v}() takes ${argc} arguments`)
+    const [xa, xb] = parts[0]
+    const simple = xb - xa === 1 && toks[xa].t === 'id' ? toks[xa].v : null
+    const wrap = simple ? this.wrapNames.get(simple) : undefined
+    this.emit('(')
+    this.run(xa, xb, false)
+    this.emit('=')
+    if (wrap) {
+      this.emit(wrap, 'id')
+      this.emit('(')
+    }
+    this.emit(helper, 'id')
+    this.emit('(')
+    parts.forEach(([a, b], n) => {
+      if (n) this.emit(',')
+      this.run(a, b, false)
+    })
+    this.emit(')')
+    if (wrap) this.emit(')')
+    this.emit(')')
+    return close + 1
+  }
+
+  /**
+   * `recv.method(args)` for a String method -> `__S.method(recv, args)` (in-place methods also get a setter for recv).
+   * `i` is the '.' token; the receiver has already been emitted, so the call head is spliced in before it.
+   */
+  private stringMethod(i: number): boolean {
+    const { toks, match } = this
+    if (i < 1) return false
+    const s = this.backOperand(i - 1)
+    const rec = this.outPos.get(s)
+    if (!rec || rec.arr !== this.out) return false
+    const name = toks[i + 1].v
+    const open = i + 2
+    const close = match[open]
+    const recv = this.out.slice(rec.pos)
+    const line = toks[i].line
+    const mk = (v: string, t: TokType = 'p'): Tok => ({ t, v, line })
+    const head = [mk('__S', 'id'), mk('.'), mk(name, 'id'), mk('(')]
+    this.out.splice(rec.pos, 0, ...head)
+    for (const r of this.outPos.values()) if (r.arr === this.out && r.pos > rec.pos) r.pos += head.length
+    if (STRING_INPLACE.has(name)) {
+      this.emit(',')
+      const last = toks[i - 1]
+      const assignable = (last.t === 'id' && !this.funcs.has(last.v)) || last.v === ']'
+      if (assignable) {
+        // ((__v) => recv = __v)
+        this.emit('(')
+        this.emit('(')
+        this.emit('__v', 'id')
+        this.emit(')')
+        this.emit('=>')
+        for (const t of recv) this.out.push({ ...t, line })
+        this.emit('=')
+        this.emit('__v', 'id')
+        this.emit(')')
+      } else {
+        this.emit('null', 'id')
+      }
+    }
+    if (close > open + 1) {
+      this.emit(',')
+      this.run(open + 1, close, false)
+    }
+    this.emit(')')
+    return true
+  }
+
   private serialPrint(i: number): number {
     const method = this.toks[i + 2].v
     const open = i + 3
@@ -1091,7 +1229,7 @@ class Transpiler {
     this.line = toks[i].line
     this.emit(isConst ? 'const' : 'let', 'id')
     const fill = kind === 'string' ? '""' : kind === 'bool' ? 'false' : '0'
-    const isByte = !cls && (words.includes('byte') || words.includes('uint8_t') || (words.includes('unsigned') && words.includes('char')))
+    const wrapper = cls ? '__int' : intWrapper(words, this.intBits)
 
     let k = j
     let first = true
@@ -1181,7 +1319,7 @@ class Transpiler {
         this.emit(')')
       } else if (init) {
         if (kind === 'int') {
-          this.emit(isByte ? '__u8' : '__int', 'id')
+          this.emit(wrapper, 'id')
           this.emit('(')
           this.run(init[0], init[1], false)
           this.emit(')')
@@ -1203,7 +1341,7 @@ class Transpiler {
         if (kind === 'float') this.floatNames.add(name)
         else if (kind === 'int') {
           this.intNames.add(name)
-          if (isByte) this.byteNames.add(name)
+          if (wrapper !== '__int') this.wrapNames.set(name, wrapper)
         }
       }
       const sep = toks[k]
@@ -1228,6 +1366,7 @@ class Transpiler {
     const open = nameIdx + 1
     const close = match[open]
     const params: string[] = []
+    const wrapped: Array<[string, string]> = []
     for (const [a, b] of this.splitTop(open + 1, close)) {
       let k = a
       if (b - a === 1 && toks[a].v === 'void') continue
@@ -1279,7 +1418,11 @@ class Transpiler {
           else if (kind === 'char') this.charArrays.add(sawName)
         } else if (kind === 'int') {
           this.intNames.add(sawName)
-          if (words.includes('byte') || words.includes('uint8_t')) this.byteNames.add(sawName)
+          const wrap = intWrapper(words, this.intBits)
+          if (wrap !== '__int') {
+            this.wrapNames.set(sawName, wrap)
+            if (this.intBits) wrapped.push([jsName(sawName), wrap]) // a parameter takes its type on entry
+          }
         } else if (kind === 'char') this.charNames.add(sawName)
         else if (kind === 'string') this.stringNames.add(sawName)
       }
@@ -1299,6 +1442,15 @@ class Transpiler {
       })
       this.emit(')')
       this.emit('{')
+      for (const [p, wrap] of wrapped) {
+        this.emit(p, 'id')
+        this.emit('=')
+        this.emit(wrap, 'id')
+        this.emit('(')
+        this.emit(p, 'id')
+        this.emit(')')
+        this.emit(';')
+      }
       this.blockDepth++
       return { index: close + 2, stmtStart: true, semi: false }
     }
