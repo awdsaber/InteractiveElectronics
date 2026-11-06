@@ -22,6 +22,10 @@ export interface SolveContext {
   mode: 'dc' | 'tran'
   dt: number
   pins: Record<number, PinState>
+  /** time of this solution, s (source waveforms; default 0) */
+  t?: number
+  /** trapezoidal C / L companions (default backward Euler) */
+  trap?: boolean
 }
 
 export interface SolveResult {
@@ -46,6 +50,8 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
   const ctx: StampCtx = {
     mode: sc.mode,
     dt: sc.dt,
+    t: sc.t ?? 0,
+    trap: sc.trap === true && sc.mode === 'tran',
     x,
     st: c.st,
     pins: sc.pins,
@@ -56,7 +62,12 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
 
   // linear part
   const cached =
-    c.linValid && c.linMode === sc.mode && c.linDt === sc.dt && c.linGmin === gmin && c.linScale === srcScale
+    c.linValid &&
+    c.linMode === sc.mode &&
+    c.linDt === sc.dt &&
+    c.linGmin === gmin &&
+    c.linScale === srcScale &&
+    c.linTrap === ctx.trap
   if (!cached) c.luValid = false
   // a linear circuit's sys.A is untouched since it was cached; otherwise rebuild below
   sys.rhsOnly = cached
@@ -74,6 +85,7 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
     c.linDt = sc.dt
     c.linGmin = gmin
     c.linScale = srcScale
+    c.linTrap = ctx.trap
   }
   c.blin.set(sys.b)
 
@@ -182,13 +194,15 @@ export function buildSolution(c: Compiled, r: SolveResult, sc: SolveContext): So
   const { nodeNames, nodeUnk, nNodes } = c
   const mode = sc.mode
   const dt = sc.dt
+  const t = sc.t ?? 0
+  const trap = sc.trap === true && mode === 'tran'
 
   let nodeV: Record<string, number> | null = null
   let m: Measured | null = null
   const measured = (): Measured => {
     if (!m) {
       m = { current: {}, power: {}, extra: {} }
-      const ctx = { mode, dt, st, pins }
+      const ctx = { mode, dt, st, pins, t, trap }
       for (const d of devs) measureDevice(d, x, ctx, m)
     }
     return m
@@ -218,10 +232,25 @@ export function buildSolution(c: Compiled, r: SolveResult, sc: SolveContext): So
   }
 }
 
-/** DC operating point. Capacitors are open, inductors short, motors at mechanical steady state. */
+/** initial unknown vector: zeros, with node voltages from netlist.ic */
+export function initialGuess(c: Compiled, netlist: Netlist): Float64Array {
+  const x = new Float64Array(c.size)
+  if (netlist.ic) {
+    for (const [node, v] of Object.entries(netlist.ic)) {
+      const k = c.nodeIndex.get(node)
+      if (k !== undefined) x[k] = v
+    }
+  }
+  return x
+}
+
+/**
+ * DC operating point (sources at t = 0). Capacitors are open, inductors short, motors at
+ * mechanical steady state. Newton starts from netlist.ic when given.
+ */
 export function solveDC(netlist: Netlist, opts: SolveOptions = {}): Solution {
   const c = compile(netlist)
-  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {} }
-  const r = solveCompiled(c, sc, new Float64Array(c.size), opts.maxIter ?? MAX_ITER)
+  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {}, t: 0 }
+  const r = solveCompiled(c, sc, initialGuess(c, netlist), opts.maxIter ?? MAX_ITER)
   return buildSolution(c, r, sc)
 }

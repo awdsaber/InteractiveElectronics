@@ -1,10 +1,29 @@
-// Fixed-step backward-Euler transient simulation.
+// Fixed-step transient simulation: backward Euler (default) or trapezoidal.
 // t = 0 is "power on": capacitors start at v0 (default 0), inductors at i0 (default 0),
-// motors at rest.
+// motors at rest, node voltages guessed from netlist.ic.
+// Trapezoidal steps fall back to one backward-Euler step after any discontinuity (start,
+// parameter / pin / netlist / dt change, square-wave edge) so they don't ring numerically.
 
 import type { Element, Netlist, PinState, Solution } from '../types'
-import { type Compiled, type Dev, captureState, compile, inheritState, layoutSignature, partition, prepareDevice } from './devices'
-import { type SolveContext, buildSolution, solveCompiled } from './solve'
+import {
+  type Compiled,
+  type Dev,
+  branchCount,
+  captureState,
+  compile,
+  inheritState,
+  layoutSignature,
+  partition,
+  prepareDevice,
+  waveValue,
+} from './devices'
+import { setElementKey } from './failures'
+import { type SolveContext, buildSolution, initialGuess, solveCompiled } from './solve'
+
+export interface TransientOptions {
+  /** 'be' backward Euler (default: robust, damps), 'trap' trapezoidal (keeps LC ringing) */
+  method?: 'be' | 'trap'
+}
 
 export interface Transient {
   /** advance one dt and return the solution at the new time */
@@ -12,12 +31,15 @@ export interface Transient {
   /** current sim time in seconds (after the last step) */
   readonly t: number
   readonly dt: number
+  readonly method: 'be' | 'trap'
+  /** change the step size (slow motion / time lapse); takes effect on the next step */
+  setDt(dt: number): void
   /**
    * the most recent solution with ok === true (null before the first one).
    * Pass this to checkRatings so a step that fails to converge doesn't reset burn timers.
    */
   readonly lastGood: Solution | null
-  /** change one element parameter, e.g. setParam('S1', 'closed', true) */
+  /** change one element parameter, e.g. setParam('S1', 'closed', true); dotted keys ('wave.freq') reach nested fields */
   setParam(id: string, key: string, value: number | boolean | string): void
   /** set the GPIO state of every PIN element with this pin number */
   setPin(pin: number, state: PinState): void
@@ -38,35 +60,60 @@ function remapGuess(oldC: Compiled, oldX: Float64Array, newC: Compiled): Float64
     if (d.br < 0) continue
     const o = oldC.byId.get(d.el.id)
     if (!o || o.br < 0 || o.el.type !== d.el.type) continue
-    const count = d.el.type === 'MOTOR' ? 2 : 1
+    const count = Math.min(branchCount(d.el), branchCount(o.el))
     for (let k = 0; k < count; k++) x[d.br + k] = oldX[o.br + k]
   }
   return x
 }
 
-export function createTransient(netlist: Netlist, dt: number): Transient {
-  if (!(dt > 0)) throw new Error(`createTransient: dt must be > 0 (got ${dt})`)
+const checkDt = (dt: number) => {
+  if (!(dt > 0) || !Number.isFinite(dt)) throw new Error(`transient: dt must be > 0 (got ${dt})`)
+}
+
+export function createTransient(netlist: Netlist, dt: number, opts: TransientOptions = {}): Transient {
+  checkDt(dt)
+  const method = opts.method ?? 'be'
   let current: Netlist = { ...netlist, elements: netlist.elements.slice() }
   let compiled = compile(current)
-  let x: Float64Array = new Float64Array(compiled.size)
-  let steps = 0
+  let x: Float64Array = initialGuess(compiled, current)
+  let t = 0
   let lastGood: Solution | null = null
+  /** next step must be backward Euler (a discontinuity just happened) */
+  let restart = true
+  let squares: Extract<Element, { type: 'V' }>[] = []
   const pins: Record<number, PinState> = {}
-  const sc: SolveContext = { mode: 'tran', dt, pins }
+  const sc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
+
+  const findSquares = () => {
+    squares = []
+    for (const el of current.elements) if (el.type === 'V' && el.wave?.kind === 'square') squares.push(el)
+  }
+  findSquares()
 
   const recompile = () => {
     const next = compile(current)
     x = remapGuess(compiled, x, next)
     inheritState(compiled, next)
     compiled = next
+    restart = true
+    findSquares()
+  }
+
+  /** a square source switches inside (t0, t1] */
+  const edgeIn = (t0: number, t1: number) => {
+    for (const el of squares) if (waveValue(el.wave!, t0) !== waveValue(el.wave!, t1)) return true
+    return false
   }
 
   return {
     get t() {
-      return steps * dt
+      return t
     },
     get dt() {
       return dt
+    },
+    get method() {
+      return method
     },
     get netlist() {
       return current
@@ -74,21 +121,32 @@ export function createTransient(netlist: Netlist, dt: number): Transient {
     get lastGood() {
       return lastGood
     },
+    setDt(next) {
+      checkDt(next)
+      if (next !== dt) restart = true
+      dt = next
+      sc.dt = next
+    },
     step() {
+      const tNext = t + dt
+      const trap = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
+      sc.t = tNext
+      sc.trap = trap
       const r = solveCompiled(compiled, sc, x)
       const sol = buildSolution(compiled, r, sc)
       if (r.ok) {
         x.set(r.x)
-        captureState(compiled, x)
+        captureState(compiled, x, dt, trap)
         lastGood = sol
+        restart = false
       }
-      steps += 1
+      t = tNext
       return sol
     },
     setParam(id, key, value) {
       const old = current.elements.find((e) => e.id === id)
       if (!old) return
-      const el = { ...old, [key]: value } as Element
+      const el = setElementKey(old, key, value)
       current = { ...current, elements: current.elements.map((e) => (e === old ? el : e)) }
       const dev = compiled.byId.get(id)
       if (dev && layoutSignature(el) === layoutSignature(old)) {
@@ -99,12 +157,17 @@ export function createTransient(netlist: Netlist, dt: number): Transient {
         compiled.devs = compiled.devs.map((d) => (d === dev ? nd : d))
         compiled.byId.set(id, nd)
         partition(compiled)
+        restart = true
+        findSquares()
       } else recompile()
     },
     setPin(pin, state) {
       const prev = pins[pin]
       pins[pin] = { ...state }
-      if (!prev || prev.mode !== state.mode || prev.level !== state.level) compiled.linValid = false
+      if (!prev || prev.mode !== state.mode || prev.level !== state.level) {
+        compiled.linValid = false
+        restart = true
+      }
     },
     setNetlist(n) {
       current = { ...n, elements: n.elements.slice() }
