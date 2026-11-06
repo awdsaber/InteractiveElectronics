@@ -25,7 +25,7 @@ export interface AppState {
   tweaks: Record<string, number>
   toasts: ToastMessage[]
   selectLesson(id: string): void
-  act(a: BenchAction | `power:${string}`): void
+  act(a: BenchAction): void
   setSetting(c: SettingChange): void
   setCode(code: string): void
   upload(code: string): void

@@ -26,7 +26,7 @@ export type AssemblyEvent =
   /** the sketch stopped (transpile or runtime error) */
   | { type: 'stopped' }
 
-export type AssemblyAction = BenchAction | `power:${string}` | AssemblyEvent
+export type AssemblyAction = BenchAction | AssemblyEvent
 
 export interface Note {
   text: string

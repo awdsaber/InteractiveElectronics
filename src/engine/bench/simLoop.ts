@@ -215,6 +215,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   let sim: Transient | null = null
   let dcSol: Solution | null = null
   let dcDirty = true
+  /** transient: the netlist changed since the last step (lastGood describes the old circuit) */
+  let stale = false
   let ratings: RatingState = createRatingState()
   let t = 0
 
@@ -274,11 +276,14 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         sim = createTransient(netlist, dt, { method: lesson.sim?.method })
         for (const [p, st] of Object.entries(simPins)) sim.setPin(Number(p), st)
       } else sim.setNetlist(netlist)
-    } else dcDirty = true
+      // until the next frame steps the new circuit, readouts come from its operating point
+      stale = true
+    }
+    dcDirty = true
   }
 
   function solution(): Solution | null {
-    if (dynamic) return sim?.lastGood ?? null
+    if (dynamic && !stale) return sim?.lastGood ?? null
     if (dcDirty) {
       dcSol = solveDC(netlist, { pins: simPins })
       dcDirty = false
@@ -290,7 +295,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   function applyPin(pin: number, st: PinState): void {
     simPins[pin] = { ...st }
     if (sim) sim.setPin(pin, st)
-    else dcDirty = true
+    dcDirty = true
   }
   const mcuLive = () => !!mcu && asm.running && !held
   function floatPins(): void {
@@ -544,10 +549,14 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     const pinWarn = s ? pinWarnings(netlist, s).length > 0 : false
     const tone: ReadoutView['tone'] = status === 'FAULT' || pinWarn ? 'warn' : 'normal'
     const readouts = lesson.readouts.map((r, i) => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone }))
-    const burntIds = new Set(asm.burns.filter((b) => !isThermal(b)).map((b) => b.elementId))
+    // a dead GPIO pin doesn't char the whole board module: the status line reports it instead
+    const charring = asm.burns.filter((b) => !isThermal(b))
     const partBurnt: Record<string, boolean> = {}
-    for (const p of lesson.board.parts) partBurnt[p.id] = !!p.circuitIds?.some((id) => burntIds.has(id))
-    for (const b of asm.burns) if (b.partId && !isThermal(b)) partBurnt[b.partId] = true
+    for (const p of lesson.board.parts) {
+      partBurnt[p.id] = charring.some(
+        (b) => (p.circuitIds?.includes(b.elementId) || b.partId === p.id) && !(b.reason === 'pin-overcurrent' && p.mount === 'module'),
+      )
+    }
     const elementValues: Record<string, number> = {}
     for (const e of netlist.elements) {
       const rec = e as unknown as Record<string, unknown>
@@ -605,6 +614,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       const n = lesson.sim?.stepsPerFrame ?? Math.min(Math.ceil(30 * Math.max(1, speed)), Math.ceil(simDt / dt - 1e-9))
       for (let k = 0; k < n; k++) sim.step()
       t = sim.t
+      stale = false
     } else {
       t += simDt
     }

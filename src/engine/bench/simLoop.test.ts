@@ -107,7 +107,7 @@ describe('createBench: led-resistor end to end (headless)', () => {
     b.dispatch('break:no-resistor')
     const s = await runUntil(b, (x) => x.assembly.burns.length >= 2, 1.5)
     expect(s.assembly.burns.map((x) => x.elementId).sort()).toEqual(['LED1', 'PIN13'])
-    expect(s.partBurnt).toMatchObject({ led1: true, uno: true })
+    expect(s.partBurnt).toMatchObject({ led1: true, uno: false }) // a dead pin doesn't char the Uno
     b.dispatch('repair')
     expect(b.snapshot().status).toBe('RUNNING')
     const ok = await runUntil(b, pin13High)
@@ -154,6 +154,17 @@ describe('createBench: led-resistor end to end (headless)', () => {
     expect(Math.abs(ledI(s))).toBeLessThan(1e-6)
     expect(s.pins[13]?.mode ?? 'INPUT').toBe('INPUT')
     expect(b.needsFrames()).toBe(false)
+  })
+
+  it('readouts drop to zero as soon as power goes off, with no further frames', async () => {
+    const b = createBench(LED)
+    b.dispatch('power')
+    b.upload()
+    await runUntil(b, pin13High)
+    await b.frame(FRAME)
+    expect(ledI(b.snapshot())).toBeGreaterThan(0.012)
+    b.dispatch('strip')
+    expect(b.snapshot().values.every((v) => v === 0)).toBe(true)
   })
 
   it('the resistor tweak changes the current (470 Ω ≈ 6.5 mA)', async () => {
