@@ -42,8 +42,10 @@ function decalOffset(m: Material, w: number): void {
 
 /** Register a decal material so its polygon offset follows the wobble. */
 export function registerDecal(m: Material): void {
+  if (decals.has(m)) return
   decals.add(m)
   decalOffset(m, wobbleUniforms.uInkWobble.value)
+  m.addEventListener('dispose', () => decals.delete(m))
 }
 
 /** Set the wobble amount, clamped to 0..1. */

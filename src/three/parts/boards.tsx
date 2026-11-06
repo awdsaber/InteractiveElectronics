@@ -1,7 +1,7 @@
 // Board-level parts: breadboard, generic / Uno-style / Nano-style module
 // boards, Wi-Fi module, OLED, ultrasonic sensor, load cell.
 
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import * as THREE from 'three'
 import type { PartKind, PartPlacement } from '../../engine/types'
 import { G, extrudeAlongZ, extrudeUp, geo, roundedRectShape } from '../geometry'
@@ -86,6 +86,22 @@ function BoardSlab({ w, d, t = 0.16, y = 0, art }: { w: number; d: number; t?: n
   return <InkMesh geometry={boardGeo(w, d, t)} position={[0, y, 0]} color="#cdbf8f" capMap={art} />
 }
 
+
+/** Header pins (and plastic spacers under a raised board) for two rows at ±rowZ. */
+function useHeaderPins(n: number, rowZ: number, top: number, standoff: number) {
+  return useMemo(() => {
+    const pins: InkInstance[] = []
+    const spacers: InkInstance[] = []
+    for (let i = 0; i < n; i++) {
+      const x = (i - (n - 1) / 2) * PITCH
+      for (const z of [rowZ, -rowZ]) {
+        pins.push({ p: [x, (top + 0.04 - 0.3) / 2, z], s: [0.064, top + 0.04 + 0.3, 0.064] })
+        if (standoff > 0) spacers.push({ p: [x, standoff / 2, z], s: [0.248, standoff, 0.248] })
+      }
+    }
+    return { pins, spacers }
+  }, [n, rowZ, top, standoff])
+}
 
 // ───────────── breadboard ─────────────
 
@@ -221,15 +237,7 @@ function GenericModule({ part, state }: PartProps) {
     },
   })
   const chip = str(part, 'chip', 'soic')
-  const pins: InkInstance[] = []
-  const spacers: InkInstance[] = []
-  for (let i = 0; i < n; i++) {
-    const x = (i - (n - 1) / 2) * PITCH
-    for (const z of [rowZ, -rowZ]) {
-      pins.push({ p: [x, (top + 0.04 - 0.3) / 2, z], s: [0.064, top + 0.04 + 0.3, 0.064] })
-      if (standoff > 0) spacers.push({ p: [x, standoff / 2, z], s: [0.248, standoff, 0.248] })
-    }
-  }
+  const { pins, spacers } = useHeaderPins(n, rowZ, top, standoff)
   return (
     <group>
       {pins.length > 0 && <InkInstances geometry={G.box()} items={pins} color={C.gold} outline={1} />}
@@ -419,15 +427,7 @@ function NanoModule({ part, state }: PartProps) {
     },
   })
   const top = standoff + t
-  const pins: InkInstance[] = []
-  const spacers: InkInstance[] = []
-  for (let i = 0; i < 15; i++) {
-    const x = (i - 7) * PITCH
-    for (const z of [0.762, -0.762]) {
-      pins.push({ p: [x, (top + 0.04 - 0.3) / 2, z], s: [0.064, top + 0.34, 0.064] })
-      spacers.push({ p: [x, standoff / 2, z], s: [0.248, standoff, 0.248] })
-    }
-  }
+  const { pins, spacers } = useHeaderPins(15, 0.762, top, standoff)
   return (
     <group>
       <InkInstances geometry={G.box()} items={pins} color={C.gold} outline={1} />
@@ -557,7 +557,10 @@ function OledBody({ part, state }: PartProps) {
     },
   })
   const top = standoff + t
-  const pins: InkInstance[] = [0, 1, 2, 3].map((i) => ({ p: [(i - 1.5) * PITCH, (top + 0.04 - 0.3) / 2, -1.27], s: [0.064, top + 0.34, 0.064] }))
+  const pins = useMemo<InkInstance[]>(
+    () => [0, 1, 2, 3].map((i) => ({ p: [(i - 1.5) * PITCH, (top + 0.04 - 0.3) / 2, -1.27], s: [0.064, top + 0.34, 0.064] })),
+    [top],
+  )
   return (
     <group>
       <InkInstances geometry={G.box()} items={pins} color={C.gold} outline={1} />

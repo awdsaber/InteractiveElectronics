@@ -2,9 +2,8 @@
 // its own PCB coupon, plus a small sample board. Click a tile to zoom in;
 // use ?gallery&focus=<kind> to open focused on one kind.
 
-import { Html } from '@react-three/drei'
-import { Canvas } from '@react-three/fiber'
-import { useMemo, useState, type CSSProperties } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardSpec, PartKind, PartPlacement } from '../engine/types'
 import { BenchBase } from './BenchBase'
 import { IsoCamera } from './IsoCamera'
@@ -12,7 +11,11 @@ import { InkLights } from './ink'
 import { ACCENT, INK, PAPER, PCB_SWATCHES } from './palette'
 import { ALL_PART_KINDS, partRegistry, type PartRenderState } from './parts'
 import { Pcb } from './Pcb'
-import { MONO, SERIF } from './textures'
+import { MONO, SERIF, useCanvasTexture } from './textures'
+import { G } from './geometry'
+import { InkMesh } from './ink'
+import { BENCH_Y } from './parts/types'
+import { lessonParts } from './galleryLesson'
 import { WobbleClock, setWobble } from './wobble'
 
 interface Entry {
@@ -174,42 +177,72 @@ interface GalleryControls {
 function Tile({ p, s }: { p: Placed; s: GalleryControls }) {
   const { entry: e } = p
   const Comp = partRegistry[e.kind]
-  const part: PartPlacement = {
-    id: e.label?.split(' ')[0] ?? e.kind.toUpperCase().slice(0, 4),
-    kind: e.kind,
-    pos: [0, 0],
-    rot: e.rot,
-    mount: e.mount,
-    role: e.title ?? e.kind,
-    label: e.label ?? e.kind,
-    params: e.params,
-    color: e.color,
-  }
-  const coupon = e.mount === 'tht' || e.mount === 'smd' || (e.mount === 'module' && e.kind !== 'module')
-  const spec = useMemo<BoardSpec>(
-    () => ({ name: '', size: [e.cell[0] - 0.2, e.cell[1] - 0.2], parts: [part] }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const part = useMemo<PartPlacement>(
+    () => ({
+      id: e.label?.split(' ')[0] ?? e.kind.toUpperCase().slice(0, 4),
+      kind: e.kind,
+      pos: [0, 0],
+      rot: e.rot,
+      mount: e.mount,
+      role: e.title ?? e.kind,
+      label: e.label ?? e.kind,
+      params: e.params,
+      color: e.color,
+    }),
     [e],
   )
+  const coupon = e.mount === 'tht' || e.mount === 'smd' || (e.mount === 'module' && e.kind !== 'module')
+  const spec = useMemo<BoardSpec>(() => ({ name: '', size: [e.cell[0] - 0.2, e.cell[1] - 0.2], parts: [part] }), [e, part])
   return (
     <group position={[p.x, 0, p.z]}>
       {coupon && <Pcb spec={spec} color={PCB_SWATCHES[s.swatch]} silk={false} />}
       <Comp part={part} state={stateFor(e, s)} />
-      <Html position={[0, -0.18, e.cell[1] / 2 + 0.32]} center pointerEvents="none" zIndexRange={[10, 0]}>
-        <div style={tag}>{e.title ?? e.kind}</div>
-      </Html>
     </group>
   )
 }
 
-const tag: CSSProperties = {
-  font: `500 10px/1.2 ${MONO}`,
-  color: INK,
-  whiteSpace: 'nowrap',
-  letterSpacing: '0.04em',
-  background: 'rgba(243,238,226,0.92)',
-  padding: '1px 5px',
-  borderRadius: 3,
+/** All tile captions printed on the mat in one texture (one draw, no DOM). */
+function LabelSheet({ placed, w, d }: { placed: Placed[]; w: number; d: number }) {
+  const ppu = Math.min(56, 2048 / Math.max(w, d))
+  const tex = useCanvasTexture(
+    w * ppu,
+    d * ppu,
+    (ctx, W) => {
+      const k = W / w
+      ctx.fillStyle = '#e4eee6'
+      ctx.font = `600 ${0.3 * k}px ${MONO}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      for (const p of placed) ctx.fillText(p.entry.title ?? p.entry.kind, (p.x + 0) * k, (p.z + p.entry.cell[1] / 2 + 0.32) * k)
+    },
+    [placed, w, d],
+  )
+  return (
+    <InkMesh
+      geometry={G.planeY()}
+      position={[w / 2, BENCH_Y + 0.004, d / 2]}
+      scale={[w, 1, d]}
+      color="#ffffff"
+      map={tex}
+      unlit
+      decal
+      alphaTest={0.05}
+      outline={false}
+      noChar
+    />
+  )
+}
+
+/** Draw-call counter (dev page): reads renderer.info after each frame. */
+function DrawStats({ onCalls }: { onCalls: (n: number) => void }) {
+  const last = useRef(0)
+  useFrame(({ gl }) => {
+    const now = performance.now()
+    if (now - last.current < 500) return
+    last.current = now
+    onCalls(gl.info.render.calls)
+  })
+  return null
 }
 
 export default function Gallery() {
@@ -239,56 +272,81 @@ export default function Gallery() {
   const fp = placed.find((p) => p.key === focus)
   const target: [number, number, number] = fp ? [fp.x + offX, 0.4, fp.z + offZ] : [0, 0, 0]
   const fit = Math.min(window.innerWidth / ((width + depth) * 0.74), window.innerHeight / ((width + depth) * 0.45))
-  const zoom = fp ? Math.min(260, 900 / Math.max(fp.entry.cell[0], fp.entry.cell[1], 2.2)) : fit
+  const lesson = q.has('lesson')
+  const zoom = lesson ? window.innerWidth / 27 : fp ? Math.min(260, 900 / Math.max(fp.entry.cell[0], fp.entry.cell[1], 2.2)) : fit
   const covered = new Set(ENTRIES.map((e) => e.kind))
   const missing = ALL_PART_KINDS.filter((k) => !covered.has(k))
   const set = <K extends keyof GalleryControls>(k: K, v: GalleryControls[K]) => setS((o) => ({ ...o, [k]: v }))
+  const [calls, setCalls] = useState(0)
+  const lessonList = useMemo(() => lessonParts(), [])
   return (
     <div style={page}>
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true, alpha: true }} style={{ position: 'absolute', inset: 0 }}>
         <InkLights />
         <WobbleClock />
         <IsoCamera zoom={zoom} target={target} pan minZoom={fit * 0.6} maxZoom={300} resetKey={focus} distance={80} />
-        <BenchBase size={[width + 4, depth + 12]} center={[0, 3]} />
-        <group position={[-sampleW / 2 - 6, 0, offZ - 5.6]}>
-          <Pcb spec={SAMPLE} color={PCB_SWATCHES[s.swatch]} />
-          {SAMPLE.parts.map((p) => {
-            const Comp = partRegistry[p.kind]
-            return (
-              <Comp
-                key={p.id}
-                part={p}
-                state={{
-                  visible: true,
-                  soldered: s.soldered,
-                  glow: s.glow,
-                  burnt: s.burnt && p.id === 'D1',
-                  explodedOffset: s.exploded * (p.mount === 'smd' ? 0.6 : 1.2),
-                  showLabel: s.labels,
-                }}
-              />
-            )
-          })}
-        </group>
-        <group position={[offX, 0, offZ]}>
-          {placed.map((p) => (
-            <group
-              key={p.key}
-              onClick={(ev) => {
-                ev.stopPropagation()
-                setFocus((f) => (f === p.key ? null : p.key))
-              }}
-            >
-              <Tile p={p} s={s} />
+        <DrawStats onCalls={setCalls} />
+        {lesson ? (
+          <>
+            <BenchBase size={[24, 14]} />
+            {lessonList.map((p) => {
+              const Comp = partRegistry[p.kind]
+              return (
+                <Comp
+                  key={p.id}
+                  part={p}
+                  state={{ visible: true, soldered: false, glow: p.kind === 'led' || p.kind === 'module' ? s.glow : 0, burnt: false, explodedOffset: 0, showLabel: s.labels }}
+                />
+              )
+            })}
+          </>
+        ) : (
+          <>
+            <BenchBase size={[width + 4, depth + 12]} center={[0, 3]} />
+            <group position={[-sampleW / 2 - 6, 0, offZ - 5.6]}>
+              <Pcb spec={SAMPLE} color={PCB_SWATCHES[s.swatch]} />
+              {SAMPLE.parts.map((p) => {
+                const Comp = partRegistry[p.kind]
+                return (
+                  <Comp
+                    key={p.id}
+                    part={p}
+                    state={{
+                      visible: true,
+                      soldered: s.soldered,
+                      glow: s.glow,
+                      burnt: s.burnt && p.id === 'D1',
+                      explodedOffset: s.exploded * (p.mount === 'smd' ? 0.6 : 1.2),
+                      showLabel: s.labels,
+                    }}
+                  />
+                )
+              })}
             </group>
-          ))}
-        </group>
+            <group position={[offX, 0, offZ]}>
+              {placed.map((p) => (
+                <group
+                  key={p.key}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    setFocus((f) => (f === p.key ? null : p.key))
+                  }}
+                >
+                  <Tile p={p} s={s} />
+                </group>
+              ))}
+            </group>
+            <group position={[offX, 0, offZ]}>
+              <LabelSheet placed={placed} w={width} d={depth + 1} />
+            </group>
+          </>
+        )}
       </Canvas>
 
       <div style={panel}>
         <div style={{ font: `600 22px/1.1 ${SERIF}`, marginBottom: 2 }}>Part library</div>
         <div style={{ font: `500 10.5px/1.4 ${MONO}`, opacity: 0.7, marginBottom: 10 }}>
-          {ALL_PART_KINDS.length} kinds · click a tile to zoom · drag to orbit
+          {ALL_PART_KINDS.length} kinds · {calls} draw calls · click a tile to zoom · drag to orbit
           {missing.length > 0 && <span style={{ color: '#d9480f' }}> · missing: {missing.join(', ')}</span>}
         </div>
         <Slider label="ink wobble" value={s.wobble} onChange={(v) => set('wobble', v)} />

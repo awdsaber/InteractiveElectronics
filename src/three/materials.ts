@@ -54,14 +54,13 @@ export function charColor(color: string): string {
   return '#' + tmp.set(color).lerp(new THREE.Color(CHAR), 0.78).getHexString()
 }
 
-export function inkMaterial(look: InkLook): THREE.Material {
-  const glow = look.burnt ? 0 : Math.round(Math.min(1, Math.max(0, look.glow ?? 0)) * 20) / 20
-  const opacity = look.opacity ?? 1
-  const key = [
+function lookKey(look: InkLook): string {
+  const glow = quantGlow(look)
+  return [
     look.color,
     glow,
     look.glowColor ?? '',
-    opacity,
+    look.opacity ?? 1,
     look.burnt ? 1 : 0,
     look.unlit ? 1 : 0,
     look.map?.uuid ?? '',
@@ -70,10 +69,28 @@ export function inkMaterial(look: InkLook): THREE.Material {
     look.depthWrite ?? '',
     look.decal ? 1 : 0,
   ].join('|')
-  let m = cache.get(key)
-  if (m) return m
+}
+
+function quantGlow(look: InkLook): number {
+  return look.burnt ? 0 : Math.round(Math.min(1, Math.max(0, look.glow ?? 0)) * 20) / 20
+}
+
+/**
+ * A texture is "per-instance" when its owner disposes it (live screens, PCB
+ * artwork). Materials using one bypass the shared cache so nothing keeps the
+ * disposed texture alive; the caller owns and disposes the material.
+ */
+export function isPerInstance(map: THREE.Texture | null | undefined): boolean {
+  return !!map && map.userData.perInstance === true
+}
+
+/** Build a fresh (uncached) ink material. Caller disposes it. */
+export function createInkMaterial(look: InkLook): THREE.Material {
+  const glow = quantGlow(look)
+  const opacity = look.opacity ?? 1
   const color = look.burnt ? charColor(look.color) : look.color
   const transparent = opacity < 1
+  let m: THREE.Material
   if (look.unlit) {
     m = new THREE.MeshBasicMaterial({
       color,
@@ -100,10 +117,40 @@ export function inkMaterial(look: InkLook): THREE.Material {
   }
   if (look.decal) registerDecal(m)
   applyWobble(m)
+  return m
+}
+
+/** Shared, cached material for a look. Not for per-instance textures. */
+export function inkMaterial(look: InkLook): THREE.Material {
+  const key = lookKey(look)
+  let m = cache.get(key)
+  if (m) return m
+  m = createInkMaterial(look)
   cache.set(key, m)
   return m
 }
 
+/** Material for a look: cached, or (per-instance map) a fresh one the caller must dispose. */
+export function lookKeyOf(look: InkLook): string {
+  return lookKey(look)
+}
+
 export function materialCacheSize(): number {
   return cache.size
+}
+
+const baked = new Map<string, THREE.Material>()
+
+/** Shared vertex-coloured material for merged (baked) part geometry. */
+export function bakedMaterial(unlit: boolean, decal: boolean, side: THREE.Side): THREE.Material {
+  const key = `${unlit ? 1 : 0}|${decal ? 1 : 0}|${side}`
+  let m = baked.get(key)
+  if (m) return m
+  m = unlit
+    ? new THREE.MeshBasicMaterial({ vertexColors: true, side })
+    : new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: toonGradient(), side })
+  if (decal) registerDecal(m)
+  applyWobble(m)
+  baked.set(key, m)
+  return m
 }

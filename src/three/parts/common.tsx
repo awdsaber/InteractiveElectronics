@@ -4,7 +4,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react'
 import * as THREE from 'three'
-import { G, geo } from '../geometry'
+import { G, disposeOutline, geo } from '../geometry'
 import { InkInstances, InkMesh, type InkInstance, type InkLookProps, type Vec3 } from '../ink'
 import { C } from '../palette'
 import { glowTexture, textTexture, type TextOpts } from '../textures'
@@ -18,10 +18,18 @@ type Common = Look & {
   children?: ReactNode
 }
 
+/** Plates thinner than this get 1 px edge lines instead of an outline hull. */
+export const THIN = 0.05
+
+function thinLook(s: Vec3, look: Look): Look & { edges?: boolean } {
+  if (look.outline === false || Math.min(s[0], s[1], s[2]) >= THIN) return look
+  return { ...look, outline: false, edges: true }
+}
+
 /** Box with its bottom face centred on p. */
 export function Block({ p, s, rotation, children, ...look }: Common & { p: Vec3; s: Vec3 }) {
   return (
-    <InkMesh geometry={G.box()} position={[p[0], p[1] + s[1] / 2, p[2]]} scale={s} rotation={rotation} {...look}>
+    <InkMesh geometry={G.box()} position={[p[0], p[1] + s[1] / 2, p[2]]} scale={s} rotation={rotation} {...thinLook(s, look)}>
       {children}
     </InkMesh>
   )
@@ -30,7 +38,7 @@ export function Block({ p, s, rotation, children, ...look }: Common & { p: Vec3;
 /** Box centred on p. */
 export function BoxC({ p, s, rotation, children, ...look }: Common & { p: Vec3; s: Vec3 }) {
   return (
-    <InkMesh geometry={G.box()} position={p} scale={s} rotation={rotation} {...look}>
+    <InkMesh geometry={G.box()} position={p} scale={s} rotation={rotation} {...thinLook(s, look)}>
       {children}
     </InkMesh>
   )
@@ -179,6 +187,8 @@ export function GlowHalo({ p, color, glow, size = 1.4, pool = true }: { p: Vec3;
       new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, opacity: 0 }),
     [color],
   )
+  useEffect(() => () => sprite.dispose(), [sprite])
+  useEffect(() => () => poolMat.dispose(), [poolMat])
   const g = Math.min(1, Math.max(0, glow))
   sprite.opacity = 0.85 * g
   poolMat.opacity = 0.55 * g
@@ -218,6 +228,9 @@ export function BoxInstances({ items, color, outline = 1.2, unlit }: { items: In
 
 export const deg = (d: number) => (d * Math.PI) / 180
 
+/** userData for groups that move at runtime: <Bake> leaves them unmerged. */
+export const SPINS = { noBake: true } as const
+
 /**
  * Flexible cable through control points (Catmull-Rom). Per-instance geometry,
  * memoised on the points and disposed on unmount; pass `cacheKey` for fixed
@@ -256,7 +269,10 @@ export function Tube({
   }, [sig, r, cacheKey, segments])
   useEffect(() => {
     if (cacheKey) return
-    return () => geometry.dispose()
+    return () => {
+      disposeOutline(geometry)
+      geometry.dispose()
+    }
   }, [geometry, cacheKey])
   const a = points[0]
   const b = points[points.length - 1]

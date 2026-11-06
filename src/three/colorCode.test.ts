@@ -95,4 +95,11 @@ describe('capacitorCode', () => {
   ])('%s F → %s', (f, code) => {
     expect(capacitorCode(f)).toBe(code)
   })
+  it('values that round up to 10 pF use the 3-digit form, not "10R0"', () => {
+    expect(capacitorCode(9.97e-12)).toBe('100')
+    expect(capacitorCode(9.94e-12)).toBe('9R9')
+  })
+  it('smdCode does the same for 9.95–9.99 Ω', () => {
+    expect(smdCode(9.97)).toBe('100')
+  })
 })

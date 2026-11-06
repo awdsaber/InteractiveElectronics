@@ -40,6 +40,29 @@ export function outlineGeometry(g: THREE.BufferGeometry): THREE.BufferGeometry {
   return h
 }
 
+const edgeCache = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>()
+
+/** Hard-edge line geometry for thin plates (cached per source geometry). */
+export function edgesGeometry(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  let e = edgeCache.get(g)
+  if (!e) {
+    e = new THREE.EdgesGeometry(g, 30)
+    edgeCache.set(g, e)
+  }
+  return e
+}
+
+/**
+ * Release the hull (and edge lines) derived from `g`. Call it wherever a
+ * non-cached geometry is disposed, e.g. per-instance cables.
+ */
+export function disposeOutline(g: THREE.BufferGeometry): void {
+  hulls.get(g)?.dispose()
+  hulls.delete(g)
+  edgeCache.get(g)?.dispose()
+  edgeCache.delete(g)
+}
+
 /** Unit primitives (size 1, centred). Scale them per mesh. */
 export const G = {
   box: () => geo('box', () => new THREE.BoxGeometry(1, 1, 1)),

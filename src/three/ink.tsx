@@ -7,8 +7,8 @@ import { useThree } from '@react-three/fiber'
 import type { ThreeElements } from '@react-three/fiber'
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { outlineGeometry } from './geometry'
-import { inkMaterial } from './materials'
+import { edgesGeometry, outlineGeometry } from './geometry'
+import { createInkMaterial, inkMaterial, isPerInstance, lookKeyOf, type InkLook } from './materials'
 import { INK } from './palette'
 import { applyWobble } from './wobble'
 
@@ -53,11 +53,31 @@ export type InkMeshProps = MeshProps &
      * separate coplanar decal.
      */
     capMap?: THREE.Texture
+    /** draw hard edges as 1 px ink lines (thin plates, where a hull fails) */
+    edges?: boolean
   }
+
+/**
+ * Shared cached material for ordinary looks; for a per-instance texture
+ * (`texture.userData.perInstance`) a private material that is disposed on
+ * unmount, so the cache never holds a disposed texture.
+ */
+export function useInkMaterial(look: InkLook): THREE.Material {
+  const own = isPerInstance(look.map)
+  const key = lookKeyOf(look)
+  const shared = own ? null : inkMaterial(look)
+  const priv = useMemo(
+    () => (own ? createInkMaterial(look) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [own, key],
+  )
+  useEffect(() => () => priv?.dispose(), [priv])
+  return (priv ?? shared) as THREE.Material
+}
 
 function useLookMaterial(look: InkLookProps): THREE.Material {
   const { burnt } = useContext(InkContext)
-  return inkMaterial({
+  return useInkMaterial({
     color: look.color,
     glow: look.glow,
     glowColor: look.glowColor,
@@ -69,6 +89,14 @@ function useLookMaterial(look: InkLookProps): THREE.Material {
     decal: look.decal,
     side: look.side,
   })
+}
+
+let lineMat: THREE.LineBasicMaterial | null = null
+
+/** Shared ink line material for edge-drawn thin plates. */
+export function inkLineMaterial(): THREE.LineBasicMaterial {
+  if (!lineMat) lineMat = applyWobble(new THREE.LineBasicMaterial({ color: INK }))
+  return lineMat
 }
 
 /** A cel-shaded mesh with an ink outline. */
@@ -87,15 +115,17 @@ export function InkMesh({
   side,
   noChar,
   capMap,
+  edges,
   children,
   ...rest
 }: InkMeshProps) {
   const material = useLookMaterial({ color, glow, glowColor, opacity, unlit, map, alphaTest, decal, side, noChar })
-  const cap = inkMaterial({ color: '#ffffff', map: capMap ?? null })
+  const cap = useInkMaterial({ color: '#ffffff', map: capMap ?? null })
   const mats = useMemo(() => (capMap ? [cap, material] : material), [capMap, cap, material])
   return (
     <mesh geometry={geometry} material={mats} {...rest}>
       {outline !== false && <InkHull geometry={geometry} px={outline} color={outlineColor} />}
+      {edges && <lineSegments geometry={edgesGeometry(geometry)} material={inkLineMaterial()} raycast={() => null} />}
       {children}
     </mesh>
   )
@@ -113,28 +143,32 @@ type HullHost = THREE.Group & {
  * carries the cached crease-smoothed hull geometry (and, for instances, the
  * instance matrix), so the hull stays closed and nothing is cloned per mesh.
  */
-function InkHull({
+export function InkHull({
   geometry,
+  hull,
   px,
-  color,
+  color = INK,
   instanced,
 }: {
-  geometry: THREE.BufferGeometry
+  geometry?: THREE.BufferGeometry
+  /** ready-made hull geometry (skips the crease pass) */
+  hull?: THREE.BufferGeometry
   px: number
-  color: string
+  color?: string
   instanced?: THREE.InstancedMesh
 }) {
   const dpr = useThree((s) => s.viewport.dpr)
   const host = useMemo(() => {
     const g = new THREE.Group() as HullHost
-    g.geometry = outlineGeometry(geometry)
+    g.userData.inkHullPx = px
+    g.geometry = hull ?? outlineGeometry(geometry as THREE.BufferGeometry)
     if (instanced) {
       g.isInstancedMesh = true
       g.count = instanced.count
       g.instanceMatrix = instanced.instanceMatrix
     }
     return g
-  }, [geometry, instanced])
+  }, [geometry, hull, instanced, px])
   useLayoutEffect(() => {
     const hull = host.children[0]?.children[0] as THREE.Mesh | undefined
     if (hull && !Array.isArray(hull.material)) applyWobble(hull.material)

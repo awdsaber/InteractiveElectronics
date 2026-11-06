@@ -4,6 +4,7 @@
 
 import { useMemo, type ComponentType } from 'react'
 import type { PartPlacement } from '../../engine/types'
+import { Bake } from '../bake'
 import { Callout } from '../Callout'
 import { G, geo, mergedBoxes } from '../geometry'
 import { InkContext, InkInstances, type InkInstance } from '../ink'
@@ -64,13 +65,27 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
     const [x, y, z] = partPosition(part)
     const h = typeof meta.height === 'function' ? meta.height(part) : meta.height
     const rot = ((part.rot ?? 0) * Math.PI) / 180
+    // Anything that changes static geometry or colour must be in the key.
+    const bakeKey = JSON.stringify([
+      part.kind,
+      part.mount,
+      part.color,
+      part.params,
+      state.burnt,
+      state.soldered,
+      state.value,
+      state.reading,
+      state.glow > 0.01,
+    ])
     return (
       <group position={[x, y + state.explodedOffset, z]} userData={{ partId: part.id, kind: part.kind }}>
         <group rotation={[0, rot, 0]}>
-          <InkContext.Provider value={{ burnt: state.burnt }}>
-            <Body part={part} state={state} />
-          </InkContext.Provider>
-          {state.soldered && <SolderJoints part={part} />}
+          <Bake bakeKey={bakeKey}>
+            <InkContext.Provider value={{ burnt: state.burnt }}>
+              <Body part={part} state={state} />
+            </InkContext.Provider>
+            {state.soldered && <SolderJoints part={part} />}
+          </Bake>
         </group>
         {state.burnt && <Smoke position={[0, h, 0]} scale={Math.min(2, 0.6 + h * 0.5)} />}
         {state.showLabel && part.label && <Callout text={part.label} anchor={[0, h, 0]} tone={state.burnt ? 'warn' : 'ink'} />}

@@ -3,7 +3,7 @@
 import { G } from '../geometry'
 import { InkMesh } from '../ink'
 import { C } from '../palette'
-import { Block, CylY, Decal, LeadPath, Leg, deg } from './common'
+import { Block, CylY, Decal, LeadPath, Leg, SPINS, deg } from './common'
 import { bool, num, type PartProps } from './types'
 
 function ButtonBody({ part, state }: PartProps) {
@@ -62,7 +62,7 @@ function PotentiometerBody({ part, state }: PartProps) {
       <Leg x={0.48} z={-0.3} top={0.05} square r={0.035} />
       <Block p={[0, 0.02, 0]} s={[0.98, 0.55, 0.78]} color={'#2f4f8f'} />
       <CylY p={[0, 0.57, 0]} r={0.3} h={0.16} seg={18} color={C.steel} />
-      <group position={[0, 0.73, 0]} rotation={[0, angle, 0]}>
+      <group position={[0, 0.73, 0]} rotation={[0, angle, 0]} userData={SPINS}>
         <CylY p={[0, 0, 0]} r={0.29} h={0.5} seg={14} color={knob} />
         <Decal p={[0, 0.502, -0.13]} size={[0.05, 0.22]} color={C.white} />
       </group>

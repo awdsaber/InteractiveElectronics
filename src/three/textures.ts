@@ -161,7 +161,12 @@ export function useCanvasTexture(
   draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
   deps: readonly unknown[],
 ): THREE.CanvasTexture {
-  const tex = useMemo(() => toTexture(makeCanvas(w, h)), [w, h])
+  const tex = useMemo(() => {
+    const t = toTexture(makeCanvas(w, h))
+    // owned and disposed here: materials using it must not be cached
+    t.userData.perInstance = true
+    return t
+  }, [w, h])
   useMemo(() => {
     const canvas = tex.image as HTMLCanvasElement
     const ctx = canvas.getContext('2d')

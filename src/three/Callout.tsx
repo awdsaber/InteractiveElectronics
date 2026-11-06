@@ -2,6 +2,9 @@
 // its part by an ink leader line with a dot at the anchor (spec §2).
 
 import { Html, Line } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { useRef } from 'react'
+import type { Group } from 'three'
 import { G } from './geometry'
 import { InkMesh, type Vec3 } from './ink'
 import { ACCENT, INK, OK, WARN } from './palette'
@@ -13,21 +16,33 @@ export interface CalloutProps {
   text: string
   /** point on the part the leader starts from (local units) */
   anchor?: Vec3
-  /** label position relative to the anchor. Default up and to the screen-left */
+  /**
+   * Label position relative to the anchor, in board units at the reference
+   * zoom (60 px/unit). The leader is divided by the camera zoom each frame,
+   * so it keeps the same on-screen length whether zoomed in or out.
+   */
   offset?: Vec3
   tone?: CalloutTone
 }
 
 const TONE: Record<CalloutTone, string> = { ink: INK, accent: ACCENT, warn: WARN, ok: OK }
 
+/** Zoom (px per unit) at which `offset` is taken literally. */
+export const CALLOUT_REF_ZOOM = 60
+
 export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45], tone = 'ink' }: CalloutProps) {
-  const end: Vec3 = [anchor[0] + offset[0], anchor[1] + offset[1], anchor[2] + offset[2]]
   const c = TONE[tone]
+  const grp = useRef<Group>(null)
+  useFrame(({ camera }) => {
+    const g = grp.current
+    const z = (camera as { zoom?: number }).zoom ?? 1
+    if (g) g.scale.setScalar(CALLOUT_REF_ZOOM / Math.max(1e-3, z))
+  })
   return (
-    <group>
-      <Line points={[anchor, end]} color={INK} lineWidth={1.25} />
-      <InkMesh geometry={G.sphere(8, 6)} color={INK} unlit outline={false} noChar position={anchor} scale={0.035} />
-      <Html position={end} center pointerEvents="none" zIndexRange={[20, 0]}>
+    <group ref={grp} position={anchor}>
+      <Line points={[[0, 0, 0], offset]} color={INK} lineWidth={1.25} />
+      <InkMesh geometry={G.sphere(8, 6)} color={INK} unlit outline={false} noChar scale={0.035} />
+      <Html position={offset} center pointerEvents="none" zIndexRange={[20, 0]}>
         <div
           style={{
             background: '#ffffff',

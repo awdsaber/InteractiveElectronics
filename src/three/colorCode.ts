@@ -141,7 +141,8 @@ export function capacitorCode(farads: number): string {
   const pf = farads * 1e12
   if (pf < 10) {
     const n = Math.round(pf * 10)
-    return `${Math.floor(n / 10)}R${n % 10}`
+    // 9.95–9.99 pF round up to 10.0: use the 3-digit form ("100")
+    if (n < 100) return `${Math.floor(n / 10)}R${n % 10}`
   }
   const { mant, exp } = sigExp(pf, 2)
   return `${mant}${exp}`

@@ -7,7 +7,7 @@ import type { Group } from 'three'
 import { G, chamferRectShape, extrudeAlongX, extrudeUp, flattedCircleShape, geo } from '../geometry'
 import { InkInstances, InkMesh, type InkInstance } from '../ink'
 import { C } from '../palette'
-import { Block, BoxC, CylX, CylY, CylZ, Decal, Marking, Tube, deg, useSpin } from './common'
+import { Block, BoxC, CylX, CylY, CylZ, Decal, Marking, SPINS, Tube, deg, useSpin } from './common'
 import { num, str, type PartProps } from './types'
 
 const rpmOf = (p: PartProps) => p.state.rpm ?? num(p.part, 'rpm', 0)
@@ -34,7 +34,7 @@ function DcMotorBody(props: PartProps) {
       {[-0.55, 0.55].map((z) => (
         <Decal key={z} p={[-1.251, cy + 0.15, z]} size={[0.16, 0.3]} facing="-x" color="#4a4f55" />
       ))}
-      <group ref={shaft} position={[-1.37, cy, 0]}>
+      <group ref={shaft} position={[-1.37, cy, 0]} userData={SPINS}>
         <CylX p={[-0.45, 0, 0]} r={0.1} l={0.9} seg={10} color={C.steel} />
         {/* a little paddle so the spin reads */}
         <BoxC p={[-0.82, 0, 0]} s={[0.08, 0.7, 0.14]} color={str(part, 'flag', '#d9480f')} />
@@ -75,7 +75,7 @@ function GearMotorWheelBody(props: PartProps) {
       <Marking text={str(part, 'marking', '1:48')} p={[-1.4, ay + 1.131, -0.95]} w={1.0} h={0.35} color="#7a6420" />
       <CylZ p={[0, ay, 0.12]} r={0.3} l={0.3} seg={10} color={C.white} />
       {/* wheel */}
-      <group ref={wheel} position={[0, ay, 1.45]}>
+      <group ref={wheel} position={[0, ay, 1.45]} userData={SPINS}>
         <CylZ p={[0, 0, 0]} r={R - 0.12} l={2.6} seg={32} color={C.rubber} />
         <InkInstances geometry={G.box()} items={treadItems} color="#3a3a3d" outline={1} />
         <CylZ p={[0, 0, 0.02]} r={2.2} l={2.62} seg={28} color={yellow} />
@@ -121,7 +121,7 @@ function ServoBody({ part, state }: PartProps) {
       <CylY p={[ox, top, 0]} r={0.58} h={0.14} seg={20} color={color} />
       <CylY p={[ox - 0.55, top, 0]} r={0.28} h={0.08} seg={14} color={color} />
       <CylY p={[ox, top + 0.14, 0]} r={0.22} h={0.18} seg={12} color={C.white} />
-      <group position={[ox, top + 0.3, 0]} rotation={[0, deg(angle - 90), 0]}>
+      <group position={[ox, top + 0.3, 0]} rotation={[0, deg(angle - 90), 0]} userData={SPINS}>
         <InkMesh geometry={hornGeo()} color={C.white} />
         {[-0.7, -0.5, 0.5, 0.7].map((x) => (
           <Decal key={x} p={[x, 0.142, 0]} size={[0.07, 0.07]} round color="#8a867c" />
@@ -159,7 +159,7 @@ function StepperBody(props: PartProps) {
       )}
       <CylY p={[0, top, 0]} r={1.1} h={0.2} seg={24} color={C.alu} />
       <Marking text={str(part, 'marking', 'NEMA 17')} p={[0, top + 0.002, 1.65]} w={1.6} h={0.3} color="#8d9298" />
-      <group ref={shaft} position={[0, top + 0.2, 0]}>
+      <group ref={shaft} position={[0, top + 0.2, 0]} userData={SPINS}>
         <CylY p={[0, 0, 0]} r={0.25} h={2.0} seg={12} color={C.steel} />
         <CylY p={[0, 1.1, 0]} r={0.62} h={0.1} seg={20} color={C.alu} />
         <CylY p={[0, 1.2, 0]} r={0.5} h={0.5} seg={20} color={C.alu} />
