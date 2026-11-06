@@ -147,10 +147,7 @@ const SERIAL_KEEP = 200
 const EVENT_KEEP = 4000
 const DYNAMIC: Element['type'][] = ['C', 'L', 'MOTOR']
 
-const isThermal = (b: BurnEvent) => {
-  const r = b.reason as string
-  return r === 'thermal-shutdown' || r === 'thermal-recover'
-}
+const isThermal = (b: BurnEvent) => b.reason === 'thermal-shutdown' || b.reason === 'thermal-recover'
 
 /** Arduino analog pin name → pin number the sketch passes to analogRead (Uno A0 = 14, ESP32-S3 A0 = GPIO1). */
 export function analogPinNumber(name: string, board: 'uno' | 'esp32s3' | 'generic'): number {
@@ -162,9 +159,8 @@ export function analogPinNumber(name: string, board: 'uno' | 'esp32s3' | 'generi
 
 /** what "power off" means for a source element */
 function powerOffPatch(el: Element): FailurePatch {
-  if (el.type === 'SW') return { op: 'set', elementId: el.id, key: 'closed', value: false }
-  if (el.type === 'V' || el.type === 'I') return { op: 'set', elementId: el.id, key: 'value', value: 0 }
-  return { op: 'remove', elementId: el.id }
+  // a disabled element stamps as an open circuit
+  return { op: 'set', elementId: el.id, key: 'disabled', value: true }
 }
 
 const floor = (unit: string) => (unit === 'V' ? 1e-6 : unit === 'A' || unit === 'W' ? 1e-9 : 0)
@@ -261,6 +257,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     }
     let n = applyPatches(lesson.circuit, patches)
     for (const b of asm.burns) if (!isThermal(b)) n = applyBurn(n, b)
+    for (const id of asm.disabled) n = applyBurn(n, { elementId: id, reason: 'thermal-shutdown', value: 0, limit: 0, t })
     const off: FailurePatch[] = []
     for (const id of powerIds(lesson)) {
       if (asm.powered[id]) continue
@@ -274,7 +271,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
-        sim = createTransient(netlist, dt)
+        sim = createTransient(netlist, dt, { method: lesson.sim?.method })
         for (const [p, st] of Object.entries(simPins)) sim.setPin(Number(p), st)
       } else sim.setNetlist(netlist)
     } else dcDirty = true
@@ -651,7 +648,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     if (burns.length) {
       const notes: Note[] = []
       for (const b of burns) {
-        const r = b.reason as string
+        const r = b.reason
         if (r === 'thermal-shutdown') notes.push(...act({ type: 'thermal', elementId: b.elementId, off: true }))
         else if (r === 'thermal-recover') notes.push(...act({ type: 'thermal', elementId: b.elementId, off: false }))
         else notes.push(...act({ type: 'burn', burn: b }))

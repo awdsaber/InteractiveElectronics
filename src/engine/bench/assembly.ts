@@ -115,6 +115,12 @@ function burnText(l: Lesson, b: BurnEvent): string {
       return `${name} failed: ${v(b.value, 'V')} across a ${v(b.limit, 'V')} part`
     case 'overpower':
       return `${name} burnt: ${v(b.value, 'W')} in a ${v(b.limit, 'W')} part`
+    case 'overtemp':
+      return `${name} overheated: ${+b.value.toPrecision(3)} °C past its ${+b.limit.toPrecision(3)} °C limit`
+    case 'reverse-voltage':
+      return `${name} failed short: ${v(b.value, 'V')} reverse across a polarized part`
+    case 'blown':
+      return `${name} blew: ${v(b.value, 'A')} through a ${v(b.limit, 'A')} fuse`
     case 'pin-overcurrent':
       return `${name} dead: ${v(b.value, 'A')} through a ${v(b.limit, 'A')} pin`
     default:

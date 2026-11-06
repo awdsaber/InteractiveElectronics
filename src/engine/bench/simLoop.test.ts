@@ -269,6 +269,34 @@ describe('createBench: DC lessons', () => {
   })
 })
 
+describe('createBench: thermal shutdown', () => {
+  it('a hot part shuts down (open, not burnt, no FAULT) and restarts after cooling', async () => {
+    const l: Lesson = {
+      ...dcLesson,
+      transient: true,
+      circuit: {
+        elements: [
+          { id: 'B1', type: 'V', nodes: ['v', '0'], value: 10 },
+          // 0.5 W in R1 at 400 °C/W: Tj heads for 225 °C (tau 0.1 s), past its 150 °C limit
+          { id: 'R1', type: 'R', nodes: ['v', 'm'], value: 50, rating: { rth: 400, tauTh: 0.1, tMax: 150, failMode: 'shutdown' } },
+          { id: 'R2', type: 'R', nodes: ['m', '0'], value: 50 },
+        ],
+      },
+    }
+    const b = createBench(l)
+    b.dispatch('power')
+    let s = await runUntil(b, (x) => x.assembly.disabled.includes('R1'), 2)
+    expect(s.status).toBe('POWERED')
+    expect(s.assembly.burns).toEqual([])
+    await b.frame(FRAME)
+    s = b.snapshot()
+    expect(Math.abs(s.values[1])).toBeLessThan(1e-6)
+    expect(s.statusLine.text).toMatch(/thermal shutdown/)
+    s = await runUntil(b, (x) => !x.assembly.disabled.includes('R1'), 3)
+    expect(s.status).toBe('POWERED')
+  })
+})
+
 describe('createBench: behaviors', () => {
   const seen: { params?: Record<string, unknown>; libsCalled: number } = { libsCalled: 0 }
   const probe: Behavior = {
