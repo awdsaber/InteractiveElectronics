@@ -6,11 +6,22 @@
 export type NodeId = string // '0' is ground
 
 export interface Rating {
-  maxI?: number // A (absolute value)
-  maxP?: number // W
+  maxI?: number // A (absolute value; RMS over rmsWindow when that is set)
+  maxP?: number // W (mean over rmsWindow when that is set)
   maxV?: number // V across nodes[0]-nodes[1] (or Vce / Vds for transistors)
-  /** how the part fails: 'open' (default) or 'short' */
-  failMode?: 'open' | 'short'
+  /**
+   * how the part fails: 'open' (default), 'short', or 'shutdown' (thermal shutdown: the part
+   * is disabled while Tj > tMax and re-enabled once it has cooled by THERMAL_HYST)
+   */
+  failMode?: 'open' | 'short' | 'shutdown'
+  /** thermal resistance junction-to-ambient, °C/W. With tMax, temperature replaces the maxP 300 ms rule */
+  rth?: number
+  /** thermal time constant, s (omitted: Tj follows power instantly) */
+  tauTh?: number
+  /** maximum junction temperature, °C */
+  tMax?: number
+  /** averaging window, s, for pulsed / AC current (RMS) and power (mean) */
+  rmsWindow?: number
 }
 
 interface ElementBase {
@@ -18,21 +29,50 @@ interface ElementBase {
   rating?: Rating
   /** 3D part this element belongs to (for glow / burn rendering) */
   partId?: string
+  /** disabled parts stamp as an open circuit (thermal shutdown) */
+  disabled?: boolean
 }
+
+/** periodic source waveform: v(t) = offset + amp·shape(freq·t + phase/360) */
+export interface Waveform {
+  kind: 'sine' | 'square' | 'triangle'
+  /** peak amplitude, V */
+  amp: number
+  /** Hz */
+  freq: number
+  /** default 0 */
+  offset?: number
+  /** degrees, default 0 */
+  phase?: number
+  /** square only: fraction of the period at +amp, default 0.5 */
+  duty?: number
+}
+
+export type LogicGate = 'NOT' | 'AND' | 'OR' | 'NAND' | 'NOR' | 'XOR' | 'BUF' | 'SCHMITT'
 
 export type LedColor = 'red' | 'yellow' | 'green' | 'blue' | 'white'
 
 export type Element =
   | (ElementBase & { type: 'R'; nodes: [NodeId, NodeId]; value: number })
-  | (ElementBase & { type: 'V'; nodes: [NodeId, NodeId]; value: number; rInternal?: number }) // nodes[0] = +
+  | (ElementBase & {
+      type: 'V'
+      nodes: [NodeId, NodeId] // nodes[0] = +
+      value: number // DC value (ignored when `wave` is set)
+      rInternal?: number
+      wave?: Waveform
+      /** current limit, A: above it the source becomes a constant-current source (CC mode) */
+      iLimit?: number
+      /** false: the source cannot sink (back-fed current is refused, like a supply with an output diode) */
+      sink?: boolean
+    })
   | (ElementBase & { type: 'I'; nodes: [NodeId, NodeId]; value: number }) // SPICE convention: `value` A flows from nodes[0] through the source to nodes[1]
-  | (ElementBase & { type: 'SW'; nodes: [NodeId, NodeId]; closed: boolean })
+  | (ElementBase & { type: 'SW'; nodes: [NodeId, NodeId]; closed: boolean; vBreak?: number }) // vBreak: avalanche clamp across the contacts, V
   | (ElementBase & { type: 'D'; nodes: [NodeId, NodeId]; is?: number; n?: number; rs?: number }) // anode, cathode
   | (ElementBase & { type: 'LED'; nodes: [NodeId, NodeId]; color: LedColor })
-  | (ElementBase & { type: 'ZENER'; nodes: [NodeId, NodeId]; vz: number })
-  | (ElementBase & { type: 'NPN' | 'PNP'; nodes: [NodeId, NodeId, NodeId]; beta?: number; is?: number }) // C, B, E
-  | (ElementBase & { type: 'NMOS' | 'PMOS'; nodes: [NodeId, NodeId, NodeId]; vth?: number; k?: number }) // D, G, S
-  | (ElementBase & { type: 'C'; nodes: [NodeId, NodeId]; value: number; v0?: number })
+  | (ElementBase & { type: 'ZENER'; nodes: [NodeId, NodeId]; vz: number; rz?: number }) // rz: dynamic resistance Ω (soft knee); vz is the voltage at 5 mA
+  | (ElementBase & { type: 'NPN' | 'PNP'; nodes: [NodeId, NodeId, NodeId]; beta?: number; is?: number; vBreak?: number }) // C, B, E; vBreak: Vce avalanche clamp
+  | (ElementBase & { type: 'NMOS' | 'PMOS'; nodes: [NodeId, NodeId, NodeId]; vth?: number; k?: number; vBreak?: number }) // D, G, S; vBreak: Vds avalanche clamp
+  | (ElementBase & { type: 'C'; nodes: [NodeId, NodeId]; value: number; v0?: number; polarized?: boolean }) // polarized: electrolytic, nodes[0] = +; fails short when reverse-biased
   | (ElementBase & { type: 'L'; nodes: [NodeId, NodeId]; value: number; i0?: number })
   | (ElementBase & {
       type: 'MOTOR'
@@ -45,14 +85,66 @@ export type Element =
       b?: number // viscous friction N·m·s
       load?: number // N·m
     })
-  | (ElementBase & { type: 'PIN'; nodes: [NodeId, NodeId]; pin: number; vcc: number; rOut?: number }) // nodes[0]=pin net, nodes[1]=GND
+  | (ElementBase & {
+      type: 'PIN'
+      nodes: [NodeId, NodeId] // nodes[0]=pin net, nodes[1]=GND
+      pin: number
+      vcc: number
+      rOut?: number
+      /** HIGH (and the pull-up) connect to this rail node instead of an ideal `vcc` */
+      vccNode?: NodeId
+    })
   | (ElementBase & { type: 'OPAMP'; nodes: [NodeId, NodeId, NodeId]; gain?: number; vPos: number; vNeg: number }) // in+, in-, out
   | (ElementBase & { type: 'PROBE'; nodes: [NodeId, NodeId] })
+  | (ElementBase & { type: 'POT'; nodes: [NodeId, NodeId, NodeId]; value: number; pos: number }) // end A, wiper, end B; pos 0 = wiper at A
+  | (ElementBase & {
+      type: 'XFMR'
+      nodes: [NodeId, NodeId, NodeId, NodeId] // primary +, primary -, secondary +, secondary -
+      /** turns ratio Ns/Np: Vs = n·Vp */
+      n: number
+      /** magnetizing inductance across the primary, H (omitted: ideal) */
+      lm?: number
+    })
+  | (ElementBase & {
+      type: 'LOGIC'
+      /** inputs..., then the output. Supply and ground are implicit (ideal vcc rail, node '0') */
+      nodes: NodeId[]
+      gate: LogicGate
+      vcc: number
+      /** input threshold, V (default vcc/2) */
+      vth?: number
+      /** hysteresis, V (SCHMITT default 0.2·vcc, others 0) */
+      hyst?: number
+    })
+  | (ElementBase & {
+      type: 'FUSE'
+      nodes: [NodeId, NodeId]
+      /** rated current, A: never blows at or below it */
+      iRated: number
+      /** melting integral ∫(i² − iRated²)dt, A²s */
+      i2t: number
+      /** cold resistance, Ω (default 0.01) */
+      r?: number
+      blown?: boolean
+    })
+  | (ElementBase & {
+      type: 'REG'
+      nodes: [NodeId, NodeId, NodeId] // in, gnd, out
+      vout: number
+      /** minimum Vin - Vout, V */
+      dropout: number
+      /** output current limit, A */
+      iLimit: number
+      /** quiescent (ground-pin) current, A */
+      iq?: number
+    })
 
 export type ElementType = Element['type']
 
 export interface Netlist {
   elements: Element[]
+  /** initial node-voltage guess for the first solve, so bistable circuits power up deterministically */
+  ic?: Record<NodeId, number>
 }
 
 export interface Solution {
@@ -64,9 +156,21 @@ export interface Solution {
   /** transistor extras: ib, ic, ie, vce/vds, motor omega, etc. keyed `${id}.${key}` */
   extra: Record<string, number>
   iterations?: number
+  /**
+   * Single reads that don't materialise the maps above (solutions from the simulator provide
+   * them; checkRatings uses them so a per-frame check stays cheap). `extraOf(id, key)` reads
+   * extra[key] produced by element `id` (key is the full `${id}.name` string).
+   */
+  currentOf?(elementId: string): number
+  powerOf?(elementId: string): number
+  extraOf?(elementId: string, key: string): number
+  voltageOf?(node: NodeId): number
+  /** set extra[key] (e.g. `${id}.tj`) without materialising the map before it is read */
+  publish?(key: string, value: number): void
 }
 
-export type PinMode = 'INPUT' | 'OUTPUT' | 'INPUT_PULLUP'
+/** OUTPUT_OPEN_DRAIN: LOW pulls down through rOut, HIGH releases the pin (high impedance) */
+export type PinMode = 'INPUT' | 'OUTPUT' | 'INPUT_PULLUP' | 'OUTPUT_OPEN_DRAIN'
 export interface PinState {
   mode: PinMode
   /** 0..1 — digital LOW/HIGH = 0/1, PWM = duty */
@@ -95,7 +199,20 @@ export interface FailureScenario {
 export interface BurnEvent {
   elementId: string
   partId?: string
-  reason: 'overcurrent' | 'overpower' | 'overvoltage' | 'pin-overcurrent'
+  /**
+   * 'thermal-shutdown' / 'thermal-recover' are not burns: applyBurn disables / re-enables the part.
+   * 'overtemp', 'reverse-voltage' (polarized capacitor, fails short) and 'blown' (fuse) are.
+   */
+  reason:
+    | 'overcurrent'
+    | 'overpower'
+    | 'overvoltage'
+    | 'pin-overcurrent'
+    | 'overtemp'
+    | 'reverse-voltage'
+    | 'blown'
+    | 'thermal-shutdown'
+    | 'thermal-recover'
   value: number
   limit: number
   t: number
@@ -238,6 +355,18 @@ export interface Sketch {
   analogPins?: Record<string, NodeId>
   vcc: number // 5 for Uno, 3.3 for ESP32
   board: 'uno' | 'esp32s3' | 'generic'
+  /** ADC resolution in bits (board default when omitted: Uno 10, ESP32-S3 12) */
+  adcBits?: number
+  /** analogWrite PWM frequency, Hz (board default when omitted) */
+  pwmFreq?: number
+}
+
+export interface SimSettings {
+  /** transient step, s */
+  dt?: number
+  /** integration: 'be' backward Euler (default, damps), 'trap' trapezoidal (keeps LC ringing) */
+  method?: 'be' | 'trap'
+  stepsPerFrame?: number
 }
 
 export interface Lesson {
@@ -265,6 +394,7 @@ export interface Lesson {
   behaviors?: string[] // ids registered in src/engine/behaviors
   /** transient step needed? (RC, motors, PWM). default true when C/L/MOTOR present */
   transient?: boolean
+  sim?: SimSettings
 }
 
 export type BenchStatus = 'BARE PCB' | 'ASSEMBLING' | 'READY' | 'POWERED' | 'RUNNING' | 'FAULT'

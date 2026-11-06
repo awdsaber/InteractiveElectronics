@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Element } from '../types'
+import type { Element, Solution } from '../types'
+import { checkRatings, createRatingState } from './ratings'
 import { createTransient } from './transient'
 
 // Regression guard, not a benchmark: budgets are ~10x the measured cost so CI noise
@@ -26,6 +27,38 @@ function msPerFrame(nonlinear: boolean): number {
   }
   return best
 }
+
+/** ms for 30 checkRatings calls on fresh (lazy) solutions of a chain with 60 rated resistors */
+function ratingsMs(): number {
+  const els = chain(true).map((e, k): Element =>
+    e.type === 'R' ? { ...e, rating: k % 2 ? { maxI: 1, maxP: 1 } : { maxP: 1, rth: 50, tauTh: 1, tMax: 150 } } : e,
+  )
+  const n = { elements: els }
+  const sim = createTransient(n, 1e-4)
+  const st = createRatingState()
+  for (let i = 0; i < 300; i++) checkRatings(n, sim.step(), sim.t, st) // warm up
+  // fresh solutions made up front, so stepping (and its garbage) stays out of the timed loop
+  const reps = 20
+  const sols: Solution[] = []
+  const ts: number[] = []
+  for (let i = 0; i < 30 * reps; i++) {
+    sols.push(sim.step())
+    ts.push(sim.t)
+  }
+  let best = Infinity
+  for (let rep = 0; rep < reps; rep++) {
+    const t0 = performance.now()
+    for (let i = rep * 30; i < rep * 30 + 30; i++) checkRatings(n, sols[i], ts[i], st)
+    best = Math.min(best, performance.now() - t0)
+  }
+  return best
+}
+
+describe('checkRatings performance', () => {
+  it('60 rated elements, 30 calls on fresh solutions, under 1 ms', () => {
+    expect(ratingsMs()).toBeLessThan(1)
+  })
+})
 
 describe('transient performance (60-stage chain, 30 steps per frame)', () => {
   it('linear RC chain stays well under budget', () => {
