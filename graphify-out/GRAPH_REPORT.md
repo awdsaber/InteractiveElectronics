@@ -1,14 +1,19 @@
-# Graph Report - Electonics Interactive course  (2026-11-06)
+# Graph Report - agent-a3d908a8ddfcdfe89  (2026-11-06)
 
 ## Corpus Check
-- 91 files · ~67,038 words
+- 109 files · ~73,043 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 4 file(s) not represented in the graph (top: (none) 2, .dot 1, .css 1)
+- Unclassified: 8 file(s) not represented in the graph (top: (none) 4, .css 3, .dot 1)
 
 ## Summary
-- 857 nodes · 886 edges · 81 communities (54 shown, 27 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.89)
+- 954 nodes · 1153 edges · 90 communities (62 shown, 28 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 19 edges (avg confidence: 0.9)
 - Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `6909de05`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - server.cjs
@@ -46,7 +51,7 @@
 - Skill authoring best practices
 - Advanced: Skills with executable code
 - scripts
-- main.tsx
+- App.tsx
 - stop-server.sh
 - Diagnosing Superpowers
 - Superpowers session diagnosis bundle
@@ -74,7 +79,16 @@
 - redaction-policy.md
 - session-discovery.md
 - find-polluter.sh
-- @playwright/test@^1.65.0
+- sound.ts
+- ui/types.ts
+- Layout.tsx
+- Circuit Atelier — Spec
+- Tweaks.tsx
+- package.json
+- Controls.tsx
+- MeetTheBoard.tsx
+- @uiw/react-codemirror
+- typescript@~7.0.2
 
 ## God Nodes (most connected - your core abstractions)
 1. `Writing Skills` - 21 edges
@@ -83,35 +97,35 @@
 4. `compilerOptions` - 15 edges
 5. `handleRequest()` - 14 edges
 6. `Code Review Reception` - 14 edges
-7. `Test-Driven Development (TDD)` - 13 edges
-8. `Visual Companion Guide` - 12 edges
-9. `Skill authoring best practices` - 12 edges
-10. `startServer()` - 11 edges
+7. `Layout()` - 13 edges
+8. `Test-Driven Development (TDD)` - 13 edges
+9. `Visual Companion Guide` - 12 edges
+10. `Skill authoring best practices` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Circuit Atelier — interactive electronics course` --references--> `main()`  [INFERRED]
-  CLAUDE.md → .claude/skills/writing-skills/render-graphs.js
 - `3. Lesson data model` --references--> `Element`  [INFERRED]
   docs/spec.md → src/engine/types.ts
 - `3. Lesson data model` --references--> `PartPlacement`  [INFERRED]
   docs/spec.md → src/engine/types.ts
 - `3. Lesson data model` --references--> `Lesson`  [INFERRED]
   docs/spec.md → src/engine/types.ts
-- `Implementation` --references--> `waitForEvent()`  [INFERRED]
-  .claude/skills/systematic-debugging/condition-based-waiting.md → .claude/skills/systematic-debugging/condition-based-waiting-example.ts
+- `Circuit Atelier — interactive electronics course` --references--> `main()`  [INFERRED]
+  CLAUDE.md → .claude/skills/writing-skills/render-graphs.js
+- `3. Lesson data model` --references--> `fig()`  [INFERRED]
+  docs/spec.md → src/ui/Sidebar.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (81 total, 27 thin omitted)
+## Communities (90 total, 28 thin omitted)
 
 ### Community 0 - "server.cjs"
 Cohesion: 0.05
 Nodes (57): bootstrapPage(), brandMarkup(), broadcast(), browserLauncherForPlatform(), chmodOwnerOnly(), clients, companionUrl(), computeAcceptKey() (+49 more)
 
 ### Community 1 - "types.ts"
-Cohesion: 0.05
-Nodes (38): 1. Experience, 2. Visual identity (original), 3. Lesson data model, 4. Simulation engine (`src/engine/sim`), 5. Virtual MCU (`src/engine/mcu`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec (+30 more)
+Cohesion: 0.08
+Nodes (22): Behavior, BehaviorContext, BoardSpec, BurnEvent, ElementBase, ElementType, FailurePatch, FailureScenario (+14 more)
 
 ### Community 2 - "Writing Skills"
 Cohesion: 0.05
@@ -142,8 +156,8 @@ Cohesion: 0.07
 Nodes (25): 1. Take the task, 2. Work the steps, 3. The completion contract, 4. Complete the task, Common Rationalizations, Executing Plans, Final Review, Finish (+17 more)
 
 ### Community 9 - "package.json"
-Cohesion: 0.13
-Nodes (21): dependencies, @codemirror/lang-cpp@^6.0.3, marked@^18.1.3, @react-three/drei@^10.7.9, @react-three/fiber@^9.8.2, three@^0.187.0, @uiw/react-codemirror@^4.25.12, zod@^4.6.7 (+13 more)
+Cohesion: 0.12
+Nodes (16): dependencies, marked@^18.1.3, react@^19.3.1, react-dom@^19.3.1, @react-three/drei@^10.7.9, @react-three/fiber@^9.8.2, three@^0.187.0, zod@^4.6.7 (+8 more)
 
 ### Community 10 - "Visual Companion Guide"
 Cohesion: 0.10
@@ -166,8 +180,8 @@ Cohesion: 0.12
 Nodes (16): Documentation Variants to Test, Expected Results, Next Steps, NULL (Baseline - no skills doc), Scenario 1: Time Pressure + Confidence, Scenario 2: Sunk Cost + Works Already, Scenario 3: Authority + Speed Bias, Scenario 4: Familiarity + Efficiency (+8 more)
 
 ### Community 15 - "devDependencies"
-Cohesion: 0.12
-Nodes (17): devDependencies, jsdom@^31.0.0, oxlint@^1.90.0, @types/node@^24.19.2, @types/react@^19.3.0, @types/react-dom@^19.3.0, @types/three@^0.187.0, typescript@~7.0.2 (+9 more)
+Cohesion: 0.13
+Nodes (15): devDependencies, jsdom@^31.0.0, oxlint@^1.90.0, @playwright/test@^1.65.0, @types/node@^24.19.2, @types/react-dom@^19.3.0, @types/three@^0.187.0, vite@^8.3.6 (+7 more)
 
 ### Community 16 - "compilerOptions"
 Cohesion: 0.12
@@ -186,7 +200,7 @@ Cohesion: 0.12
 Nodes (15): 1. Authority, 2. Commitment, 3. Scarcity, 4. Social Proof, 5. Unity, 6. Reciprocity, 7. Liking, Ethical Use (+7 more)
 
 ### Community 20 - "render-graphs.js"
-Cohesion: 0.17
+Cohesion: 0.19
 Nodes (10): Circuit Atelier — interactive electronics course, Commands, Memory and context: graphify (use first), Rules, combineGraphs(), extractDotBlocks(), extractGraphBody(), main() (+2 more)
 
 ### Community 21 - "Finishing a Development Branch"
@@ -245,9 +259,9 @@ Nodes (9): Advanced: Skills with executable code, Avoid assuming tools are insta
 Cohesion: 0.22
 Nodes (9): scripts, build, dev, graph, lint, preview, test, test:e2e (+1 more)
 
-### Community 35 - "main.tsx"
-Cohesion: 0.29
-Nodes (5): react@^19.3.1, react-dom@^19.3.1, react, react-dom, App()
+### Community 35 - "App.tsx"
+Cohesion: 0.21
+Nodes (9): react, lessonList, mockLesson, parts, tracks, Item(), Toast(), ToastProps (+1 more)
 
 ### Community 36 - "stop-server.sh"
 Cohesion: 0.52
@@ -321,25 +335,57 @@ Nodes (3): Anti-patterns to avoid, Avoid offering too many options, Avoid Window
 Cohesion: 0.67
 Nodes (3): Technical notes, Token budgets, YAML frontmatter requirements
 
+### Community 69 - "sound.ts"
+Cohesion: 0.14
+Nodes (28): App(), BASS, BEATS_PER_CHORD, beatSeconds(), BPM, chordSeconds(), HAT_STEPS, KICK_STEPS (+20 more)
+
+### Community 81 - "ui/types.ts"
+Cohesion: 0.21
+Nodes (14): BenchStatus, BenchActions(), BenchActionsProps, MenuButton(), MenuButtonProps, MenuItem, StatusPanel(), StatusPanelProps (+6 more)
+
+### Community 82 - "Layout.tsx"
+Cohesion: 0.21
+Nodes (14): Lesson, QuizItem, Track, TrackId, SettingChange, Layout(), LayoutProps, Quiz() (+6 more)
+
+### Community 83 - "Circuit Atelier — Spec"
+Cohesion: 0.15
+Nodes (13): 1. Experience, 2. Visual identity (original), 3. Lesson data model, 4. Simulation engine (`src/engine/sim`), 5. Virtual MCU (`src/engine/mcu`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec (+5 more)
+
+### Community 84 - "Tweaks.tsx"
+Cohesion: 0.38
+Nodes (8): Tweak, PREFIXES, siLabel(), sliderToValue(), valueToSlider(), tweakKey(), Tweaks(), TweaksProps
+
+### Community 85 - "package.json"
+Cohesion: 0.22
+Nodes (8): @codemirror/lang-cpp@^6.0.3, @types/react@^19.3.0, name, private, type, version, @codemirror/lang-cpp, @types/react
+
+### Community 86 - "Controls.tsx"
+Cohesion: 0.38
+Nodes (6): Controls(), ControlsProps, Toggle(), PaletteId, PALETTES, Settings
+
+### Community 87 - "MeetTheBoard.tsx"
+Cohesion: 0.50
+Nodes (4): md(), MeetTheBoard(), MeetTheBoardProps, renderer
+
 ## Knowledge Gaps
 - **1 isolated node(s):** `RFC-6455`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 598 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 607 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Writing Skills` connect `Writing Skills` to `writing-skills/SKILL.md`?**
-  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Why does `react` connect `App.tsx` to `package.json`, `ui/types.ts`, `Layout.tsx`, `package.json`, `MeetTheBoard.tsx`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **What connects `RFC-6455` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `server.cjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.053763440860215055 - nodes in this community are weakly interconnected._
-- **Why does `Testing Skills With Subagents` connect `Testing Skills With Subagents` to `writing-skills/SKILL.md`?**
+  _Cohesion score 0.05257936507936508 - nodes in this community are weakly interconnected._
+- **Why does `Writing Skills` connect `Writing Skills` to `writing-skills/SKILL.md`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.04756871035940803 - nodes in this community are weakly interconnected._
-- **Why does `Skill authoring best practices` connect `Skill authoring best practices` to `Advanced: Skills with executable code`, `Evaluation and iteration`, `Checklist for effective Skills`, `Common patterns`, `Core principles`, `Anti-patterns to avoid`, `Technical notes`, `Skill structure`?**
-  _High betweenness centrality (0.003) - this node is a cross-community bridge._
+  _Cohesion score 0.07671957671957672 - nodes in this community are weakly interconnected._
+- **Why does `Testing Skills With Subagents` connect `Testing Skills With Subagents` to `writing-skills/SKILL.md`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **Should `Writing Skills` be split into smaller, more focused modules?**
   _Cohesion score 0.05128205128205128 - nodes in this community are weakly interconnected._

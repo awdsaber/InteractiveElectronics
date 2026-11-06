@@ -1,0 +1,93 @@
+/* Circuit Atelier: engineer's-notebook theme. Fonts are loaded in index.html. */
+:root {
+  --paper: #f3eee2;
+  --paper-2: #ebe4d3;
+  --card: #fbf8f0;
+  --ink: #1d1b17;
+  --ink-2: #4a463d;
+  --ink-3: #7d776a;
+  --blue: #2b59c3;
+  --blue-tint: rgba(43, 89, 195, 0.1);
+  --blue-line: rgba(43, 89, 195, 0.28);
+  --warn: #d9480f;
+  --ok: #2f9e44;
+  --rule: rgba(29, 27, 23, 0.14);
+
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  --sidebar-w: 300px;
+  --r: 10px;
+  --shadow-hard: 2px 2px 0 var(--ink);
+
+  font: 400 14px/1.55 var(--mono);
+  color: var(--ink);
+  background: var(--paper);
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--paper);
+  /* dot grid, like a quadrille notebook */
+  background-image: radial-gradient(rgba(29, 27, 23, 0.16) 1px, transparent 1.3px);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-variation-settings: 'SOFT' 60, 'WONK' 1;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--blue-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
