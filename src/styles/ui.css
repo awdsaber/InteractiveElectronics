@@ -583,7 +583,7 @@ input[type='range']:active::-webkit-slider-thumb {
   background: var(--ink);
   transition: transform 0.15s;
 }
-.toggle[aria-checked='true'] .track {
+.toggle[aria-checked='true'] .switch-track {
   background: var(--blue);
 }
 .toggle[aria-checked='true'] .knob {
@@ -592,6 +592,21 @@ input[type='range']:active::-webkit-slider-thumb {
 }
 
 /* ───────── notes ───────── */
+.note-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.bench-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  color: var(--ink-3);
+  font: 600 11px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
 .notes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -875,6 +890,14 @@ input[type='range']:active::-webkit-slider-thumb {
   display: grid;
   gap: 8px;
   max-width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+/* toasts never block the bench: clicks pass through, only the close button catches them */
+.toast {
+  pointer-events: none;
+}
+.toast button {
+  pointer-events: auto;
 }
 .toast {
   display: flex;
@@ -1056,6 +1079,9 @@ input[type='range']:active::-webkit-slider-thumb {
   }
   .bench-overlay-left {
     order: 2;
+    /* open menus must paint over the status panel that follows */
+    position: relative;
+    z-index: 4;
   }
   .bench-overlay-right {
     order: 3;
@@ -1094,5 +1120,18 @@ input[type='range']:active::-webkit-slider-thumb {
     left: 16px;
     right: 16px;
     max-width: none;
+  }
+  /* phones: one compact toast at the top, clear of the readouts under the bench */
+  .toasts {
+    top: 10px;
+    bottom: auto;
+  }
+  .toast {
+    padding: 6px 10px;
+    font-size: 12px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .toast:not(:last-child) {
+    display: none;
   }
 }

@@ -23,6 +23,11 @@ export interface CalloutProps {
    */
   offset?: Vec3
   tone?: CalloutTone
+  /**
+   * Hide without unmounting. drei <Html> creates a React root per label, and mounting /
+   * unmounting those while the scene re-renders is slow and racy, so toggled labels stay mounted.
+   */
+  hidden?: boolean
 }
 
 const TONE: Record<CalloutTone, string> = { ink: INK, accent: ACCENT, warn: WARN, ok: OK }
@@ -30,7 +35,7 @@ const TONE: Record<CalloutTone, string> = { ink: INK, accent: ACCENT, warn: WARN
 /** Zoom (px per unit) at which `offset` is taken literally. */
 export const CALLOUT_REF_ZOOM = 60
 
-export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45], tone = 'ink' }: CalloutProps) {
+export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45], tone = 'ink', hidden = false }: CalloutProps) {
   const c = TONE[tone]
   const grp = useRef<Group>(null)
   useFrame(({ camera }) => {
@@ -39,12 +44,13 @@ export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45],
     if (g) g.scale.setScalar(CALLOUT_REF_ZOOM / Math.max(1e-3, z))
   })
   return (
-    <group ref={grp} position={anchor}>
+    <group ref={grp} position={anchor} visible={!hidden}>
       <Line points={[[0, 0, 0], offset]} color={INK} lineWidth={1.25} />
       <InkMesh geometry={G.sphere(8, 6)} color={INK} unlit outline={false} noChar scale={0.035} />
       <Html position={offset} center pointerEvents="none" zIndexRange={[20, 0]}>
         <div
           style={{
+            display: hidden ? 'none' : undefined,
             background: '#ffffff',
             border: `1.5px solid ${INK}`,
             borderRadius: 999,

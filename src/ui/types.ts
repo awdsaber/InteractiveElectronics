@@ -8,6 +8,7 @@ export type BenchAction =
   | `place:${string}`
   | 'solder'
   | 'power'
+  | `power:${string}`
   | 'upload'
   | 'explode'
   | `break:${string}`
