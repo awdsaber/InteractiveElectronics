@@ -102,6 +102,10 @@ describe('transistor-switch lesson', () => {
     expect(s.values[I_M]).toBeLessThan(0.02)
     expect(s.values[V_CE]).toBeGreaterThan(1)
     expect(s.values[RPM]).toBeLessThan(3000)
+    expect(s.values[P_Q1]).toBeGreaterThan(0.05) // ≈ 80 mW: half-on, heating
+    expect(s.statusLine.text).toMatch(/^WARNING: Q1 dissipates .* not saturated/)
+    expect(s.statusLine.text).not.toMatch(/saturates/)
+    expect(s.statusLine.tone).toBe('warn')
     b.dispose()
   })
 

@@ -12,18 +12,20 @@ const MOTOR_AT: [number, number] = [3.5, -2.0]
 
 // Breadboard: the top rails carry the motor supply (+t = pack +6 V, −t = pack −), the bottom − rail
 // is the Uno's GND; the GROUND jumper at column 1 joins the two grounds. Driver in the top half:
-// Q1 (E-B-C, flat side toward the viewer) in row d across columns 13-14-15, R_B in row e from the
-// base column 14 to column 18 (pin 9), D1 standing from the collector column 15 (row b) to +6 V.
+// Q1 (E-B-C, flat side toward the viewer) in row c across columns 13-14-15, R_B in row d from the
+// base column 14 to column 18 (pin 9), and D1 in front in row e from the collector column 15 to
+// column 19, which a short red jumper ties to the +6 V rail.
 const C_E = 13
 const C_B = 14
 const C_C = 15
+const C_PLUS = 19
 const C_PIN = 18
 
-const q1At = bbHole(BB, C_B, 'd')
-const rbBase = bbHole(BB, C_B, 'e')
-const rbPin = bbHole(BB, C_PIN, 'e')
-const d1Anode = bbHole(BB, C_C, 'b')
-const d1Cathode = bbHole(BB, C_C, '+t')
+const q1At = bbHole(BB, C_B, 'c')
+const rbBase = bbHole(BB, C_B, 'd')
+const rbPin = bbHole(BB, C_PIN, 'd')
+const d1Anode = bbHole(BB, C_C, 'e')
+const d1Cathode = bbHole(BB, C_PLUS, 'e')
 const pin9 = UNO.digital(UNO_AT, 9)
 const unoGnd = UNO.digital(UNO_AT, 'GND')
 
@@ -40,7 +42,8 @@ const wPackPlus = jumper(packLead('red'), bbHole(BB, 3, '+t'), 'red', 0.4)
 const wPackMinus = jumper(packLead('black'), bbHole(BB, 5, '-t'), 'black', 0.4)
 const wGnd = jumper(bbHole(BB, 1, '-t'), bbHole(BB, 1, '-b'), 'black', 0.5)
 const wMotorPlus = jumper(motorTab(0.42), bbHole(BB, 21, '+t'), 'red', 0.5)
-const wMotorMinus = jumper(motorTab(-0.42), bbHole(BB, C_C, 'c'), 'blue', 0.6)
+const wMotorMinus = jumper(motorTab(-0.42), bbHole(BB, C_C, 'a'), 'blue', 0.6)
+const wPlus6 = jumper(bbHole(BB, C_PLUS, 'a'), bbHole(BB, C_PLUS, '+t'), 'red', 0.15)
 // the "skip the base resistor" failure: a bare jumper bridges R_B's two columns
 const jRb = jumper(rbBase, rbPin, 'green', 0.22)
 // the "motor straight on the pin" failure: the motor's leads moved to pin 9's column and ground
@@ -136,7 +139,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'BASE',
         role: 'Limits the base current to ≈ 8.6 mA (470 Ω: yellow-violet-brown-gold, 1/4 W).',
-        params: { ohms: 470, callout: [0.6, 2.0, -0.6] },
+        params: { ohms: 470, callout: [1.0, 1.4, 2.6] },
         circuitIds: ['R_B'],
       },
       {
@@ -153,11 +156,11 @@ export const lesson: LessonDef = {
         id: 'd1',
         kind: 'diode',
         pos: between(d1Cathode, d1Anode),
-        rot: 90, // stands across the rail gap, stripe (cathode) toward the +6 V rail
+        // stripe (cathode, +x) toward column 19, the +6 V column
         mount: 'tht',
         label: 'FLYBACK',
         role: '1N4007: clamps the motor’s inductive kick at turn-off. Stripe (cathode) toward +6 V.',
-        params: { marking: '1N4007', span: d1Anode[2] - d1Cathode[2], callout: [-1.4, 1.8, -0.4] },
+        params: { marking: '1N4007', callout: [-1.6, 1.2, 2.8] },
         circuitIds: ['D1'],
       },
       {
@@ -197,6 +200,7 @@ export const lesson: LessonDef = {
         circuitIds: ['W_GND'],
       },
       { id: 'w-motor-plus', kind: 'wire', ...wMotorPlus, mount: 'offboard', role: 'Motor + to the +6 V column.' },
+      { id: 'w-plus6', kind: 'wire', ...wPlus6, mount: 'offboard', role: 'Column 19 to the +6 V rail (D1’s cathode).' },
       { id: 'w-motor-minus', kind: 'wire', ...wMotorMinus, mount: 'offboard', role: 'Motor − to the collector column.' },
       {
         id: 'j-rb',
@@ -251,13 +255,13 @@ export const lesson: LessonDef = {
 
   tweaks: [
     { label: 'Base resistor', elementId: 'R_B', key: 'value', min: 100, max: 47000, log: true, unit: 'Ω' },
-    { label: 'Motor load torque', elementId: 'M1', key: 'load', min: 0, max: 0.004, step: 0.0001, unit: 'N·m' },
+    { label: 'Motor load torque', elementId: 'M1', key: 'load', min: 0, max: 0.0025, step: 0.0001, unit: 'N·m' },
   ],
 
   statusLines: [
     { when: { kind: 'pin', pin: 9, level: 0 }, text: 'RUNNING: pin 9 LOW, Q1 is off and the motor coasts down' },
     { when: { kind: 'pin', pin: 9, level: 1 }, text: 'RUNNING: pin 9 HIGH, the transistor saturates and the motor spins: {0} at {3}' },
-    { when: { kind: 'above', readout: 4, value: 0.1 }, text: 'WARNING: Q1 dissipates {4} with V_CE at {2}: it is not saturated and is heating' },
+    { when: { kind: 'above', readout: 4, value: 0.05 }, text: 'WARNING: Q1 dissipates {4} with V_CE at {2}: it is not saturated and is heating' },
   ],
 
   failures: [
@@ -265,7 +269,7 @@ export const lesson: LessonDef = {
       id: 'no-flyback',
       label: 'Remove the flyback diode',
       explain:
-        'At the first turn-off the winding’s inductance keeps its current flowing, and with no diode the only path is through Q1 breaking down: the collector spikes to its ≈ 60 V avalanche, far above the 40 V V_CEO. Q1 fails short, so the motor now runs continuously and the sketch can no longer stop it. Transistors usually fail shorted, which leaves the load stuck ON, the unsafe direction.',
+        'At the first turn-off the winding’s inductance keeps its current flowing, and with no diode the only path is through Q1 breaking down: the collector spikes to its ≈ 60 V avalanche, far above the 40 V V_CEO. Q1 fails short, so the motor now runs continuously and the sketch can no longer stop it. Transistors usually fail shorted, which leaves the load stuck ON, the unsafe direction. The sim fails Q1 at the first kick to make the point; a real part usually survives a few of these ≈ 16 µJ kicks (½·L·I² = ½ × 1 mH × 0.18²) and dies from repeated ones.',
       patches: [{ op: 'remove', elementId: 'D1' }],
       parts: { hide: ['d1'] },
     },

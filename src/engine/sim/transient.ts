@@ -28,7 +28,8 @@ export interface TransientOptions {
   /**
    * split the first step after an external discontinuity (pin, parameter or netlist change) into
    * this many backward-Euler substeps growing ×2 (the first is dt/(2^n − 1)), so µs events such as
-   * an inductive kick into an avalanche clamp are resolved at a coarse dt. Default: off.
+   * an inductive kick into an avalanche clamp are resolved at a coarse dt. Square-wave source edges
+   * and internal device mode flips are not split. Default: off.
    */
   edgeSubsteps?: number
 }

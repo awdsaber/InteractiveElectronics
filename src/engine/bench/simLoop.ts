@@ -685,7 +685,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       for (let k = 0; k < n; k++) {
         sim.step()
         // a split switching step: µs events (an inductive kick) only exist inside it
-        for (const sub of sim.substeps) if (sub.solution.ok) subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings))
+        for (const sub of sim.substeps) subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true }))
       }
       t = sim.t
       stale = false

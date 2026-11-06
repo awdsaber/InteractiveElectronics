@@ -192,9 +192,20 @@ function nextTj(prev: number, r: Rating, p: number, dt: number): number {
  * so frame-rate sampling is enough. It reads only the rated elements (Solution.currentOf etc.,
  * without materialising the lazy maps) and caches its per-element plan per netlist object.
  * `state` is mutated (timers, temperatures, already-burnt set). At most one event per element.
+ *
+ * `instantOnly` is for extra samples inside a frame (edge substeps): it fires only the instant
+ * limit (maxV over-voltage) and leaves lastT, heat, running means, fuse melt and timers untouched,
+ * so the per-frame checks integrate exactly as if the sample had not been taken.
  */
-export function checkRatings(netlist: Netlist, solution: Solution, t: number, state: RatingState): BurnEvent[] {
+export function checkRatings(
+  netlist: Netlist,
+  solution: Solution,
+  t: number,
+  state: RatingState,
+  opts: { instantOnly?: boolean } = {},
+): BurnEvent[] {
   if (!solution.ok) return []
+  if (opts.instantOnly) return checkInstant(netlist, solution, t, state)
   const dt = state.lastT === null ? 0 : Math.max(0, t - state.lastT)
   state.lastT = t
   const events: BurnEvent[] = []
@@ -281,6 +292,19 @@ export function checkRatings(netlist: Netlist, solution: Solution, t: number, st
         if (ps.opSince <= late) fire(state, events, e, 'overpower', value, r.maxP, t)
       } else ps.opSince = NaN
     }
+  }
+  return events
+}
+
+/** over-voltage only, with no side effects on timers, heat or lastT (see checkRatings instantOnly) */
+function checkInstant(netlist: Netlist, s: Solution, t: number, state: RatingState): BurnEvent[] {
+  const events: BurnEvent[] = []
+  for (const e of plan(netlist)) {
+    const { el, id, r } = e
+    if (r?.maxV === undefined || el.disabled || state.burnt.has(id)) continue
+    if (state.parts.get(id)?.shutdown) continue
+    const v = Math.abs(e.vFixed ?? vOf(s, e.va) - vOf(s, e.vb))
+    if (v > r.maxV) fire(state, events, e, 'overvoltage', v, r.maxV, t)
   }
   return events
 }

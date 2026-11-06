@@ -395,9 +395,10 @@ export interface SimSettings {
   method?: 'be' | 'trap'
   stepsPerFrame?: number
   /**
-   * split the step after each switching event (pin, tweak, failure) into this many substeps
-   * growing ×2, and check ratings on each, so µs events (an inductive kick into a transistor's
-   * vBreak clamp) are seen at a coarse dt. Default: off.
+   * split the step after each external switching event (a pin, tweak, failure or power change;
+   * not square-wave source edges or device mode flips) into this many substeps growing ×2, and
+   * check the instant ratings (maxV) on each, so µs events (an inductive kick into a transistor's
+   * vBreak clamp) are seen at a coarse dt. Opt-in per lesson; default off.
    */
   edgeSubsteps?: number
 }
