@@ -1,17 +1,17 @@
 # Graph Report - agent-a487db57025a1c52e  (2026-11-07)
 
 ## Corpus Check
-- 135 files · ~164,545 words
+- 135 files · ~165,001 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .css 3)
 
 ## Summary
-- 1823 nodes · 3627 edges · 95 communities (93 shown, 2 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 131 edges (avg confidence: 0.93)
+- 1827 nodes · 3637 edges · 100 communities (97 shown, 3 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 133 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3fc21d14`
+- Built from commit: `04ecf84a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -36,7 +36,7 @@
 - A4988 Stepper Driver
 - Layout.tsx
 - Quadrature Encoders
-- vitest
+- PinState
 - NTC Thermistor
 - HC-SR04 Ultrasonic Ranger
 - PID Motor Speed Control
@@ -87,7 +87,7 @@
 - ui/types.ts
 - wobble.ts
 - 5. Virtual MCU (`src/engine/mcu`)
-- PartKind
+- sim/format.ts
 - react
 - package.json
 - dependencies
@@ -96,16 +96,21 @@
 - TryItYourself.tsx
 - Controls.tsx
 - @vitejs/plugin-react
-- common.tsx
+- stampDevice
+- Debugging Instruments
 - semis.tsx
 - connectors.tsx
 - Gallery.tsx
 - misc.tsx
 - str
 - three/index.ts
+- Failures
+- Failures
+- Failures
 - ink.tsx
 - textures.ts
-- frame.tsx
+- parts/index.ts
+- Behavior
 - Circuit Atelier — Spec
 - Pcb.tsx
 - Circuit Atelier — interactive electronics course
@@ -131,35 +136,35 @@
   docs/curriculum/T4/arduino-uno.md → src/engine/mcu/virtualMcu.ts
 - `Engine requirements gathered from SIM NOTEs` --references--> `applyPatches()`  [INFERRED]
   docs/curriculum/README.md → src/engine/sim/failures.ts
-- `Board` --references--> `tht()`  [INFERRED]
-  docs/curriculum/T0/batteries.md → src/three/parts/footprints.ts
-- `Board` --references--> `tht()`  [INFERRED]
-  docs/curriculum/T0/breadboard.md → src/three/parts/footprints.ts
+- `X1 — Simulator (`src/engine/sim/`)` --references--> `applyPatches()`  [INFERRED]
+  docs/plans/m1.5-engine-extensions.md → src/engine/sim/failures.ts
+- `SIM NOTE` --references--> `PinState`  [INFERRED]
+  docs/curriculum/T5/pca9685-servo.md → src/engine/types.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (95 total, 2 thin omitted)
+## Communities (100 total, 3 thin omitted)
 
 ### Community 0 - "devices.ts"
-Cohesion: 0.06
-Nodes (43): BJT_BETA, BJT_BETA_R, BJT_IS, bjtEval(), blankParams(), Compiled, DevParams, DIODE_IS (+35 more)
+Cohesion: 0.07
+Nodes (41): BJT_BETA, BJT_BETA_R, BJT_IS, blankParams(), branchCount(), compile(), DevParams, DIODE_IS (+33 more)
 
 ### Community 1 - "engine/types.ts"
-Cohesion: 0.07
-Nodes (39): SIM NOTE, SIM NOTE, SIM NOTE, X1 — Simulator (`src/engine/sim/`), Dev, applyBurn(), applyPatches(), failureNodes() (+31 more)
+Cohesion: 0.09
+Nodes (33): SIM NOTE, SIM NOTE, SIM NOTE, applyBurn(), applyPatches(), failureNodes(), OPEN_R, SHORT_R (+25 more)
 
 ### Community 2 - "Capstone: Two-Wheel Balancer"
-Cohesion: 0.05
-Nodes (36): Behaviors, Board, Capstone: Two-Wheel Balancer, Circuit, F1: Tired, high-resistance battery, F2: IMU mounted 3° off, F3: Right motor wired backwards, F4: Worn gearbox (4° backlash) (+28 more)
+Cohesion: 0.11
+Nodes (18): Behaviors, Board, Capstone: Two-Wheel Balancer, Circuit, F1: Tired, high-resistance battery, F2: IMU mounted 3° off, F3: Right motor wired backwards, F4: Worn gearbox (4° backlash) (+10 more)
 
 ### Community 3 - "ADC, DAC and PWM"
 Cohesion: 0.06
 Nodes (32): Board, Circuit, F1: Use an old analog meter (20 kΩ/V on the 10 V range), F2: Measure volts with the red lead still in the mA jack, F3: The bottom resistor falls out while you measure, Failures, For mechanical engineers, Learning goals (+24 more)
 
 ### Community 4 - "solve.ts"
-Cohesion: 0.12
-Nodes (31): fetlim(), GMIN, Measured, pnjlim(), remember(), stampDevice(), addA(), addB() (+23 more)
+Cohesion: 0.14
+Nodes (23): Compiled, GMIN, Measured, BRANCH_PIVOT_RTOL, clearSystem(), createLU(), createSystem(), LinearSystem (+15 more)
 
 ### Community 5 - "deploy.yml"
 Cohesion: 0.06
@@ -170,7 +175,7 @@ Cohesion: 0.16
 Nodes (25): BASS, BEATS_PER_CHORD, beatSeconds(), BPM, chordSeconds(), HAT_STEPS, KICK_STEPS, loopSeconds() (+17 more)
 
 ### Community 7 - "virtualMcu.ts"
-Cohesion: 0.16
+Cohesion: 0.17
 Nodes (21): arduinoMap(), arduinoRound(), castInt(), CharBox, chr(), cstr(), FloatBox, formatNumber() (+13 more)
 
 ### Community 8 - "Transpiler"
@@ -190,8 +195,8 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, allowArbitraryExtensions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection (+11 more)
 
 ### Community 12 - "VirtualMcu"
-Cohesion: 0.16
-Nodes (8): Behaviors, Circuit, Behaviors, Circuit, Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), makeRng(), run(), VirtualMcu
+Cohesion: 0.13
+Nodes (10): Behaviors, Circuit, Behaviors, Circuit, Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), run(), lineOfError(), probeFirstLine() (+2 more)
 
 ### Community 13 - "transpile.ts"
 Cohesion: 0.09
@@ -199,11 +204,11 @@ Nodes (21): CLOSE, COMPOUND, CONTROL_KW, DeclResult, ESCAPES, Header, HEADER_KW,
 
 ### Community 14 - "transient.ts"
 Cohesion: 0.19
-Nodes (18): branchCount(), captureState(), compile(), extraKeys(), hasInternalNode(), inheritState(), isNonlinear(), layoutSignature() (+10 more)
+Nodes (13): vitest, captureState(), Dev, volt(), chain(), msPerFrame(), buildSolution(), solveCompiled() (+5 more)
 
 ### Community 15 - "boards.tsx"
-Cohesion: 0.09
-Nodes (51): SIM NOTE, Decisions, Art, At(), boardArt(), boardGeo(), BoardSlab(), Breadboard (+43 more)
+Cohesion: 0.18
+Nodes (29): Art, At(), boardArt(), boardGeo(), BoardSlab(), GenericModule(), ModuleBody(), NanoModule() (+21 more)
 
 ### Community 16 - "compilerOptions"
 Cohesion: 0.12
@@ -221,9 +226,9 @@ Nodes (16): Lesson, Track, TrackId, SettingChange, Layout(), LayoutProps, Lesson
 Cohesion: 0.11
 Nodes (18): Behaviors, Board, Circuit, F1: Missing pull-ups, F2: A and B swapped, F3: Overdrive it on 12 V with noisy wiring, Failures, For mechanical engineers (+10 more)
 
-### Community 20 - "vitest"
-Cohesion: 0.13
-Nodes (14): SIM NOTE, vitest, harness(), PinEvent, Widget, StampCtx, fixed(), formatSI() (+6 more)
+### Community 20 - "PinState"
+Cohesion: 0.25
+Nodes (6): PinEvent, Widget, StampCtx, SolveContext, SolveOptions, PinState
 
 ### Community 21 - "NTC Thermistor"
 Cohesion: 0.11
@@ -238,8 +243,8 @@ Cohesion: 0.11
 Nodes (18): Behaviors, Board, Circuit, F1: Encoder A/B swapped (positive feedback), F2: Encoder pull-ups missing (lost feedback), F3: Tired battery (actuator saturation), Failures, For mechanical engineers (+10 more)
 
 ### Community 24 - "Power, Grounding and EMC"
-Cohesion: 0.11
-Nodes (18): Behaviors, Board, Circuit, F1: Return the load through the sensor ground, F2: The same, with thin 30 AWG wire, F3: Swap in a non-logic-level MOSFET (IRF540N, worst-case part), Failures, For mechanical engineers (+10 more)
+Cohesion: 0.13
+Nodes (14): Behaviors, Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Power, Grounding and EMC, Pro tips (+6 more)
 
 ### Community 25 - "UART, I²C and SPI"
 Cohesion: 0.11
@@ -270,16 +275,16 @@ Cohesion: 0.11
 Nodes (17): Behaviors, Circuit, F1: Remove the flyback diodes, then stop, F2: Run two motors at 1.5 A without the heatsink, F3: Run it from a single Li-ion cell (3.7 V), Failures, For mechanical engineers, L298N Module (+9 more)
 
 ### Community 32 - "TB6612FNG Dual H-Bridge"
-Cohesion: 0.11
-Nodes (17): Behaviors, Circuit, F1: Stall it on a fresh 2S Li-ion pack, F2: VM from a 4S LiPo (16.8 V), F3: Forget the common ground, Failures, For mechanical engineers, Learning goals (+9 more)
+Cohesion: 0.14
+Nodes (13): Behaviors, Circuit, For mechanical engineers, Learning goals, Meet the board, Pro tips, Quiz, Readouts (+5 more)
 
 ### Community 33 - "Load Cell and HX711"
 Cohesion: 0.11
 Nodes (17): Behaviors, Circuit, F1: S+ and S− swapped, F2: Overload it with 10 kg, F3: Excite the bridge from 5 V instead of AVDD, Failures, For mechanical engineers, Learning goals (+9 more)
 
 ### Community 34 - "InkMesh"
-Cohesion: 0.17
-Nodes (35): InkMesh(), BreadboardBody(), LoadCellBody(), UltrasonicBody(), Block(), BoxC(), CylX(), CylY() (+27 more)
+Cohesion: 0.11
+Nodes (58): chamferRectShape(), flattedCircleShape(), InkInstances(), InkMesh(), useLookMaterial(), BreadboardBody(), LoadCellBody(), UltrasonicBody() (+50 more)
 
 ### Community 35 - "App.tsx"
 Cohesion: 0.18
@@ -342,7 +347,7 @@ Cohesion: 0.12
 Nodes (15): Board, Circuit, F1: 12 V into 100 Ω, F2: Misread colour bands (10 Ω fitted instead of 1 kΩ), F3: Resistor lead pulls out of the board, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 50 - "AC and the Oscilloscope"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (15): AC and the Oscilloscope, Board, Circuit, F1: Add a 5 V DC offset, F2: Turn the frequency up to 500 Hz, F3: Load the generator with 47 Ω, Failures, For mechanical engineers (+7 more)
 
 ### Community 51 - "React + TypeScript + Vite"
@@ -354,7 +359,7 @@ Cohesion: 0.12
 Nodes (15): Board, Capacitors and RC Time, Circuit, F1: Plug it into 24 V, F2: Swap in 1000 µF, F3: A leaky capacitor, Failures, For mechanical engineers (+7 more)
 
 ### Community 53 - "RLC Resonance"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (15): Board, Circuit, F1: Take the damping resistor out, F2: Hot-plug 12 V into a 16 V ceramic filter, F3: The capacitor fails short, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 54 - "Op-Amp Basics"
@@ -394,11 +399,11 @@ Cohesion: 0.13
 Nodes (14): Board, Circuit, F1: Short the secondary, F2: Overload: 6 Ω instead of 12 Ω, F3: Unload it, Failures, For mechanical engineers, Learning goals (+6 more)
 
 ### Community 64 - "Diodes and Rectifiers"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (15): Board, Circuit, Diodes and Rectifiers, F1: One diode goes open, F2: Leave out the smoothing capacitor, F3: A diode fails short, Failures, For mechanical engineers (+7 more)
 
 ### Community 65 - "The Zener Regulator"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (15): Board, Circuit, F1: Plug in a 15 V adapter, F2: Ask for too much current (100 Ω load), F3: Zener fitted backwards, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 66 - "The 555 Timer"
@@ -406,24 +411,24 @@ Cohesion: 0.13
 Nodes (15): Board, Circuit, F1: Leave out R1 (pin 7 tied straight to V_CC), F2: Remove the timing capacitor, F3: Run it from two AA cells, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 67 - "PCA9685 Servo Driver"
-Cohesion: 0.13
-Nodes (14): F1: Power the servos from the Uno's 5 V pin, F2: No common ground, F3: Breakout without I²C pull-ups, Failures, For mechanical engineers, Learning goals, Meet the board, PCA9685 Servo Driver (+6 more)
+Cohesion: 0.12
+Nodes (15): F1: Power the servos from the Uno's 5 V pin, F2: No common ground, F3: Breakout without I²C pull-ups, Failures, For mechanical engineers, Learning goals, Meet the board, PCA9685 Servo Driver (+7 more)
 
 ### Community 68 - "ui/types.ts"
 Cohesion: 0.27
 Nodes (12): BenchStatus, BenchActions(), BenchActionsProps, MenuButton(), StatusPanel(), StatusPanelProps, toneOf(), BenchAction (+4 more)
 
 ### Community 69 - "wobble.ts"
-Cohesion: 0.13
-Nodes (17): Footprint, toBoard(), partRegistry, decalOffset(), decals, getWobble(), injectWobble(), registerDecal() (+9 more)
+Cohesion: 0.16
+Nodes (15): @react-three/fiber@^9.8.2, @react-three/fiber, decalOffset(), decals, getWobble(), registerDecal(), setWobble(), setWobbleViewport() (+7 more)
 
 ### Community 70 - "5. Virtual MCU (`src/engine/mcu`)"
 Cohesion: 0.25
 Nodes (4): Learning goals, 5. Virtual MCU (`src/engine/mcu`), constrain(), VirtualMcuOptions
 
-### Community 71 - "PartKind"
-Cohesion: 0.14
-Nodes (12): SIM NOTE, Global constraints, M1 — Engine plan, Task A — Circuit simulator (`src/engine/sim/`), Task C — 3D look and parametric part library (`src/three/`), Task E — Integration (after A–D are merged), Tasks A–D are independent and run in parallel worktrees. Task E integrates them., PartKind (+4 more)
+### Community 71 - "sim/format.ts"
+Cohesion: 0.19
+Nodes (10): Global constraints, M1 — Engine plan, Task A — Circuit simulator (`src/engine/sim/`), Task C — 3D look and parametric part library (`src/three/`), Tasks A–D are independent and run in parallel worktrees. Task E integrates them., fixed(), formatSI(), join() (+2 more)
 
 ### Community 72 - "react"
 Cohesion: 0.18
@@ -453,53 +458,69 @@ Nodes (6): @codemirror/lang-cpp@^6.0.3, @uiw/react-codemirror@^4.25.12, @codemir
 Cohesion: 0.38
 Nodes (6): Controls(), ControlsProps, Toggle(), PaletteId, PALETTES, Settings
 
-### Community 81 - "common.tsx"
-Cohesion: 0.08
-Nodes (40): three, cache, chamferRectShape(), disposeOutline(), edgeCache, edgesGeometry(), extrudeAlongX(), extrudeUp() (+32 more)
+### Community 80 - "stampDevice"
+Cohesion: 0.18
+Nodes (19): bjtEval(), diodeEval(), fetlim(), measureDevice(), mosEval(), pinNorton(), pnjlim(), remember() (+11 more)
+
+### Community 81 - "Debugging Instruments"
+Cohesion: 0.13
+Nodes (14): Behaviors, Board, Circuit, Debugging Instruments, For mechanical engineers, Learning goals, Meet the board, Pro tips (+6 more)
 
 ### Community 82 - "semis.tsx"
-Cohesion: 0.11
-Nodes (32): extrudeAlongZ(), geo(), lathe(), mergedBoxes(), ledLook(), loadCellGeo(), GlowHalo(), handleGeo() (+24 more)
+Cohesion: 0.13
+Nodes (30): extrudeAlongZ(), extrudeUp(), geo(), lathe(), mergedBoxes(), ledLook(), loadCellGeo(), GlowHalo() (+22 more)
 
 ### Community 83 - "connectors.tsx"
-Cohesion: 0.24
-Nodes (13): stadiumShape(), microGeo(), microMouthGeo(), microShape(), MicroUsbBody(), ScrewTerminal, UsbBBody(), usbBMouthGeo() (+5 more)
+Cohesion: 0.13
+Nodes (22): three, cache, disposeOutline(), edgeCache, edgesGeometry(), extrudeAlongX(), G, hulls (+14 more)
 
 ### Community 84 - "Gallery.tsx"
-Cohesion: 0.13
-Nodes (21): btn, Check(), DrawStats(), ENTRIES, Gallery(), GalleryControls, layout(), page (+13 more)
+Cohesion: 0.09
+Nodes (31): SIM NOTE, PartKind, PartPlacement, btn, Check(), DrawStats(), ENTRIES, Entry (+23 more)
 
 ### Community 85 - "misc.tsx"
-Cohesion: 0.21
-Nodes (13): C, wireColor(), Rod(), LogicIcLabel, loopGeo(), MODES, Multimeter, Probe (+5 more)
+Cohesion: 0.18
+Nodes (16): C, wireColor(), Rod(), handleGeo(), LogicIcLabel, loopGeo(), MODES, Multimeter (+8 more)
 
 ### Community 86 - "str"
 Cohesion: 0.15
 Nodes (29): HeaderFemaleBody(), HeaderMaleBody(), axialSpan(), CHIP_SIZES, chipSize(), DipGeom, dipGeom(), electroSize() (+21 more)
 
 ### Community 87 - "three/index.ts"
-Cohesion: 0.14
-Nodes (22): @react-three/drei@^10.7.9, @react-three/drei, CALLOUT_REF_ZOOM, CalloutProps, CalloutTone, TONE, Vec3, ISO_AZIMUTH_DEG (+14 more)
+Cohesion: 0.13
+Nodes (24): @react-three/drei@^10.7.9, @react-three/drei, Callout(), CALLOUT_REF_ZOOM, CalloutProps, CalloutTone, TONE, Vec3 (+16 more)
+
+### Community 88 - "Failures"
+Cohesion: 0.50
+Nodes (4): F1: Stall it on a fresh 2S Li-ion pack, F2: VM from a 4S LiPo (16.8 V), F3: Forget the common ground, Failures
+
+### Community 89 - "Failures"
+Cohesion: 0.50
+Nodes (4): F1: Measure the 5 V rail with the leads still in the mA jack, F2: Scope ground clip on the 5 V rail, F3: Trust the DMM on the 10 MΩ divider, Failures
+
+### Community 90 - "Failures"
+Cohesion: 0.50
+Nodes (4): F1: Return the load through the sensor ground, F2: The same, with thin 30 AWG wire, F3: Swap in a non-logic-level MOSFET (IRF540N, worst-case part), Failures
 
 ### Community 91 - "ink.tsx"
-Cohesion: 0.09
-Nodes (37): Bake(), bakeable(), BAKED_INK_PX, bakeGroup(), BakeResult, Bucket, isHullHost(), linesOf() (+29 more)
+Cohesion: 0.08
+Nodes (39): Bake(), bakeable(), BAKED_INK_PX, bakeGroup(), BakeResult, Bucket, isHullHost(), linesOf() (+31 more)
 
 ### Community 92 - "textures.ts"
 Cohesion: 0.17
-Nodes (20): BenchBase(), BenchBaseProps, gridTile(), rulerStrip(), LabelSheet(), roundedRectShape(), meshArt(), afterFonts() (+12 more)
+Nodes (20): BenchBase(), BenchBaseProps, gridTile(), rulerStrip(), LabelSheet(), roundedRectShape(), MAT, meshArt() (+12 more)
 
-### Community 93 - "frame.tsx"
-Cohesion: 0.22
-Nodes (12): @react-three/fiber@^9.8.2, @react-three/fiber, Callout(), InkContext, definePart(), Part(), filletWedge(), SolderJoints() (+4 more)
+### Community 93 - "parts/index.ts"
+Cohesion: 0.09
+Nodes (33): InkInstance, Breadboard, LoadCell, Module, Oled, Ultrasonic, WifiModule, Buzzer (+25 more)
 
 ### Community 95 - "Circuit Atelier — Spec"
 Cohesion: 0.20
 Nodes (9): 1. Experience, 2. Visual identity (original), 4. Simulation engine (`src/engine/sim`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec, Failures, Status panel (+1 more)
 
 ### Community 96 - "Pcb.tsx"
-Cohesion: 0.33
-Nodes (10): BoardSpec, PartPlacement, PartMeta, drawPad(), drawPcbArt(), mix(), Pcb(), PcbProps (+2 more)
+Cohesion: 0.16
+Nodes (16): SIM NOTE, Decisions, Task E — Integration (after A–D are merged), BoardSpec, footprint(), Pad, turnFront(), PartMeta (+8 more)
 
 ### Community 104 - "Circuit Atelier — interactive electronics course"
 Cohesion: 0.33
@@ -510,26 +531,26 @@ Cohesion: 0.33
 Nodes (11): Board, Board, Board, Board, Board, Board, Board, Board (+3 more)
 
 ### Community 114 - "M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs)"
-Cohesion: 0.20
-Nodes (7): Global constraints, M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs), X2 — Virtual MCU (`src/engine/mcu/`), X3 — Behavior framework (`src/engine/behaviors/`), X4 — UI and bench, X5 — 3D part additions, BehaviorContext
+Cohesion: 0.18
+Nodes (8): Global constraints, M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs), X1 — Simulator (`src/engine/sim/`), X2 — Virtual MCU (`src/engine/mcu/`), X3 — Behavior framework (`src/engine/behaviors/`), X4 — UI and bench, X5 — 3D part additions, BehaviorContext
 
 ## Knowledge Gaps
-- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `tht()` connect `tht` to `Capstone: Two-Wheel Balancer`, `ADC, DAC and PWM`, `HC-SR04 Ultrasonic Ranger`, `Power, Grounding and EMC`, `UART, I²C and SPI`, `Thermal Design`, `LED and Resistor`, `The Transistor Switch`, `Soldering and Rework`, `The MOSFET Switch`, `Linear and Buck Regulators`, `Batteries`, `The Breadboard`, `Charge, Voltage and Current`, `Kirchhoff's Laws`, `Ohm's Law`, `AC and the Oscilloscope`, `Capacitors and RC Time`, `RLC Resonance`, `Op-Amp Basics`, `Flip-Flops and Counters`, `Logic Gates`, `Power and Heat`, `Series and Parallel`, `Inductors and RL Time`, `Resistor Codes and Dividers`, `The Transformer`, `Diodes and Rectifiers`, `The Zener Regulator`, `The 555 Timer`, `str`?**
-  _High betweenness centrality (0.439) - this node is a cross-community bridge._
+- **Why does `tht()` connect `tht` to `Capstone: Two-Wheel Balancer`, `ADC, DAC and PWM`, `HC-SR04 Ultrasonic Ranger`, `Power, Grounding and EMC`, `UART, I²C and SPI`, `Thermal Design`, `LED and Resistor`, `The Transistor Switch`, `Soldering and Rework`, `The MOSFET Switch`, `Linear and Buck Regulators`, `Batteries`, `The Breadboard`, `Charge, Voltage and Current`, `Kirchhoff's Laws`, `Ohm's Law`, `AC and the Oscilloscope`, `Capacitors and RC Time`, `RLC Resonance`, `Op-Amp Basics`, `Flip-Flops and Counters`, `Logic Gates`, `Power and Heat`, `Series and Parallel`, `Inductors and RL Time`, `Resistor Codes and Dividers`, `The Transformer`, `Diodes and Rectifiers`, `The Zener Regulator`, `The 555 Timer`, `Debugging Instruments`, `str`?**
+  _High betweenness centrality (0.432) - this node is a cross-community bridge._
 - **Are the 41 inferred relationships involving `tht()` (e.g. with `Board` and `Board`) actually correct?**
   _`tht()` has 41 INFERRED edges - model-reasoned connections that need verification._
 - **Should `devices.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06342494714587738 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06852497096399536 - nodes in this community are weakly interconnected._
 - **Why does `smd()` connect `tht` to `A4988 Stepper Driver`, `str`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
+  _High betweenness centrality (0.055) - this node is a cross-community bridge._
 - **Should `engine/types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06748911465892599 - nodes in this community are weakly interconnected._
-- **Why does `3. Lesson data model` connect `tht` to `Pcb.tsx`, `engine/types.ts`, `Layout.tsx`, `Circuit Atelier — Spec`?**
-  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+  _Cohesion score 0.08710801393728224 - nodes in this community are weakly interconnected._
+- **Why does `3. Lesson data model` connect `tht` to `Layout.tsx`, `Gallery.tsx`, `transient.ts`, `Circuit Atelier — Spec`?**
+  _High betweenness centrality (0.041) - this node is a cross-community bridge._
 - **Should `Capstone: Two-Wheel Balancer` be split into smaller, more focused modules?**
-  _Cohesion score 0.051209103840682786 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._

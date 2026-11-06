@@ -23,7 +23,10 @@ import {
 } from './passives'
 import { AaPack, Battery9v, Lipo, Transformer } from './power'
 import { Dip, Heatsink, LedSmd, Led, Mosfet, Regulator, SmdIc, To92 } from './semis'
-import { num, str, type PartRegistry } from './types'
+import { num, str, type PartRegistry, type PartRenderState } from './types'
+
+/** Button / slide switch: only the on/off state reshapes the part. */
+const pressedOf = (s: PartRenderState) => (s.value ?? 0) > 0.5
 
 export const partRegistry: PartRegistry = {
   resistor: definePart(Resistor, { height: 0.3 }),
@@ -54,8 +57,8 @@ export const partRegistry: PartRegistry = {
   'micro-usb': definePart(MicroUsb, { height: 0.26 }),
   'barrel-jack': definePart(BarrelJack, { height: 1.1 }),
   'screw-terminal': definePart(ScrewTerminal, { height: 1.03 }),
-  button: definePart(Button, { height: 0.51 }),
-  'switch-slide': definePart(SwitchSlide, { height: 0.72 }),
+  button: definePart(Button, { height: 0.51, bakeValue: pressedOf }),
+  'switch-slide': definePart(SwitchSlide, { height: 0.72, bakeValue: pressedOf }),
   potentiometer: definePart(Potentiometer, { height: 1.23 }),
   buzzer: definePart(Buzzer, { height: 0.95 }),
   transformer: definePart(Transformer, { height: 2.75 }),

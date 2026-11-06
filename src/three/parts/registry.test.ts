@@ -3,7 +3,42 @@ import type { PartPlacement } from '../../engine/types'
 import { injectWobble } from '../wobble'
 import { breadboardHole } from './boards'
 import { footprint, toBoard } from './footprints'
+import { bakeKeyOf } from './frame'
 import { ALL_PART_KINDS, partRegistry } from './index'
+
+describe('bake keys', () => {
+  const base = { visible: true, soldered: true, glow: 0, burnt: false, explodedOffset: 0, showLabel: false }
+  const mk = (kind: PartPlacement['kind']): PartPlacement => ({ id: 'X', kind, pos: [0, 0], mount: 'offboard', role: '' })
+
+  it('servo angle sweeps do not rebake', () => {
+    const p = mk('servo')
+    expect(bakeKeyOf(partRegistry.servo, p, { ...base, value: 10 })).toBe(
+      bakeKeyOf(partRegistry.servo, p, { ...base, value: 170 }),
+    )
+  })
+
+  it('live multimeter readings do not rebake', () => {
+    const p = mk('multimeter')
+    expect(bakeKeyOf(partRegistry.multimeter, p, { ...base, reading: '4.98' })).toBe(
+      bakeKeyOf(partRegistry.multimeter, p, { ...base, reading: '5.01', value: 0.3 }),
+    )
+  })
+
+  it('pot turns do not rebake', () => {
+    const p = mk('potentiometer')
+    expect(bakeKeyOf(partRegistry.potentiometer, p, { ...base, value: 0.1 })).toBe(
+      bakeKeyOf(partRegistry.potentiometer, p, { ...base, value: 0.9 }),
+    )
+  })
+
+  it('discrete states still rebake: button press, burnt', () => {
+    const p = mk('button')
+    const up = bakeKeyOf(partRegistry.button, p, { ...base, value: 0 })
+    expect(bakeKeyOf(partRegistry.button, p, { ...base, value: 0.2 })).toBe(up)
+    expect(bakeKeyOf(partRegistry.button, p, { ...base, value: 1 })).not.toBe(up)
+    expect(bakeKeyOf(partRegistry.button, p, { ...base, burnt: true })).not.toBe(up)
+  })
+})
 
 describe('partRegistry', () => {
   it('has exactly one component per PartKind', () => {

@@ -5,7 +5,7 @@
 import { Outlines } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import type { ThreeElements } from '@react-three/fiber'
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { edgesGeometry, outlineGeometry } from './geometry'
 import { createInkMaterial, inkMaterial, isPerInstance, lookKeyOf, type InkLook } from './materials'
@@ -169,11 +169,23 @@ export function InkHull({
     }
     return g
   }, [geometry, hull, instanced, px])
+  const hullMat = useRef<THREE.Material | null>(null)
   useLayoutEffect(() => {
     const hull = host.children[0]?.children[0] as THREE.Mesh | undefined
-    if (hull && !Array.isArray(hull.material)) applyWobble(hull.material)
+    if (hull && !Array.isArray(hull.material)) {
+      applyWobble(hull.material)
+      hullMat.current = hull.material
+    }
     if (hull) hull.raycast = () => {}
   })
+  // drei <Outlines> keeps its ShaderMaterial in useState and never disposes it
+  useEffect(
+    () => () => {
+      hullMat.current?.dispose()
+      hullMat.current = null
+    },
+    [],
+  )
   return (
     <primitive object={host}>
       <Outlines angle={0} thickness={px * dpr} color={color} />

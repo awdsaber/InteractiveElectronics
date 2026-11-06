@@ -11,11 +11,34 @@ import { InkContext, InkInstances, type InkInstance } from '../ink'
 import { C } from '../palette'
 import { Smoke } from '../Smoke'
 import { footprint } from './footprints'
-import { partPosition, type PartComponent, type PartProps } from './types'
+import { partPosition, type PartComponent, type PartProps, type PartRenderState } from './types'
 
 export interface PartMeta {
   /** approximate top of the part (callout anchor, smoke origin) */
   height: number | ((part: PartPlacement) => number)
+  /**
+   * Discrete live state that changes baked geometry (button pressed, switch
+   * position). Continuous values (servo angle, pot, readings) must not go
+   * here: they live on unbaked (`noBake`) or textured meshes.
+   */
+  bakeValue?: (state: PartRenderState) => unknown
+}
+
+/**
+ * Key that triggers a rebake of a part's merged geometry. Pure; only static
+ * look plus discrete states belong in it, so live values never rebake.
+ */
+export function partBakeKey(part: PartPlacement, state: PartRenderState, meta: Pick<PartMeta, 'bakeValue'>): string {
+  return JSON.stringify([
+    part.kind,
+    part.mount,
+    part.color,
+    part.params,
+    state.burnt,
+    state.soldered,
+    state.glow > 0.01,
+    meta.bakeValue ? meta.bakeValue(state) : null,
+  ])
 }
 
 const filletWedge = () =>
@@ -66,17 +89,7 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
     const h = typeof meta.height === 'function' ? meta.height(part) : meta.height
     const rot = ((part.rot ?? 0) * Math.PI) / 180
     // Anything that changes static geometry or colour must be in the key.
-    const bakeKey = JSON.stringify([
-      part.kind,
-      part.mount,
-      part.color,
-      part.params,
-      state.burnt,
-      state.soldered,
-      state.value,
-      state.reading,
-      state.glow > 0.01,
-    ])
+    const bakeKey = partBakeKey(part, state, meta)
     return (
       <group position={[x, y + state.explodedOffset, z]} userData={{ partId: part.id, kind: part.kind }}>
         <group rotation={[0, rot, 0]}>
@@ -93,5 +106,13 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
     )
   }
   Part.displayName = `Part(${Body.displayName ?? Body.name})`
+  metas.set(Part, meta)
   return Part
+}
+
+const metas = new WeakMap<PartComponent, PartMeta>()
+
+/** The rebake key a registered part component would use (for tests and tools). */
+export function bakeKeyOf(comp: PartComponent, part: PartPlacement, state: PartRenderState): string {
+  return partBakeKey(part, state, metas.get(comp) ?? {})
 }

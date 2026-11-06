@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "src/three/ink.tsx": {
-    "mtime": 1794002938.953033,
-    "seen": 1794003314.1507673,
-    "ast_hash": "0f4bc7276e56fb8539acb2f738c1e552",
+    "mtime": 1794003493.949442,
+    "seen": 1794003577.7312803,
+    "ast_hash": "f3312994ff0b4c1c24f1de7afd955f6c",
     "semantic_hash": ""
   },
   "src/three/materials.ts": {
@@ -222,15 +222,15 @@
     "semantic_hash": ""
   },
   "src/three/parts/frame.tsx": {
-    "mtime": 1794003046.5579207,
-    "seen": 1794003314.1507673,
-    "ast_hash": "c1b36dab0f2a1f2850102f5977b37bb7",
+    "mtime": 1794003515.5519538,
+    "seen": 1794003577.7312803,
+    "ast_hash": "edc7fb527643d44c64f78904a0d375c9",
     "semantic_hash": ""
   },
   "src/three/parts/index.ts": {
-    "mtime": 1794001446.5995672,
-    "seen": 1794002536.959999,
-    "ast_hash": "f24a10e8cacefe607d69d5481a00ec6d",
+    "mtime": 1794003493.954973,
+    "seen": 1794003577.7312803,
+    "ast_hash": "495ebefac3e2e7d1b86959c50951bdbd",
     "semantic_hash": ""
   },
   "src/three/parts/kinds.ts": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/registry.test.ts": {
-    "mtime": 1794002180.8700755,
-    "seen": 1794002536.959999,
-    "ast_hash": "494424d58fe533e0836a75bd59ea3523",
+    "mtime": 1794003524.3511033,
+    "seen": 1794003577.7312803,
+    "ast_hash": "127c77029c7581636e6bcbec4135515a",
     "semantic_hash": ""
   },
   "src/three/parts/semis.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794002522.2088385,
-    "seen": 1794002536.9610023,
-    "ast_hash": "8c9412c2d8d6324b644179bafc64473b",
+    "mtime": 1794003329.405672,
+    "seen": 1794003577.7312803,
+    "ast_hash": "4600771601c7e56b56af764a7bc23d4d",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
