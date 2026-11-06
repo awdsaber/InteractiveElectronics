@@ -34,7 +34,7 @@
   "32": "Skill authoring best practices",
   "33": "Advanced: Skills with executable code",
   "34": "scripts",
-  "35": "main.tsx",
+  "35": "App.tsx",
   "36": "stop-server.sh",
   "37": "Diagnosing Superpowers",
   "38": "Superpowers session diagnosis bundle",
@@ -68,7 +68,7 @@
   "66": "sdd-repo",
   "67": "task-brief",
   "68": "find-polluter.sh",
-  "69": "@playwright/test@^1.65.0",
+  "69": "sound.ts",
   "70": "analyst-common.md",
   "71": "cost-and-time.md",
   "72": "plan-adherence.md",
@@ -79,5 +79,14 @@
   "77": "scrub-audit.md",
   "78": "similar-session.md",
   "79": "skill-timeline.md",
-  "80": "stumbles.md"
+  "80": "stumbles.md",
+  "81": "ui/types.ts",
+  "82": "Layout.tsx",
+  "83": "Circuit Atelier — Spec",
+  "84": "Tweaks.tsx",
+  "85": "package.json",
+  "86": "Controls.tsx",
+  "87": "MeetTheBoard.tsx",
+  "88": "@uiw/react-codemirror",
+  "89": "typescript@~7.0.2"
 }
