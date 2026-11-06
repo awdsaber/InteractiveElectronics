@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { setEffectsEnabled, sfx, startLofi, stopLofi, unlockAudio } from '../../audio/sound'
 import { defaultLessonId, getLesson, lessons } from '../../lessons'
 import type { SettingChange } from '../../ui/Controls'
-import type { BenchAction, Settings, ToastMessage } from '../../ui/types'
+import { PALETTES, type BenchAction, type Settings, type ToastMessage } from '../../ui/types'
 import type { Lesson, Tweak } from '../types'
 import type { Note } from './assembly'
 import { type Bench, type BenchSnapshot, createBench, tweakKey } from './simLoop'
@@ -48,6 +48,75 @@ export function loadJSON<T>(key: string, fallback: T): T {
     return fallback
   }
 }
+
+/** the raw parsed value under `key`, or undefined (missing, unreadable, blocked storage) */
+export function loadRaw(key: string): unknown {
+  try {
+    const raw = globalThis.localStorage?.getItem(`${KEY}:${key}`)
+    return raw ? (JSON.parse(raw) as unknown) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+
+/** persisted settings → Settings, field by field (anything malformed falls back to the default) */
+export function asSettings(v: unknown): Settings {
+  const d = DEFAULT_SETTINGS
+  if (!isRecord(v)) return { ...d }
+  const bool = (x: unknown, f: boolean) => (typeof x === 'boolean' ? x : f)
+  return {
+    wobble: typeof v.wobble === 'number' && Number.isFinite(v.wobble) ? Math.min(1, Math.max(0, v.wobble)) : d.wobble,
+    palette: PALETTES.some((p) => p.id === v.palette) ? (v.palette as Settings['palette']) : d.palette,
+    labels: bool(v.labels, d.labels),
+    lofi: bool(v.lofi, d.lofi),
+    effects: bool(v.effects, d.effects),
+  }
+}
+
+export function asProgress(v: unknown): Progress {
+  if (!isRecord(v)) return { completed: [], quiz: {} }
+  const completed = Array.isArray(v.completed) ? v.completed.filter((x): x is string => typeof x === 'string') : []
+  const quiz: Progress['quiz'] = {}
+  if (isRecord(v.quiz)) {
+    for (const [id, q] of Object.entries(v.quiz)) {
+      if (isRecord(q) && typeof q.score === 'number' && typeof q.total === 'number') quiz[id] = { score: q.score, total: q.total }
+    }
+  }
+  return { completed, quiz }
+}
+
+export function asCode(v: unknown): Record<string, string> {
+  if (!isRecord(v)) return {}
+  return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === 'string'))
+}
+
+/** call `fn` once `ms` have passed without another call (with the last arguments); `flush` runs it now */
+export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number): ((...args: A) => void) & { flush(): void } {
+  let h: ReturnType<typeof setTimeout> | null = null
+  let pending: A | null = null
+  const run = () => {
+    h = null
+    if (pending) {
+      const a = pending
+      pending = null
+      fn(...a)
+    }
+  }
+  const d = (...args: A) => {
+    pending = args
+    if (h) clearTimeout(h)
+    h = setTimeout(run, ms)
+  }
+  d.flush = () => {
+    if (h) clearTimeout(h)
+    run()
+  }
+  return d
+}
+
+const saveCode = debounce((code: Record<string, string>) => saveJSON('code', code), 400)
 
 export function saveJSON(key: string, value: unknown): void {
   try {
@@ -105,8 +174,8 @@ export const useStore = create<AppState>()((set, get) => {
 
   const initialId = (hasWindow && lessonFromHash(location.hash)) || defaultLessonId
   const lesson = getLesson(initialId) ?? lessons[0]
-  const code = loadJSON<Record<string, string>>('code', {})
-  const settings = loadJSON<Settings>('settings', DEFAULT_SETTINGS)
+  const code = asCode(loadRaw('code'))
+  const settings = asSettings(loadRaw('settings'))
   setEffectsEnabled(settings.effects)
   const snap = mount(lesson, code[lesson.id])
 
@@ -114,7 +183,7 @@ export const useStore = create<AppState>()((set, get) => {
     lesson,
     snap,
     settings,
-    progress: loadJSON<Progress>('progress', { completed: [], quiz: {} }),
+    progress: asProgress(loadRaw('progress')),
     code,
     tweaks: bench.tweakValues(),
     toasts: [],
@@ -149,7 +218,7 @@ export const useStore = create<AppState>()((set, get) => {
     setCode(text) {
       bench.setCode(text)
       const code = { ...get().code, [get().lesson.id]: text }
-      saveJSON('code', code)
+      saveCode(code) // typing: save after 400 ms of quiet
       set({ code })
     },
 
@@ -194,6 +263,8 @@ if (hasWindow) {
     const id = lessonFromHash(location.hash)
     if (id) useStore.getState().selectLesson(id)
   })
+  // don't lose the last keystrokes of a sketch to the debounce
+  window.addEventListener('pagehide', () => saveCode.flush())
   // the lo-fi loop needs a user gesture before it can start
   window.addEventListener(
     'pointerdown',

@@ -39,7 +39,7 @@ const MOTOR_KINDS = new Set(['dc-motor', 'gear-motor-wheel', 'stepper-nema17'])
 /** Live render state of one part (pure, so it is testable without WebGL). */
 export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot): PartRenderState {
   const cid = p.circuitIds?.[0]
-  const placed = snap.assembly.placed.includes(p.id)
+  const placed = snap.partVisible[p.id] ?? snap.assembly.placed.includes(p.id)
   const breadboard = lesson.board.base === 'breadboard-only'
   let glow = 0
   if (LED_KINDS.has(p.kind) && cid) glow = Math.min(1.5, Math.max(0, (snap.current[cid] ?? 0) / 0.02))

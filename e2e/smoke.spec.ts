@@ -21,10 +21,10 @@ test('led-resistor: assemble, power, upload, blink, break', async ({ page }) => 
   await expect(panel(page)).toContainText('READY')
 
   // strip → place all (breadboard: nothing to pick-and-place or solder)
-  await page.getByRole('button', { name: /Strip to bare PCB/ }).click()
+  await page.getByRole('button', { name: /Clear the breadboard/ }).click()
   await expect(panel(page)).toContainText('BARE PCB')
   await expect(panel(page)).toContainText('0/6')
-  await expect(page.getByRole('button', { name: /Pick & place SMD/ })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /Pick & place SMD/ })).toHaveCount(0) // breadboard: no SMD or solder steps
   await page.getByRole('button', { name: /Place a part/ }).click()
   await page.getByRole('menuitem', { name: /R1/ }).click()
   await expect(panel(page)).toContainText('ASSEMBLING')
@@ -33,7 +33,7 @@ test('led-resistor: assemble, power, upload, blink, break', async ({ page }) => 
   await page.getByRole('menuitem', { name: 'Place all' }).click()
   await expect(panel(page)).toContainText('6/6')
   await expect(panel(page)).toContainText('READY')
-  await expect(page.getByRole('button', { name: /Solder joints/ })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /Solder joints/ })).toHaveCount(0)
 
   // power and upload
   await page.getByRole('button', { name: 'Plug USB' }).click()

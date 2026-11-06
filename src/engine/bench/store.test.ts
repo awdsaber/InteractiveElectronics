@@ -1,7 +1,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { lessonFromHash, loadJSON, saveJSON, useStore } from './store'
+import { DEFAULT_SETTINGS, asCode, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
+})
+
+describe('persisted shapes are validated', () => {
+  it('settings: bad fields fall back one by one', () => {
+    expect(asSettings({ wobble: 2, palette: 'pink', labels: 'yes', lofi: true, effects: false })).toEqual({
+      ...DEFAULT_SETTINGS,
+      wobble: 1,
+      lofi: true,
+      effects: false,
+    })
+    expect(asSettings(null)).toEqual(DEFAULT_SETTINGS)
+    expect(asSettings([1, 2])).toEqual(DEFAULT_SETTINGS)
+  })
+
+  it('progress: keeps only string ids and numeric scores', () => {
+    expect(asProgress({ completed: ['a', 3, null], quiz: { a: { score: 2, total: 4 }, b: { score: 'x' }, c: 7 } })).toEqual({
+      completed: ['a'],
+      quiz: { a: { score: 2, total: 4 } },
+    })
+    expect(asProgress('nope')).toEqual({ completed: [], quiz: {} })
+  })
+
+  it('code: keeps only string sketches', () => {
+    expect(asCode({ a: 'void setup(){}', b: 5 })).toEqual({ a: 'void setup(){}' })
+    expect(asCode(undefined)).toEqual({})
+  })
+
+  it('debounce waits for 400 ms of quiet and keeps the last call', () => {
+    vi.useFakeTimers()
+    const calls: number[] = []
+    const d = debounce((n: number) => calls.push(n), 400)
+    d(1)
+    vi.advanceTimersByTime(300)
+    d(2)
+    vi.advanceTimersByTime(399)
+    expect(calls).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(calls).toEqual([2])
+  })
+})
 
 describe('store persistence', () => {
   it('survives a localStorage that throws', () => {

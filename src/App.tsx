@@ -42,6 +42,7 @@ export default function App() {
         extraPower: lesson.extraPower?.map((p) => ({ id: p.elementId, label: p.label, on: !!snap.assembly.powered[p.elementId] })),
         failures,
         onAction: s.act,
+        breadboard: lesson.board.base === 'breadboard-only',
       }}
       panel={{ placed: snap.placedCount, total: snap.totalParts, status: snap.status, readouts: snap.readouts }}
       statusLine={snap.statusLine}

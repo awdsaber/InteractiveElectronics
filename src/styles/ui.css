@@ -1121,7 +1121,16 @@ input[type='range']:active::-webkit-slider-thumb {
     right: 16px;
     max-width: none;
   }
-  /* phones: only the newest toast */
+  /* phones: one compact toast at the top, clear of the readouts under the bench */
+  .toasts {
+    top: 10px;
+    bottom: auto;
+  }
+  .toast {
+    padding: 6px 10px;
+    font-size: 12px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
   .toast:not(:last-child) {
     display: none;
   }
