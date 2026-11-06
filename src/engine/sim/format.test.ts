@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { formatSI } from './format'
+
+describe('formatSI', () => {
+  it('formats the plan cases', () => {
+    expect(formatSI(0.0043, 'A')).toBe('4.3 mA')
+    expect(formatSI(4700, 'Ω')).toBe('4.7 kΩ')
+    expect(formatSI(1e-6, 'A')).toBe('1.0 µA')
+  })
+
+  it('keeps integer mantissas without exponent notation', () => {
+    expect(formatSI(220, 'Ω')).toBe('220 Ω')
+    expect(formatSI(47, 'Ω')).toBe('47 Ω')
+    expect(formatSI(5, 'V')).toBe('5.0 V')
+  })
+
+  it('rolls over to the next prefix after rounding', () => {
+    expect(formatSI(999.96, 'Ω')).toBe('1.0 kΩ')
+  })
+
+  it('handles sign, zero, digits and non-finite values', () => {
+    expect(formatSI(-0.0043, 'A')).toBe('-4.3 mA')
+    expect(formatSI(0, 'V')).toBe('0.0 V')
+    expect(formatSI(0.0123456, 'A', 3)).toBe('12.3 mA')
+    expect(formatSI(2.2e6, 'Ω')).toBe('2.2 MΩ')
+    expect(formatSI(Number.NaN, 'V')).toBe('— V')
+  })
+
+  it('does not apply SI prefixes to non-SI units', () => {
+    expect(formatSI(1500, 'rpm')).toBe('1500 rpm')
+    expect(formatSI(25, '°C')).toBe('25 °C')
+  })
+})

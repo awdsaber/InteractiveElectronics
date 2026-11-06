@@ -68,7 +68,7 @@
   "66": "sdd-repo",
   "67": "task-brief",
   "68": "find-polluter.sh",
-  "69": "@playwright/test@^1.65.0",
+  "69": "devices.ts",
   "70": "analyst-common.md",
   "71": "cost-and-time.md",
   "72": "plan-adherence.md",
@@ -79,5 +79,7 @@
   "77": "scrub-audit.md",
   "78": "similar-session.md",
   "79": "skill-timeline.md",
-  "80": "stumbles.md"
+  "80": "stumbles.md",
+  "81": "Circuit Atelier — Spec",
+  "82": "package.json"
 }
