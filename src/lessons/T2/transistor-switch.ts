@@ -255,7 +255,7 @@ export const lesson: LessonDef = {
 
   tweaks: [
     { label: 'Base resistor', elementId: 'R_B', key: 'value', min: 100, max: 47000, log: true, unit: 'Ω' },
-    { label: 'Motor load torque', elementId: 'M1', key: 'load', min: 0, max: 0.0025, step: 0.0001, unit: 'N·m' },
+    { label: 'Motor load torque', elementId: 'M1', key: 'load', min: 0, max: 0.002, step: 0.0001, unit: 'N·m' },
   ],
 
   statusLines: [
