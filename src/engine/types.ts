@@ -156,6 +156,17 @@ export interface Solution {
   /** transistor extras: ib, ic, ie, vce/vds, motor omega, etc. keyed `${id}.${key}` */
   extra: Record<string, number>
   iterations?: number
+  /**
+   * Single reads that don't materialise the maps above (solutions from the simulator provide
+   * them; checkRatings uses them so a per-frame check stays cheap). `extraOf(id, key)` reads
+   * extra[key] produced by element `id` (key is the full `${id}.name` string).
+   */
+  currentOf?(elementId: string): number
+  powerOf?(elementId: string): number
+  extraOf?(elementId: string, key: string): number
+  voltageOf?(node: NodeId): number
+  /** set extra[key] (e.g. `${id}.tj`) without materialising the map before it is read */
+  publish?(key: string, value: number): void
 }
 
 /** OUTPUT_OPEN_DRAIN: LOW pulls down through rOut, HIGH releases the pin (high impedance) */

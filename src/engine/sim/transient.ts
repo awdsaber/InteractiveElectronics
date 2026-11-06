@@ -2,7 +2,8 @@
 // t = 0 is "power on": capacitors start at v0 (default 0), inductors at i0 (default 0),
 // motors at rest, node voltages guessed from netlist.ic.
 // Trapezoidal steps fall back to one backward-Euler step after any discontinuity (start,
-// parameter / pin / netlist / dt change, square-wave edge) so they don't ring numerically.
+// parameter / pin / netlist / dt change, square-wave edge, a device mode flip in the previous
+// step: V current limit, REG mode, LOGIC edge) so they don't ring numerically.
 
 import type { Element, Netlist, PinState, Solution } from '../types'
 import {
@@ -13,6 +14,7 @@ import {
   compile,
   inheritState,
   layoutSignature,
+  modesChanged,
   partition,
   prepareDevice,
   waveValue,
@@ -32,6 +34,8 @@ export interface Transient {
   readonly t: number
   readonly dt: number
   readonly method: 'be' | 'trap'
+  /** whether the last step used the trapezoidal rule (false on backward-Euler restarts) */
+  readonly lastStepTrap: boolean
   /** change the step size (slow motion / time lapse); takes effect on the next step */
   setDt(dt: number): void
   /**
@@ -80,6 +84,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   let lastGood: Solution | null = null
   /** next step must be backward Euler (a discontinuity just happened) */
   let restart = true
+  let lastTrap = false
   let squares: Extract<Element, { type: 'V' }>[] = []
   const pins: Record<number, PinState> = {}
   const sc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
@@ -115,6 +120,9 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     get method() {
       return method
     },
+    get lastStepTrap() {
+      return lastTrap
+    },
     get netlist() {
       return current
     },
@@ -132,13 +140,15 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       const trap = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
       sc.t = tNext
       sc.trap = trap
+      lastTrap = trap
       const r = solveCompiled(compiled, sc, x)
       const sol = buildSolution(compiled, r, sc)
       if (r.ok) {
         x.set(r.x)
         captureState(compiled, x, dt, trap)
         lastGood = sol
-        restart = false
+        // a device switched mode inside this step: take the next one with backward Euler
+        restart = modesChanged(compiled)
       }
       t = tNext
       return sol

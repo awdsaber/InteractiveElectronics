@@ -688,7 +688,7 @@ function stateSlots(el: Element): number {
     case 'XFMR':
       return el.lm ? 2 : 0
     case 'LOGIC':
-      return 1 // hysteresis memory (the committed logic state of input 0)
+      return el.nodes.length - 1 // hysteresis memory: the committed logic state of each input
     default:
       return 0
   }
@@ -1170,9 +1170,9 @@ export function stampDevice(d: Dev, sys: LinearSystem, ctx: StampCtx): void {
       const nin = el.nodes.length - 1
       const out = d.n[nin]
       ensureLogicScratch(nin)
-      const th = logicThreshold(p, d.st >= 0 ? ctx.st[d.st] : 0)
       const vs = p.vcc * ctx.srcScale
       for (let j = 0; j < nin; j++) {
+        const th = logicThreshold(p, ctx.st[d.st + j])
         // normalised input u = (v - th)/w; limited like the op-amp so feedback loops converge
         const unew = (volt(x, d.n[j]) - th) / p.w
         const slot = d.lim + j
@@ -1418,9 +1418,8 @@ export function measureDevice(
     case 'LOGIC': {
       const nin = el.nodes.length - 1
       ensureLogicScratch(nin)
-      const th = logicThreshold(p, d.st >= 0 ? ctx.st[d.st] : 0)
       for (let j = 0; j < nin; j++) {
-        const t = Math.tanh((volt(x, d.n[j]) - th) / p.w)
+        const t = Math.tanh((volt(x, d.n[j]) - logicThreshold(p, ctx.st[d.st + j])) / p.w)
         LV[j] = 0.5 * (1 + t)
         LD[j] = 0
       }
@@ -1463,6 +1462,46 @@ export function measureDevice(
   out.power[id] = vab * i
 }
 
+/** current and power of one device (IP.i, IP.p): the per-element read behind Solution.currentOf */
+export const IP = { i: 0, p: 0 }
+const IP_SCRATCH: Measured = { current: {}, power: {}, extra: {} }
+export function measureCurrentPower(d: Dev, x: Float64Array, ctx: Pick<StampCtx, 'mode' | 'dt' | 'st' | 'pins' | 't' | 'trap'>): void {
+  const t = d.el.type
+  if (!d.p.off && (t === 'R' || t === 'FUSE' || (t === 'SW' && !(d.p.vb > 0)))) {
+    // the common rated parts, without going through the string-keyed maps
+    const vab = volt(x, d.n[0]) - volt(x, d.n[1])
+    IP.i = vab * d.p.g
+    IP.p = vab * IP.i
+    return
+  }
+  measureDevice(d, x, ctx, IP_SCRATCH)
+  IP.i = IP_SCRATCH.current[d.el.id]
+  IP.p = IP_SCRATCH.power[d.el.id]
+}
+
+/**
+ * True when a switching device changed mode in the solve just accepted: a V current-window or
+ * REG mode flip, or a LOGIC input crossing its threshold (an output edge). Compares Compiled.lim
+ * with Compiled.limSave, which solveCompiled saves before solving.
+ */
+export function modesChanged(c: Compiled): boolean {
+  const lim = c.lim
+  const prev = c.limSave
+  for (const d of c.nlDevs) {
+    const t = d.el.type
+    if (t === 'REG' || (t === 'V' && d.lim >= 0)) {
+      const p = prev[d.lim]
+      if (p === p && lim[d.lim] !== p) return true // NaN: first solve, nothing to compare
+    } else if (t === 'LOGIC') {
+      for (let j = 0; j < d.nlim; j++) {
+        const p = prev[d.lim + j]
+        if (p === p && lim[d.lim + j] > 0 !== p > 0) return true
+      }
+    }
+  }
+  return false
+}
+
 /**
  * Commit the dynamic state after an accepted step at step size dt: cap voltage and current,
  * inductor current and voltage, motor current and speed, schmitt input state.
@@ -1495,9 +1534,11 @@ export function captureState(c: Compiled, x: Float64Array, dt: number, trap: boo
       case 'LOGIC': {
         const p = d.p
         if (p.hyst > 0) {
-          const v = volt(x, d.n[0])
-          if (v > p.vth + p.hyst / 2) st[s] = 1
-          else if (v < p.vth - p.hyst / 2) st[s] = 0
+          for (let j = 0; j < el.nodes.length - 1; j++) {
+            const v = volt(x, d.n[j])
+            if (v > p.vth + p.hyst / 2) st[s + j] = 1
+            else if (v < p.vth - p.hyst / 2) st[s + j] = 0
+          }
         }
         break
       }

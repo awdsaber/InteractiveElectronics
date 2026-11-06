@@ -178,6 +178,33 @@ describe('LOGIC', () => {
     expect(Math.abs(T / want - 1)).toBeLessThan(0.02)
   })
 
+  it('each input has its own hysteresis: Schmitt NAND with A held high switches on B at 3.0 V up, 2.0 V down', () => {
+    const sim = createTransient(
+      {
+        elements: [
+          { id: 'VA', type: 'V', nodes: ['a', '0'], value: 5 },
+          { id: 'VB', type: 'V', nodes: ['b', '0'], value: 0, wave: { kind: 'triangle', amp: 2.5, offset: 2.5, freq: 1, phase: -90 } },
+          { id: 'U1', type: 'LOGIC', gate: 'NAND', nodes: ['a', 'b', 'y'], vcc: 5, hyst: 1 },
+        ],
+      },
+      1e-3,
+    )
+    let prev = sim.step().nodeV['y']
+    const falls: number[] = []
+    const rises: number[] = []
+    for (let k = 0; k < 2000; k++) {
+      const s = sim.step()
+      const y = s.nodeV['y']
+      if (prev > 2.5 && y <= 2.5) falls.push(s.nodeV['b'])
+      if (prev < 2.5 && y >= 2.5) rises.push(s.nodeV['b'])
+      prev = y
+    }
+    expect(falls.length).toBeGreaterThanOrEqual(2)
+    expect(rises.length).toBeGreaterThanOrEqual(1)
+    for (const v of falls) expect(Math.abs(v - 3)).toBeLessThan(0.05)
+    for (const v of rises) expect(Math.abs(v - 2)).toBeLessThan(0.05)
+  })
+
   it('NOR SR latch powers up in the state given by netlist.ic', () => {
     const latch = (ic: Record<string, number>): Netlist => ({
       ic,

@@ -24,26 +24,52 @@ export const DEFAULT_RATINGS: Partial<Record<ElementType, Rating>> = {
   REG: { failMode: 'shutdown' },
 }
 
+/** per-element rating memory (NaN timers = not overloaded) */
+export interface PartState {
+  /** sim time the over-current / over-power / reverse-voltage condition started */
+  ocSince: number
+  opSince: number
+  rvSince: number
+  /** junction temperature, °C */
+  tj: number
+  /** running means of i² and p (rmsWindow) */
+  meanI2: number
+  meanP: number
+  /** fuse melting integral, A²s */
+  melt: number
+  /** in thermal shutdown */
+  shutdown: boolean
+}
+
 export interface RatingState {
-  /** `${elementId}:${reason}` -> sim time the overload started */
-  overSince: Record<string, number>
   /** elements already reported, so a burn fires once */
   burnt: Set<string>
-  /** junction temperature by element id, °C */
-  tj: Record<string, number>
-  /** running mean of i² and of p by element id (rmsWindow) */
-  meanI2: Record<string, number>
-  meanP: Record<string, number>
-  /** fuse melting integral by element id, A²s */
-  melt: Record<string, number>
-  /** elements currently in thermal shutdown */
-  shutdown: Set<string>
+  /** per element id */
+  parts: Map<string, PartState>
   /** time of the previous check (null before the first) */
   lastT: number | null
 }
 
 export function createRatingState(): RatingState {
-  return { overSince: {}, burnt: new Set(), tj: {}, meanI2: {}, meanP: {}, melt: {}, shutdown: new Set(), lastT: null }
+  return { burnt: new Set(), parts: new Map(), lastT: null }
+}
+
+function part(state: RatingState, id: string): PartState {
+  let p = state.parts.get(id)
+  if (!p) {
+    p = {
+      ocSince: NaN,
+      opSince: NaN,
+      rvSince: NaN,
+      tj: T_AMB,
+      meanI2: 0,
+      meanP: 0,
+      melt: 0,
+      shutdown: false,
+    }
+    state.parts.set(id, p)
+  }
+  return p
 }
 
 export function effectiveRating(el: Element): Rating | undefined {
@@ -52,51 +78,102 @@ export function effectiveRating(el: Element): Rating | undefined {
   return { ...base, ...el.rating }
 }
 
-/** voltage the rating's maxV applies to: nodes[0]-nodes[1], or Vce / Vds for transistors */
-function ratedVoltage(el: Element, s: Solution): number {
-  const v = (n: string) => s.nodeV[n] ?? 0
-  switch (el.type) {
-    case 'NPN':
-    case 'PNP':
-    case 'NMOS':
-    case 'PMOS':
-    case 'POT':
-      return v(el.nodes[0]) - v(el.nodes[2])
-    case 'OPAMP':
-      return el.vPos - el.vNeg
-    case 'LOGIC':
-      return el.vcc
-    default:
-      return v(el.nodes[0]) - v(el.nodes[1])
+// cheap single reads (fall back to the maps for hand-built Solutions)
+const curOf = (s: Solution, id: string) => (s.currentOf ? s.currentOf(id) : (s.current[id] ?? 0))
+const powOf = (s: Solution, id: string) => (s.powerOf ? s.powerOf(id) : (s.power[id] ?? 0))
+const xOf = (s: Solution, id: string, key: string) => (s.extraOf ? s.extraOf(id, key) : (s.extra[key] ?? 0))
+const vOf = (s: Solution, n: string) => (s.voltageOf ? s.voltageOf(n) : (s.nodeV[n] ?? 0))
+const publish = (s: Solution, key: string, v: number) => {
+  if (s.publish) s.publish(key, v)
+  else s.extra[key] = v
+}
+
+/** per-element work precomputed once per netlist object */
+interface Entry {
+  el: Element
+  id: string
+  r: Rating | undefined
+  thermal: boolean
+  /** maxV terminals (vb unused when vFixed is set) */
+  va: string
+  vb: string
+  vFixed: number | null
+  /** extra key holding the rated current, or null for current[id] */
+  iKey: string | null
+  kTj: string
+  ocReason: BurnEvent['reason']
+}
+
+const PLANS = new WeakMap<Netlist, Entry[]>()
+
+function plan(netlist: Netlist): Entry[] {
+  let p = PLANS.get(netlist)
+  if (p) return p
+  p = []
+  for (const el of netlist.elements) {
+    const r = effectiveRating(el)
+    const special = el.type === 'FUSE' || (el.type === 'C' && el.polarized === true)
+    if (!r && !special) continue
+    const id = el.id
+    const va = el.nodes[0]
+    let vb = el.nodes[1] ?? '0'
+    let vFixed: number | null = null
+    switch (el.type) {
+      case 'NPN':
+      case 'PNP':
+      case 'NMOS':
+      case 'PMOS':
+      case 'POT':
+        vb = el.nodes[2] // Vce / Vds / track
+        break
+      case 'OPAMP':
+        vFixed = el.vPos - el.vNeg
+        break
+      case 'LOGIC':
+        vFixed = el.vcc
+        break
+      default:
+        break
+    }
+    p.push({
+      el,
+      id,
+      r,
+      thermal: r !== undefined && r.rth !== undefined && r.tMax !== undefined,
+      va,
+      vb,
+      vFixed,
+      iKey: el.type === 'OPAMP' || el.type === 'REG' ? `${id}.iout` : null,
+      kTj: `${id}.tj`,
+      ocReason: el.type === 'PIN' ? 'pin-overcurrent' : 'overcurrent',
+    })
   }
+  PLANS.set(netlist, p)
+  return p
 }
 
-function ratedCurrent(el: Element, s: Solution): number {
-  if (el.type === 'OPAMP') return s.extra[`${el.id}.iout`] ?? 0
-  if (el.type === 'REG') return s.extra[`${el.id}.iout`] ?? 0
-  return s.current[el.id] ?? 0
+function fire(
+  state: RatingState,
+  events: BurnEvent[],
+  e: Entry,
+  reason: BurnEvent['reason'],
+  value: number,
+  limit: number,
+  t: number,
+): void {
+  if (reason !== 'thermal-shutdown' && reason !== 'thermal-recover') state.burnt.add(e.id)
+  events.push({ elementId: e.id, partId: e.el.partId, reason, value, limit, t })
 }
 
-/** exponential running mean with time constant tau */
-function runningMean(map: Record<string, number>, id: string, value: number, dt: number, tau: number): number {
-  const prev = map[id] ?? 0
-  const next = dt > 0 ? prev + (value - prev) * (1 - Math.exp(-dt / tau)) : prev
-  map[id] = next
-  return next
-}
+/** advance a running mean with time constant tau */
+const mean = (prev: number, value: number, dt: number, tau: number) =>
+  dt > 0 ? prev + (value - prev) * (1 - Math.exp(-dt / tau)) : prev
 
-/** advance Tj by dt at power p (exact for piecewise-constant power) */
-function stepTj(state: RatingState, id: string, r: Rating, p: number, dt: number): number {
+/** Tj after dt at power p (exact for piecewise-constant power) */
+function nextTj(prev: number, r: Rating, p: number, dt: number): number {
   const tss = T_AMB + p * (r.rth ?? 0)
   const tau = r.tauTh ?? 0
-  let tj: number
-  if (!(tau > 0)) tj = tss
-  else {
-    const prev = state.tj[id] ?? T_AMB
-    tj = prev + (tss - prev) * (1 - Math.exp(-dt / tau))
-  }
-  state.tj[id] = tj
-  return tj
+  return tau > 0 ? prev + (tss - prev) * (1 - Math.exp(-dt / tau)) : tss
 }
 
 /**
@@ -109,98 +186,100 @@ function stepTj(state: RatingState, id: string, r: Rating, p: number, dt: number
  * - Otherwise over-power (mean over rmsWindow when set) must persist for BURN_DELAY.
  * - FUSE blows when ∫(i² - iRated²)dt (floored at 0) reaches i2t; a polarized C fails short
  *   after BURN_DELAY of more than POLAR_REV_V reverse bias.
+ *
+ * Designed to be called once per frame with the frame's last good solution (Transient.lastGood)
+ * and increasing `t`: heat and running means integrate over the time since the previous call,
+ * so frame-rate sampling is enough. It reads only the rated elements (Solution.currentOf etc.,
+ * without materialising the lazy maps) and caches its per-element plan per netlist object.
  * `state` is mutated (timers, temperatures, already-burnt set). At most one event per element.
- * Call it with increasing t; the step since the previous call integrates heat.
  */
 export function checkRatings(netlist: Netlist, solution: Solution, t: number, state: RatingState): BurnEvent[] {
   if (!solution.ok) return []
   const dt = state.lastT === null ? 0 : Math.max(0, t - state.lastT)
   state.lastT = t
   const events: BurnEvent[] = []
-  for (const el of netlist.elements) {
-    if (state.burnt.has(el.id)) continue
-    const fire = (reason: BurnEvent['reason'], value: number, limit: number) => {
-      if (reason !== 'thermal-shutdown' && reason !== 'thermal-recover') state.burnt.add(el.id)
-      events.push({ elementId: el.id, partId: el.partId, reason, value, limit, t })
-    }
-    /** true when `over` has held for BURN_DELAY */
-    const sustained = (reason: string, over: boolean): boolean => {
-      const key = `${el.id}:${reason}`
-      if (!over) {
-        delete state.overSince[key]
-        return false
-      }
-      const since = (state.overSince[key] ??= t)
-      if (t - since >= BURN_DELAY - 1e-9) {
-        delete state.overSince[key]
-        return true
-      }
-      return false
-    }
+  const s = solution
+  const late = t - BURN_DELAY + 1e-9 // a timer started at or before this has run its course
+  for (const e of plan(netlist)) {
+    const { el, id } = e
+    if (state.burnt.size > 0 && state.burnt.has(id)) continue
+    const ps = part(state, id)
 
     if (el.type === 'FUSE' && !el.blown) {
-      const i = solution.current[el.id] ?? 0
-      const melt = Math.max(0, (state.melt[el.id] ?? 0) + (i * i - el.iRated * el.iRated) * dt)
-      state.melt[el.id] = melt
-      if (melt >= el.i2t) {
-        fire('blown', Math.abs(i), el.iRated)
+      const i = curOf(s, id)
+      ps.melt = Math.max(0, ps.melt + (i * i - el.iRated * el.iRated) * dt)
+      if (ps.melt >= el.i2t) {
+        fire(state, events, e, 'blown', Math.abs(i), el.iRated, t)
         continue
       }
     }
     if (el.type === 'C' && el.polarized && !el.disabled) {
-      const v = (solution.nodeV[el.nodes[0]] ?? 0) - (solution.nodeV[el.nodes[1]] ?? 0)
-      if (sustained('reverse-voltage', v < -POLAR_REV_V)) {
-        fire('reverse-voltage', -v, POLAR_REV_V)
-        continue
-      }
+      const v = vOf(s, el.nodes[0]) - vOf(s, el.nodes[1])
+      if (v < -POLAR_REV_V) {
+        if (ps.rvSince !== ps.rvSince) ps.rvSince = t
+        if (ps.rvSince <= late) {
+          fire(state, events, e, 'reverse-voltage', -v, POLAR_REV_V, t)
+          continue
+        }
+      } else ps.rvSince = NaN
     }
 
-    const r = effectiveRating(el)
+    const r = e.r
     if (!r) continue
-    const thermal = r.rth !== undefined && r.tMax !== undefined
 
-    if (state.shutdown.has(el.id)) {
+    if (ps.shutdown) {
       // disabled while hot: cool down (it dissipates nothing) and restart below the hysteresis
-      const tj = stepTj(state, el.id, r, el.disabled ? 0 : Math.abs(solution.power[el.id] ?? 0), dt)
-      solution.extra[`${el.id}.tj`] = tj
-      if (tj < r.tMax! - THERMAL_HYST) {
-        state.shutdown.delete(el.id)
-        fire('thermal-recover', tj, r.tMax! - THERMAL_HYST)
+      ps.tj = nextTj(ps.tj, r, el.disabled ? 0 : Math.abs(powOf(s, id)), dt)
+      publish(s, e.kTj, ps.tj)
+      if (ps.tj < r.tMax! - THERMAL_HYST) {
+        ps.shutdown = false
+        fire(state, events, e, 'thermal-recover', ps.tj, r.tMax! - THERMAL_HYST, t)
       }
       continue
     }
     if (el.disabled) continue
 
     if (r.maxV !== undefined) {
-      const v = Math.abs(ratedVoltage(el, solution))
+      const v = Math.abs(e.vFixed ?? vOf(s, e.va) - vOf(s, e.vb))
       if (v > r.maxV) {
-        fire('overvoltage', v, r.maxV)
+        fire(state, events, e, 'overvoltage', v, r.maxV, t)
         continue
       }
     }
 
     if (r.maxI !== undefined) {
-      const i = Math.abs(ratedCurrent(el, solution))
-      const value = r.rmsWindow ? Math.sqrt(runningMean(state.meanI2, el.id, i * i, dt, r.rmsWindow)) : i
-      if (sustained('overcurrent', value > r.maxI)) {
-        fire(el.type === 'PIN' ? 'pin-overcurrent' : 'overcurrent', value, r.maxI)
-        continue
+      const i = Math.abs(e.iKey ? xOf(s, id, e.iKey) : curOf(s, id))
+      let value = i
+      if (r.rmsWindow) {
+        ps.meanI2 = mean(ps.meanI2, i * i, dt, r.rmsWindow)
+        value = Math.sqrt(ps.meanI2)
       }
+      if (value > r.maxI) {
+        if (ps.ocSince !== ps.ocSince) ps.ocSince = t
+        if (ps.ocSince <= late) {
+          fire(state, events, e, e.ocReason, value, r.maxI, t)
+          continue
+        }
+      } else ps.ocSince = NaN
     }
 
-    const p = Math.abs(solution.power[el.id] ?? 0)
-    if (thermal) {
-      const tj = stepTj(state, el.id, r, p, dt)
-      solution.extra[`${el.id}.tj`] = tj
-      if (tj >= r.tMax!) {
+    if (e.thermal) {
+      ps.tj = nextTj(ps.tj, r, Math.abs(powOf(s, id)), dt)
+      publish(s, e.kTj, ps.tj)
+      if (ps.tj >= r.tMax!) {
         if (r.failMode === 'shutdown') {
-          state.shutdown.add(el.id)
-          fire('thermal-shutdown', tj, r.tMax!)
-        } else fire('overtemp', tj, r.tMax!)
+          ps.shutdown = true
+          fire(state, events, e, 'thermal-shutdown', ps.tj, r.tMax!, t)
+        } else fire(state, events, e, 'overtemp', ps.tj, r.tMax!, t)
       }
     } else if (r.maxP !== undefined) {
-      const value = r.rmsWindow ? runningMean(state.meanP, el.id, p, dt, r.rmsWindow) : p
-      if (sustained('overpower', value > r.maxP)) fire('overpower', value, r.maxP)
+      const p = Math.abs(powOf(s, id))
+      let value = p
+      if (r.rmsWindow) value = ps.meanP = mean(ps.meanP, p, dt, r.rmsWindow)
+      if (value > r.maxP) {
+        if (ps.opSince !== ps.opSince) ps.opSince = t
+        if (ps.opSince <= late) fire(state, events, e, 'overpower', value, r.maxP, t)
+      } else ps.opSince = NaN
     }
   }
   return events

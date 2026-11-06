@@ -1,29 +1,29 @@
 # Graph Report - agent-abd8803da38df5d79  (2026-11-07)
 
 ## Corpus Check
-- 107 files · ~145,081 words
+- 107 files · ~146,770 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .css 3)
 
 ## Summary
-- 1458 nodes · 2162 edges · 82 communities (80 shown, 2 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.92)
+- 1480 nodes · 2214 edges · 82 communities (80 shown, 2 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 79 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f7d1d230`
+- Built from commit: `3a05a88a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Logic Gates
-- M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs)
-- VirtualMcu
+- ratings.ts
+- .warn
 - devices.ts
 - TryItYourself.tsx
 - deploy.yml
-- solve.ts
-- engine/types.ts
+- mna.ts
+- transient.ts
 - stampDevice
 - package.json
 - Arduino Uno R3
@@ -46,11 +46,15 @@
 - Capstone: Two-Wheel Balancer
 - Lesson
 - Flip-Flops and Counters
-- addA
-- Tweaks.tsx
-- App.tsx
+- solve.ts
+- failures.ts
+- engine/types.ts
+- curriculum/README.md
 - scripts
-- Failures
+- thermal.test.ts
+- .start
+- prepareDevice
+- Netlist
 - Failures
 - Failures
 - Failures
@@ -59,11 +63,8 @@
 - React + TypeScript + Vite
 - tsconfig.json
 - sound.ts
-- ui/types.ts
 - Layout.tsx
-- Sidebar.tsx
 - package.json
-- MeetTheBoard.tsx
 - transpile.ts
 - virtualMcu.ts
 - constants.ts
@@ -101,14 +102,14 @@
 ## God Nodes (most connected - your core abstractions)
 1. `VirtualMcu` - 31 edges
 2. `stampDevice()` - 27 edges
-3. `Transpiler` - 24 edges
-4. `createTransient()` - 24 edges
+3. `createTransient()` - 26 edges
+4. `Transpiler` - 24 edges
 5. `vitest` - 20 edges
-6. `Netlist` - 18 edges
-7. `compilerOptions` - 18 edges
-8. `compile()` - 17 edges
-9. `TranspileError` - 15 edges
-10. `solveDC()` - 15 edges
+6. `checkRatings()` - 19 edges
+7. `Netlist` - 18 edges
+8. `compilerOptions` - 18 edges
+9. `compile()` - 17 edges
+10. `TranspileError` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `SIM NOTE` --references--> `constrain()`  [INFERRED]
@@ -119,8 +120,8 @@
   docs/curriculum/README.md → src/engine/sim/failures.ts
 - `X1 — Simulator (`src/engine/sim/`)` --references--> `applyPatches()`  [INFERRED]
   docs/plans/m1.5-engine-extensions.md → src/engine/sim/failures.ts
-- `X2 — Virtual MCU (`src/engine/mcu/`)` --references--> `tone()`  [INFERRED]
-  docs/plans/m1.5-engine-extensions.md → src/audio/sound.ts
+- `SIM NOTE` --references--> `checkRatings()`  [INFERRED]
+  docs/curriculum/T1/transformer.md → src/engine/sim/ratings.ts
 
 ## Import Cycles
 - None detected.
@@ -128,20 +129,20 @@
 ## Communities (82 total, 2 thin omitted)
 
 ### Community 0 - "Logic Gates"
-Cohesion: 0.12
-Nodes (15): Board, Circuit, F1: Forget the pull-down on input A, F2: Short the output to ground, F3: Run the discrete gate from 3 V, Failures, For mechanical engineers, Learning goals (+7 more)
-
-### Community 1 - "M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs)"
 Cohesion: 0.18
-Nodes (8): Global constraints, M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs), X1 — Simulator (`src/engine/sim/`), X2 — Virtual MCU (`src/engine/mcu/`), X3 — Behavior framework (`src/engine/behaviors/`), X4 — UI and bench, X5 — 3D part additions, BehaviorContext
+Nodes (11): Board, Circuit, For mechanical engineers, Learning goals, Logic Gates, Meet the board, Pro tips, Quiz (+3 more)
 
-### Community 2 - "VirtualMcu"
-Cohesion: 0.21
-Nodes (4): Behaviors, Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), run(), VirtualMcu
+### Community 1 - "ratings.ts"
+Cohesion: 0.09
+Nodes (25): BURN_DELAY, checkRatings(), curOf(), DEFAULT_RATINGS, Entry, fire(), mean(), nextTj() (+17 more)
+
+### Community 2 - ".warn"
+Cohesion: 0.15
+Nodes (3): lineOfError(), probeFirstLine(), VirtualMcuOptions
 
 ### Community 3 - "devices.ts"
-Cohesion: 0.05
-Nodes (43): BJT_BETA, BJT_BETA_R, BJT_IS, BK, BREAK_KNEE, BREAK_RZ, breakEval(), CC (+35 more)
+Cohesion: 0.04
+Nodes (47): BJT_BETA, BJT_BETA_R, BJT_IS, BK, BREAK_KNEE, BREAK_RZ, breakEval(), CC (+39 more)
 
 ### Community 4 - "TryItYourself.tsx"
 Cohesion: 0.33
@@ -151,17 +152,17 @@ Nodes (6): @codemirror/lang-cpp@^6.0.3, @uiw/react-codemirror@^4.25.12, @codemir
 Cohesion: 0.06
 Nodes (31): runs-on, steps, concurrency, cancel-in-progress, group, environment, needs, runs-on (+23 more)
 
-### Community 6 - "solve.ts"
-Cohesion: 0.11
-Nodes (27): SIM NOTE, Compiled, GMIN, Measured, StampCtx, BRANCH_PIVOT_RTOL, clearSystem(), createLU() (+19 more)
+### Community 6 - "mna.ts"
+Cohesion: 0.16
+Nodes (22): stampInductor(), addA(), addB(), BRANCH_PIVOT_RTOL, clearSystem(), createLU(), createSystem(), LinearSystem (+14 more)
 
-### Community 7 - "engine/types.ts"
-Cohesion: 0.05
-Nodes (65): SIM NOTE, SIM NOTE, SIM NOTE, vitest, captureState(), Dev, inheritState(), partition() (+57 more)
+### Community 7 - "transient.ts"
+Cohesion: 0.17
+Nodes (18): vitest, Dev, inheritState(), modesChanged(), partition(), gateOut(), lastPeriodPeak(), lc (+10 more)
 
 ### Community 8 - "stampDevice"
-Cohesion: 0.18
-Nodes (19): bjtEval(), capCompanion(), clampEval(), diodeEval(), ensureLogicScratch(), fetlim(), gateEval(), logicThreshold() (+11 more)
+Cohesion: 0.16
+Nodes (22): bjtEval(), capCompanion(), captureState(), clampEval(), diodeEval(), ensureLogicScratch(), fetlim(), gateEval() (+14 more)
 
 ### Community 9 - "package.json"
 Cohesion: 0.12
@@ -228,100 +229,100 @@ Cohesion: 0.12
 Nodes (16): ADC, DAC and PWM, Board, Circuit, F1: Drive a 1 kΩ load straight from the filter, F2: Fit a 1000 µF smoothing capacitor, F3: Remove the filter capacitor, Failures, For mechanical engineers (+8 more)
 
 ### Community 25 - "5. Virtual MCU (`src/engine/mcu`)"
-Cohesion: 0.23
-Nodes (4): Learning goals, 5. Virtual MCU (`src/engine/mcu`), constrain(), VirtualMcuOptions
+Cohesion: 0.26
+Nodes (4): Learning goals, 5. Virtual MCU (`src/engine/mcu`), constrain(), VirtualMcu
 
 ### Community 26 - "The 555 Timer"
-Cohesion: 0.12
-Nodes (15): Board, Circuit, F1: Leave out R1 (pin 7 tied straight to V_CC), F2: Remove the timing capacitor, F3: Run it from two AA cells, Failures, For mechanical engineers, Learning goals (+7 more)
+Cohesion: 0.18
+Nodes (11): Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Pro tips, Quiz, Readouts (+3 more)
 
 ### Community 27 - "Capstone: Two-Wheel Balancer"
 Cohesion: 0.06
 Nodes (32): Behaviors, Board, Capstone: Two-Wheel Balancer, Circuit, F1: Tired, high-resistance battery, F2: IMU mounted 3° off, F3: Right motor wired backwards, F4: Worn gearbox (4° backlash) (+24 more)
 
 ### Community 28 - "Lesson"
-Cohesion: 0.20
-Nodes (11): Circuit Atelier: Curriculum (T0–T3), Engine requirements gathered from SIM NOTEs, File format, Order and prerequisites, Prerequisite graph (summary), Rating conventions used throughout, T0 Foundations, T1 Passives (+3 more)
+Cohesion: 0.33
+Nodes (6): Order and prerequisites, Prerequisite graph (summary), T0 Foundations, T1 Passives, T2 Semiconductors, T3 Digital
 
 ### Community 29 - "Flip-Flops and Counters"
 Cohesion: 0.12
 Nodes (15): Board, Circuit, F1: Press SET and RESET together, F2: Cut one cross-coupling link, F3: Remove the debounce capacitor, Failures, Flip-Flops and Counters, For mechanical engineers (+7 more)
 
-### Community 30 - "addA"
-Cohesion: 0.28
-Nodes (9): stampInductor(), addA(), addB(), row(), stampConductance(), stampCurrent(), stampNonlinear2(), stampNonlinear3() (+1 more)
+### Community 30 - "solve.ts"
+Cohesion: 0.13
+Nodes (16): harness(), PinEvent, Widget, StampCtx, ABSTOL, DEV_INDEX, devIndex(), MAX_ITER (+8 more)
 
-### Community 31 - "Tweaks.tsx"
-Cohesion: 0.38
-Nodes (8): Tweak, PREFIXES, siLabel(), sliderToValue(), valueToSlider(), tweakKey(), Tweaks(), TweaksProps
+### Community 31 - "failures.ts"
+Cohesion: 0.20
+Nodes (13): SIM NOTE, SIM NOTE, applyBurn(), applyPatches(), failureNodes(), OPEN_R, setElementKey(), SHORT_R (+5 more)
 
-### Community 32 - "App.tsx"
-Cohesion: 0.25
-Nodes (8): react, App(), lessonList, mockLesson, parts, tracks, setEffectsEnabled(), unlockAudio()
+### Community 32 - "engine/types.ts"
+Cohesion: 0.14
+Nodes (10): Compiled, Behavior, ElementBase, ElementType, FailureScenario, LedColor, Mount, NodeId (+2 more)
+
+### Community 33 - "curriculum/README.md"
+Cohesion: 0.22
+Nodes (4): Circuit Atelier: Curriculum (T0–T3), Engine requirements gathered from SIM NOTEs, File format, Rating conventions used throughout
 
 ### Community 34 - "scripts"
 Cohesion: 0.22
 Nodes (9): scripts, build, dev, graph, lint, preview, test, test:e2e (+1 more)
 
-### Community 35 - "Failures"
-Cohesion: 0.50
-Nodes (4): F1: R3 goes open, F2: Solder bridge shorts the parallel pair, F3: Someone adds a 100 Ω resistor across R2, Failures
+### Community 35 - "thermal.test.ts"
+Cohesion: 0.33
+Nodes (6): chain(), msPerFrame(), ratingsMs(), createRatingState(), T_AMB, firstEvent()
 
-### Community 36 - "Failures"
-Cohesion: 0.50
-Nodes (4): F1: 12 V into 100 Ω, F2: Misread colour bands (10 Ω fitted instead of 1 kΩ), F3: Resistor lead pulls out of the board, Failures
+### Community 36 - ".start"
+Cohesion: 0.43
+Nodes (4): Behaviors, Circuit, Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), run()
 
-### Community 37 - "Failures"
-Cohesion: 0.50
-Nodes (4): F1: Remove the flyback diode, then open the switch, F2: Fit the flyback diode backwards, F3: Too little series resistance, Failures
+### Community 37 - "prepareDevice"
+Cohesion: 0.40
+Nodes (6): blankParams(), ledN(), ledSaturationCurrent(), prepareDevice(), vcritOf(), zenerU0()
 
-### Community 38 - "Failures"
+### Community 39 - "Failures"
 Cohesion: 0.50
-Nodes (4): F1: Take the damping resistor out, F2: Hot-plug 12 V into a 16 V ceramic filter, F3: The capacitor fails short, Failures
+Nodes (4): F1: Add a 5 V DC offset, F2: Turn the frequency up to 500 Hz, F3: Load the generator with 47 Ω, Failures
+
+### Community 40 - "Failures"
+Cohesion: 0.50
+Nodes (4): F1: Forget the pull-down on input A, F2: Short the output to ground, F3: Run the discrete gate from 3 V, Failures
+
+### Community 41 - "Failures"
+Cohesion: 0.50
+Nodes (4): F1: Leave out R1 (pin 7 tied straight to V_CC), F2: Remove the timing capacitor, F3: Run it from two AA cells, Failures
 
 ### Community 43 - ".oxlintrc.json"
 Cohesion: 0.33
 Nodes (5): plugins, rules, react/only-export-components, react/rules-of-hooks, $schema
 
 ### Community 44 - "compile"
-Cohesion: 0.19
-Nodes (16): blankParams(), branchCount(), compile(), extraKeys(), extraNodes(), hasInternalNode(), isNonlinear(), layoutSignature() (+8 more)
+Cohesion: 0.33
+Nodes (10): branchCount(), compile(), extraKeys(), extraNodes(), hasInternalNode(), isNonlinear(), layoutSignature(), limitSlots() (+2 more)
 
 ### Community 51 - "React + TypeScript + Vite"
 Cohesion: 0.50
 Nodes (3): Expanding the Oxlint configuration, React Compiler, React + TypeScript + Vite
 
 ### Community 69 - "sound.ts"
-Cohesion: 0.15
-Nodes (26): Task D — App shell, theme, controls and sound (`src/ui/`, `src/audio/`, `src/styles/`), BASS, BEATS_PER_CHORD, beatSeconds(), BPM, chordSeconds(), HAT_STEPS, KICK_STEPS (+18 more)
-
-### Community 81 - "ui/types.ts"
-Cohesion: 0.21
-Nodes (14): BenchStatus, BenchActions(), BenchActionsProps, MenuButton(), MenuButtonProps, MenuItem, StatusPanel(), StatusPanelProps (+6 more)
+Cohesion: 0.09
+Nodes (37): Global constraints, M1.5 — Engine extensions (triaged from the curriculum SIM NOTEs), X1 — Simulator (`src/engine/sim/`), X2 — Virtual MCU (`src/engine/mcu/`), X3 — Behavior framework (`src/engine/behaviors/`), X4 — UI and bench, X5 — 3D part additions, Task D — App shell, theme, controls and sound (`src/ui/`, `src/audio/`, `src/styles/`) (+29 more)
 
 ### Community 82 - "Layout.tsx"
-Cohesion: 0.16
-Nodes (19): QuizItem, Controls(), ControlsProps, SettingChange, Toggle(), Layout(), LayoutProps, Quiz() (+11 more)
-
-### Community 83 - "Sidebar.tsx"
-Cohesion: 0.13
-Nodes (16): 1. Experience, 2. Visual identity (original), 3. Lesson data model, 4. Simulation engine (`src/engine/sim`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec, Failures (+8 more)
+Cohesion: 0.05
+Nodes (67): 1. Experience, 2. Visual identity (original), 3. Lesson data model, 4. Simulation engine (`src/engine/sim`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec, Failures (+59 more)
 
 ### Community 85 - "package.json"
 Cohesion: 0.18
 Nodes (10): @types/node@^24.19.2, @types/three@^0.187.0, typescript@~7.0.2, name, private, type, version, @types/node (+2 more)
 
-### Community 87 - "MeetTheBoard.tsx"
-Cohesion: 0.50
-Nodes (4): md(), MeetTheBoard(), MeetTheBoardProps, renderer
-
 ### Community 90 - "transpile.ts"
-Cohesion: 0.06
-Nodes (42): BUILTIN_NAMES, errorOf(), castPrefix(), charCode(), checkCompiles(), checkSemicolons(), CLOSE, COMPOUND (+34 more)
+Cohesion: 0.07
+Nodes (39): BUILTIN_NAMES, errorOf(), castPrefix(), charCode(), checkCompiles(), checkSemicolons(), CLOSE, COMPOUND (+31 more)
 
 ### Community 91 - "virtualMcu.ts"
-Cohesion: 0.16
-Nodes (23): arduinoMap(), arduinoRound(), castInt(), CharBox, chr(), cstr(), FloatBox, formatNumber() (+15 more)
+Cohesion: 0.17
+Nodes (21): arduinoMap(), arduinoRound(), castInt(), CharBox, chr(), cstr(), FloatBox, formatNumber() (+13 more)
 
 ### Community 92 - "constants.ts"
 Cohesion: 0.08
@@ -361,7 +362,7 @@ Nodes (17): Board, Circuit, F1: Leave the resistor out (jumper in its place), F2
 
 ### Community 101 - "PCA9685 Servo Driver"
 Cohesion: 0.11
-Nodes (17): Behaviors, Board, Circuit, F1: Power the servos from the Uno's 5 V pin, F2: No common ground, F3: Breakout without I²C pull-ups, Failures, For mechanical engineers (+9 more)
+Nodes (18): Behaviors, Board, Circuit, F1: Power the servos from the Uno's 5 V pin, F2: No common ground, F3: Breakout without I²C pull-ups, Failures, For mechanical engineers (+10 more)
 
 ### Community 102 - "The MOSFET Switch"
 Cohesion: 0.12
@@ -388,28 +389,28 @@ Cohesion: 0.12
 Nodes (15): Board, Circuit, F1: Use an old analog meter (20 kΩ/V on the 10 V range), F2: Measure volts with the red lead still in the mA jack, F3: The bottom resistor falls out while you measure, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 108 - "Ohm's Law"
-Cohesion: 0.18
-Nodes (11): Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Ohm's Law, Pro tips, Quiz (+3 more)
+Cohesion: 0.12
+Nodes (15): Board, Circuit, F1: 12 V into 100 Ω, F2: Misread colour bands (10 Ω fitted instead of 1 kΩ), F3: Resistor lead pulls out of the board, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 109 - "AC and the Oscilloscope"
-Cohesion: 0.12
-Nodes (15): AC and the Oscilloscope, Board, Circuit, F1: Add a 5 V DC offset, F2: Turn the frequency up to 500 Hz, F3: Load the generator with 47 Ω, Failures, For mechanical engineers (+7 more)
+Cohesion: 0.18
+Nodes (11): AC and the Oscilloscope, Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Pro tips, Quiz (+3 more)
 
 ### Community 110 - "Capacitors and RC Time"
 Cohesion: 0.12
 Nodes (15): Board, Capacitors and RC Time, Circuit, F1: Plug it into 24 V, F2: Swap in 1000 µF, F3: A leaky capacitor, Failures, For mechanical engineers (+7 more)
 
 ### Community 111 - "Inductors and RL Time"
-Cohesion: 0.18
-Nodes (11): Board, Circuit, For mechanical engineers, Inductors and RL Time, Learning goals, Meet the board, Pro tips, Quiz (+3 more)
+Cohesion: 0.12
+Nodes (15): Board, Circuit, F1: Remove the flyback diode, then open the switch, F2: Fit the flyback diode backwards, F3: Too little series resistance, Failures, For mechanical engineers, Inductors and RL Time (+7 more)
 
 ### Community 112 - "RLC Resonance"
-Cohesion: 0.18
-Nodes (11): Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Pro tips, Quiz, Readouts (+3 more)
+Cohesion: 0.12
+Nodes (15): Board, Circuit, F1: Take the damping resistor out, F2: Hot-plug 12 V into a 16 V ceramic filter, F3: The capacitor fails short, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 113 - "The Transformer"
-Cohesion: 0.13
-Nodes (14): Board, Circuit, F1: Short the secondary, F2: Overload: 6 Ω instead of 12 Ω, F3: Unload it, Failures, For mechanical engineers, Learning goals (+6 more)
+Cohesion: 0.12
+Nodes (15): Board, Circuit, F1: Short the secondary, F2: Overload: 6 Ω instead of 12 Ω, F3: Unload it, Failures, For mechanical engineers, Learning goals (+7 more)
 
 ### Community 114 - "Diodes and Rectifiers"
 Cohesion: 0.12
@@ -429,15 +430,15 @@ Nodes (15): Board, Circuit, F1: Plug in a 15 V adapter, F2: Ask for too much cur
 
 ### Community 118 - "Interrupts and Timers"
 Cohesion: 0.12
-Nodes (16): Board, Circuit, F1: Remove the debounce capacitor, F2: Leave out the tach pull-up, F3: Spin the wheel at 300 kHz, Failures, For mechanical engineers, Interrupts and Timers (+8 more)
+Nodes (15): Board, F1: Remove the debounce capacitor, F2: Leave out the tach pull-up, F3: Spin the wheel at 300 kHz, Failures, For mechanical engineers, Interrupts and Timers, Learning goals (+7 more)
 
 ### Community 119 - "Power and Heat"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (14): Board, Circuit, F1: 47 Ω on 5 V, F2: Same resistor, supply turned up to 12 V, F3: Fit a 2 W resistor instead, Failures, For mechanical engineers, Learning goals (+6 more)
 
 ### Community 120 - "Series and Parallel"
-Cohesion: 0.20
-Nodes (10): Board, Circuit, For mechanical engineers, Learning goals, Meet the board, Pro tips, Quiz, Readouts (+2 more)
+Cohesion: 0.13
+Nodes (14): Board, Circuit, F1: R3 goes open, F2: Solder bridge shorts the parallel pair, F3: Someone adds a 100 Ω resistor across R2, Failures, For mechanical engineers, Learning goals (+6 more)
 
 ### Community 121 - "Resistor Codes and Dividers"
 Cohesion: 0.13
@@ -453,17 +454,17 @@ Nodes (5): Circuit Atelier — interactive electronics course, Commands, Memory 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Circuit Atelier: Curriculum (T0–T3)` connect `Lesson` to `curriculum/README.md`?**
-  _High betweenness centrality (0.217) - this node is a cross-community bridge._
+- **Why does `Circuit Atelier: Curriculum (T0–T3)` connect `curriculum/README.md` to `Layout.tsx`, `Lesson`?**
+  _High betweenness centrality (0.234) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `VirtualMcu` (e.g. with `SIM NOTE` and `5. Virtual MCU (`src/engine/mcu`)`) actually correct?**
   _`VirtualMcu` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **Should `Logic Gates` be split into smaller, more focused modules?**
-  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
-- **Why does `Lesson` connect `Lesson` to `App.tsx`, `engine/types.ts`, `Layout.tsx`, `Sidebar.tsx`, `Capstone: Two-Wheel Balancer`?**
-  _High betweenness centrality (0.210) - this node is a cross-community bridge._
+- **Should `ratings.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
+- **Why does `Lesson` connect `Layout.tsx` to `engine/types.ts`, `curriculum/README.md`, `Capstone: Two-Wheel Balancer`?**
+  _High betweenness centrality (0.223) - this node is a cross-community bridge._
 - **Should `devices.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.04756871035940803 - nodes in this community are weakly interconnected._
-- **Why does `vitest` connect `engine/types.ts` to `sound.ts`, `devDependencies`, `package.json`, `transpile.ts`, `Capstone: Two-Wheel Balancer`, `Tweaks.tsx`?**
+  _Cohesion score 0.04343971631205674 - nodes in this community are weakly interconnected._
+- **Why does `PartKind` connect `Capstone: Two-Wheel Balancer` to `engine/types.ts`?**
   _High betweenness centrality (0.041) - this node is a cross-community bridge._
 - **Should `deploy.yml` be split into smaller, more focused modules?**
   _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._

@@ -87,4 +87,56 @@ describe('integration method', () => {
     expect(s.nodeV['c'] / 5).toBeLessThan(0.64)
     expect(() => sim.setDt(0)).toThrow()
   })
+
+  it('trapezoidal restarts with one backward-Euler step after a LOGIC output edge', () => {
+    const sim = createTransient(
+      {
+        elements: [
+          { id: 'V1', type: 'V', nodes: ['i', '0'], value: 0, wave: { kind: 'sine', amp: 5, freq: 50 } },
+          { id: 'U1', type: 'LOGIC', gate: 'NOT', nodes: ['i', 'y'], vcc: 5 },
+          { id: 'C1', type: 'C', nodes: ['y', '0'], value: 1e-6 },
+        ],
+      },
+      1e-4,
+      { method: 'trap' },
+    )
+    let prev = sim.step().extra['U1.out']
+    let edges = 0
+    let edgeNext = false
+    for (let k = 0; k < 400; k++) {
+      const out = sim.step().extra['U1.out']
+      if (edgeNext) expect(sim.lastStepTrap).toBe(false)
+      else expect(sim.lastStepTrap).toBe(true)
+      edgeNext = prev > 0.5 !== out > 0.5
+      if (edgeNext) edges++
+      prev = out
+    }
+    expect(edges).toBeGreaterThanOrEqual(4) // 50 Hz for 40 ms: two periods, two edges each
+  })
+
+  it('…and after a V current-limit mode flip', () => {
+    const sim = createTransient(
+      {
+        elements: [
+          { id: 'V1', type: 'V', nodes: ['a', '0'], value: 0, wave: { kind: 'sine', amp: 10, freq: 50 }, iLimit: 0.5 },
+          { id: 'R1', type: 'R', nodes: ['a', '0'], value: 10 },
+        ],
+      },
+      1e-4,
+      { method: 'trap' },
+    )
+    sim.step()
+    let prevCc = 0
+    let flips = 0
+    let flipNext = false
+    for (let k = 0; k < 200; k++) {
+      const cc = sim.step().extra['V1.cc']
+      expect(sim.lastStepTrap).toBe(!flipNext)
+      flipNext = cc !== prevCc
+      if (flipNext) flips++
+      prevCc = cc
+    }
+    // |10·sin| > 5 V (0.5 A into 10 Ω) on part of each half-cycle: enters CC once per half-cycle
+    expect(flips).toBeGreaterThanOrEqual(2)
+  })
 })

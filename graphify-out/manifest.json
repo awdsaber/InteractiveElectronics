@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794002634.9823778,
-    "seen": 1794003551.125241,
-    "ast_hash": "789389cf656da095ea4cab10864394a1",
+    "mtime": 1794003834.9003494,
+    "seen": 1794004291.290776,
+    "ast_hash": "3fa5a11b7c6ad9f6243dd6766513e00c",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
-    "mtime": 1794003394.8442755,
-    "seen": 1794003551.125241,
-    "ast_hash": "dc2e3202e80a9ab1cf7de4e005a09b88",
+    "mtime": 1794004105.5068867,
+    "seen": 1794004291.290776,
+    "ast_hash": "dd9d7c4b31fb5b18b65657574538f90f",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.test.ts": {
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/perf.test.ts": {
-    "mtime": 1794002289.2899418,
-    "seen": 1794003551.125241,
-    "ast_hash": "b4724945aca1ca9bdf934edb75d131d9",
+    "mtime": 1794004258.6711564,
+    "seen": 1794004291.290776,
+    "ast_hash": "27fc53bdd1c590fb86b88f0004d3c7d9",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.test.ts": {
@@ -516,9 +516,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.ts": {
-    "mtime": 1794003295.865494,
-    "seen": 1794003551.125241,
-    "ast_hash": "93c6a7d8efc5b4d1dc6b49eee4df0212",
+    "mtime": 1794004212.0887082,
+    "seen": 1794004291.290776,
+    "ast_hash": "ef18d90f01017ff1be6cc4b752e5f649",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.test.ts": {
@@ -528,9 +528,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/solve.ts": {
-    "mtime": 1794003223.69294,
-    "seen": 1794003551.125241,
-    "ast_hash": "130d461b94b1560fe518e8ce93d9aba1",
+    "mtime": 1794004228.9796758,
+    "seen": 1794004291.290776,
+    "ast_hash": "4d48c337059eb47bf1498929f4925237",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.test.ts": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/transient.ts": {
-    "mtime": 1794003246.4072526,
-    "seen": 1794003551.125241,
-    "ast_hash": "7cca65c663c85fb032fb962e6902194b",
+    "mtime": 1794004040.0317166,
+    "seen": 1794004291.290776,
+    "ast_hash": "26059c47c1948a86ac9dc49246cedbd7",
     "semantic_hash": ""
   },
   "docs/curriculum/README.md": {
@@ -636,15 +636,15 @@
     "semantic_hash": ""
   },
   "src/engine/sim/elements.test.ts": {
-    "mtime": 1794003430.6074064,
-    "seen": 1794003551.125241,
-    "ast_hash": "f4da75080fe9457d2cddc615629953c0",
+    "mtime": 1794004064.597038,
+    "seen": 1794004291.290776,
+    "ast_hash": "5205d001f82780e85790d439cc160f2d",
     "semantic_hash": ""
   },
   "src/engine/sim/integration.test.ts": {
-    "mtime": 1794003420.738374,
-    "seen": 1794003551.125241,
-    "ast_hash": "ee66ef394beb900c9813cdc048bcb0a9",
+    "mtime": 1794004259.601726,
+    "seen": 1794004291.290776,
+    "ast_hash": "a73a8431dae43cbe1d223679e0ae97dc",
     "semantic_hash": ""
   },
   "src/engine/sim/pins.test.ts": {
