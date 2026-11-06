@@ -1,7 +1,18 @@
 // Newton-Raphson operating-point solver with gmin and source stepping fallbacks.
 
 import type { Netlist, PinState, Solution } from '../types'
-import { type Compiled, type Dev, type Measured, type StampCtx, GMIN, compile, measureDevice, stampDevice } from './devices'
+import {
+  type Compiled,
+  type Dev,
+  type Measured,
+  type StampCtx,
+  GMIN,
+  IP,
+  compile,
+  measureCurrentPower,
+  measureDevice,
+  stampDevice,
+} from './devices'
 import { addA, clearSystem, luFactor, luSolve, residualOk, restoreMatrix } from './mna'
 
 export const MAX_ITER = 100
@@ -22,6 +33,10 @@ export interface SolveContext {
   mode: 'dc' | 'tran'
   dt: number
   pins: Record<number, PinState>
+  /** time of this solution, s (source waveforms; default 0) */
+  t?: number
+  /** trapezoidal C / L companions (default backward Euler) */
+  trap?: boolean
 }
 
 export interface SolveResult {
@@ -46,6 +61,8 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
   const ctx: StampCtx = {
     mode: sc.mode,
     dt: sc.dt,
+    t: sc.t ?? 0,
+    trap: sc.trap === true && sc.mode === 'tran',
     x,
     st: c.st,
     pins: sc.pins,
@@ -56,7 +73,12 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
 
   // linear part
   const cached =
-    c.linValid && c.linMode === sc.mode && c.linDt === sc.dt && c.linGmin === gmin && c.linScale === srcScale
+    c.linValid &&
+    c.linMode === sc.mode &&
+    c.linDt === sc.dt &&
+    c.linGmin === gmin &&
+    c.linScale === srcScale &&
+    c.linTrap === ctx.trap
   if (!cached) c.luValid = false
   // a linear circuit's sys.A is untouched since it was cached; otherwise rebuild below
   sys.rhsOnly = cached
@@ -74,6 +96,7 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
     c.linDt = sc.dt
     c.linGmin = gmin
     c.linScale = srcScale
+    c.linTrap = ctx.trap
   }
   c.blin.set(sys.b)
 
@@ -172,6 +195,22 @@ export function solveCompiled(c: Compiled, sc: SolveContext, x0: Float64Array, m
  * materialised on first access (most transient steps are never read), from snapshots taken
  * here, so later steps or parameter changes can't alter an earlier Solution.
  */
+/** id -> device per compiled device list (the list is replaced, never mutated, on setParam) */
+const DEV_INDEX = new WeakMap<readonly Dev[], Map<string, Dev>>()
+function devIndex(devs: readonly Dev[]): Map<string, Dev> {
+  let m = DEV_INDEX.get(devs)
+  if (!m) {
+    m = new Map(devs.map((d) => [d.el.id, d]))
+    DEV_INDEX.set(devs, m)
+  }
+  return m
+}
+/** shared scratch for single-element reads (overwritten by every read) */
+const SCRATCH: Measured = { current: {}, power: {}, extra: {} }
+/** which solution (by its private x) and element IP currently holds */
+let IP_OWNER: Float64Array | null = null
+let IP_ID = ''
+
 export function buildSolution(c: Compiled, r: SolveResult, sc: SolveContext): Solution {
   let finite = true
   for (let i = 0; i < r.x.length; i++) if (!Number.isFinite(r.x[i])) finite = false
@@ -182,20 +221,64 @@ export function buildSolution(c: Compiled, r: SolveResult, sc: SolveContext): So
   const { nodeNames, nodeUnk, nNodes } = c
   const mode = sc.mode
   const dt = sc.dt
+  const t = sc.t ?? 0
+  const trap = sc.trap === true && mode === 'tran'
 
+  const nodeIndex = c.nodeIndex
+  const ctx = { mode, dt, st, pins, t, trap }
   let nodeV: Record<string, number> | null = null
   let m: Measured | null = null
+  /** values published before the maps were materialised */
+  let overlay: Record<string, number> | null = null
+  let index: Map<string, Dev> | null = null
   const measured = (): Measured => {
     if (!m) {
       m = { current: {}, power: {}, extra: {} }
-      const ctx = { mode, dt, st, pins }
       for (const d of devs) measureDevice(d, x, ctx, m)
+      if (overlay) Object.assign(m.extra, overlay)
     }
     return m
+  }
+  /** current / power of one element into IP (0 when it doesn't exist); false if none */
+  const ip = (id: string): boolean => {
+    // current then power of the same element: measure once
+    if (IP_OWNER === x && IP_ID === id) return true
+    const d = (index ??= devIndex(devs)).get(id)
+    if (!d) return false
+    measureCurrentPower(d, x, ctx)
+    IP_OWNER = x
+    IP_ID = id
+    return true
   }
   return {
     ok: r.ok && finite,
     iterations: r.iterations,
+    currentOf(id) {
+      if (m) return m.current[id] ?? 0
+      return ip(id) ? IP.i : 0
+    },
+    powerOf(id) {
+      if (m) return m.power[id] ?? 0
+      return ip(id) ? IP.p : 0
+    },
+    extraOf(id, key) {
+      if (m) return m.extra[key] ?? 0
+      if (overlay && key in overlay) return overlay[key]
+      const d = (index ??= devIndex(devs)).get(id)
+      if (!d) return 0
+      measureDevice(d, x, ctx, SCRATCH)
+      IP_OWNER = null
+      return SCRATCH.extra[key] ?? 0
+    },
+    voltageOf(node) {
+      if (node === '0') return 0
+      const k = nodeIndex.get(node)
+      return k === undefined ? 0 : x[k]
+    },
+    publish(key, value) {
+      if (m) m.extra[key] = value
+      else (overlay ??= {})[key] = value
+    },
     get nodeV() {
       if (!nodeV) {
         nodeV = { '0': 0 }
@@ -218,10 +301,25 @@ export function buildSolution(c: Compiled, r: SolveResult, sc: SolveContext): So
   }
 }
 
-/** DC operating point. Capacitors are open, inductors short, motors at mechanical steady state. */
+/** initial unknown vector: zeros, with node voltages from netlist.ic */
+export function initialGuess(c: Compiled, netlist: Netlist): Float64Array {
+  const x = new Float64Array(c.size)
+  if (netlist.ic) {
+    for (const [node, v] of Object.entries(netlist.ic)) {
+      const k = c.nodeIndex.get(node)
+      if (k !== undefined) x[k] = v
+    }
+  }
+  return x
+}
+
+/**
+ * DC operating point (sources at t = 0). Capacitors are open, inductors short, motors at
+ * mechanical steady state. Newton starts from netlist.ic when given.
+ */
 export function solveDC(netlist: Netlist, opts: SolveOptions = {}): Solution {
   const c = compile(netlist)
-  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {} }
-  const r = solveCompiled(c, sc, new Float64Array(c.size), opts.maxIter ?? MAX_ITER)
+  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {}, t: 0 }
+  const r = solveCompiled(c, sc, initialGuess(c, netlist), opts.maxIter ?? MAX_ITER)
   return buildSolution(c, r, sc)
 }
