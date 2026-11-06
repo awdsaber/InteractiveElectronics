@@ -16,6 +16,8 @@ const gnd = UNO.digital(UNO_AT, 'GND')
 const w1 = jumper(pin13, bbHole(BB, 27, 'a'), 'yellow')
 const w2 = jumper(gnd, bbHole(BB, 22, 'a'), 'black', 0.9)
 
+const withCallout = (w: ReturnType<typeof jumper>, callout: [number, number, number]) => ({ ...w, params: { ...w.params, callout } })
+
 const sketch = `// Blink: pin 13 drives a red LED through 220 ohms
 const int LED_PIN = 13;
 
@@ -44,7 +46,7 @@ export const ledResistor: LessonDef = {
 
   board: {
     name: 'LED-16',
-    size: [16, 10],
+    size: [16, 8.5],
     base: 'breadboard-only',
     parts: [
       {
@@ -65,7 +67,7 @@ export const ledResistor: LessonDef = {
         mount: 'tht',
         label: 'LIMIT',
         role: 'Drops the extra 3.2 V and sets the current (220 Ω: red-red-brown-gold, 1/4 W).',
-        params: { ohms: 220 },
+        params: { ohms: 220, callout: [0.3, 2.0, -0.3] },
         circuitIds: ['R1'],
       },
       {
@@ -75,11 +77,11 @@ export const ledResistor: LessonDef = {
         mount: 'tht',
         label: 'LED',
         role: '5 mm red LED: lights at about 13 mA. Long leg (anode) toward the resistor.',
-        params: { color: 'red' },
+        params: { color: 'red', callout: [-1.2, 1.5, 0.3] },
         circuitIds: ['LED1'],
       },
-      { id: 'w1', kind: 'wire', ...w1, mount: 'offboard', label: 'PIN13', role: 'Pin 13 to the resistor.' },
-      { id: 'w2', kind: 'wire', ...w2, mount: 'offboard', label: 'GND', role: 'LED cathode back to Uno GND.' },
+      { id: 'w1', kind: 'wire', ...withCallout(w1, [1.8, 1.0, -0.2]), mount: 'offboard', label: 'PIN13', role: 'Pin 13 to the resistor.' },
+      { id: 'w2', kind: 'wire', ...withCallout(w2, [1.2, 0.2, 1.2]), mount: 'offboard', label: 'GND', role: 'LED cathode back to Uno GND.' },
     ],
   },
 

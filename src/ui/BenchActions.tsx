@@ -16,6 +16,8 @@ export interface BenchActionsProps {
   hasSketch: boolean
   /** "Plug USB" (default) or "Connect battery" */
   powerLabel?: string
+  /** extra independently switched sources (one button each) */
+  extraPower?: { id: string; label: string; on: boolean }[]
   failures: FailureChoice[]
   onAction: (action: BenchAction) => void
 }
@@ -49,6 +51,12 @@ export function BenchActions(p: BenchActionsProps) {
         <span className="dot" aria-hidden="true" />
         {p.powered ? unplug : label}
       </button>
+      {p.extraPower?.map((x) => (
+        <button key={x.id} type="button" className="pill primary" data-on={x.on} onClick={fire(`power:${x.id}`)} aria-pressed={x.on}>
+          <span className="dot" aria-hidden="true" />
+          {x.on ? x.label.replace(/^Connect/, 'Disconnect').replace(/^Plug/, 'Unplug') : x.label}
+        </button>
+      ))}
       {p.hasSketch && (
         <button type="button" className="pill" onClick={fire('upload')} disabled={!p.powered}>
           Upload sketch

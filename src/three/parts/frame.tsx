@@ -7,7 +7,7 @@ import type { PartPlacement } from '../../engine/types'
 import { Bake } from '../bake'
 import { Callout } from '../Callout'
 import { G, geo, mergedBoxes } from '../geometry'
-import { InkContext, InkInstances, type InkInstance } from '../ink'
+import { InkContext, InkInstances, type InkInstance, type Vec3 } from '../ink'
 import { C } from '../palette'
 import { Smoke } from '../Smoke'
 import { footprint } from './footprints'
@@ -101,7 +101,9 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
           </Bake>
         </group>
         {state.burnt && <Smoke position={[0, h, 0]} scale={Math.min(2, 0.6 + h * 0.5)} />}
-        {state.showLabel && part.label && <Callout text={part.label} anchor={[0, h, 0]} tone={state.burnt ? 'warn' : 'ink'} />}
+        {state.showLabel && part.label && (
+          <Callout text={part.label} anchor={[0, h, 0]} offset={calloutOffset(part)} tone={state.burnt ? 'warn' : 'ink'} />
+        )}
       </group>
     )
   }
@@ -111,6 +113,18 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
 }
 
 const metas = new WeakMap<PartComponent, PartMeta>()
+
+/** Approximate top of a registered part (callout anchor), in board units above its origin. */
+export function partHeight(comp: PartComponent, part: PartPlacement): number {
+  const h = metas.get(comp)?.height ?? 0.5
+  return typeof h === 'function' ? h(part) : h
+}
+
+/** `params.callout`: [x, y, z] label offset (board units at the reference zoom) to untangle crowded labels. */
+export function calloutOffset(part: PartPlacement): Vec3 | undefined {
+  const c = part.params?.callout
+  return Array.isArray(c) && c.length === 3 && c.every((v) => typeof v === 'number') ? (c as Vec3) : undefined
+}
 
 /** The rebake key a registered part component would use (for tests and tools). */
 export function bakeKeyOf(comp: PartComponent, part: PartPlacement, state: PartRenderState): string {

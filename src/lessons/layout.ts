@@ -49,9 +49,17 @@ export const UNO = {
   },
 }
 
-/** A jumper wire part's `pos` and `params.points` from two world points (pos = midpoint, so the callout sits mid-wire). */
+/**
+ * A jumper wire part's `pos` and `params.points` from two world points. `pos` sits just under the
+ * arch's apex, so the wire's callout points at the top of the arch.
+ */
 export function jumper(a: [number, number, number], b: [number, number, number], color: string, lift?: number) {
-  const m: [number, number, number] = [(a[0] + b[0]) / 2, 0, (a[2] + b[2]) / 2]
-  const rel = (p: [number, number, number]) => [+(p[0] - m[0]).toFixed(4), +(p[1] + 0.02).toFixed(4), +(p[2] - m[2]).toFixed(4)]
+  const dist = Math.hypot(b[0] - a[0], b[2] - a[2])
+  const apex = Math.max(a[1], b[1]) + 0.02 + (lift ?? 0.18 + dist * 0.18)
+  const m: [number, number, number] = [(a[0] + b[0]) / 2, +(apex - WIRE_H).toFixed(4), (a[2] + b[2]) / 2]
+  const rel = (p: [number, number, number]) => [+(p[0] - m[0]).toFixed(4), +(p[1] + 0.02 - m[1]).toFixed(4), +(p[2] - m[2]).toFixed(4)]
   return { pos: m, params: { points: [rel(a), rel(b)], color, ...(lift !== undefined ? { lift } : {}) } }
 }
+
+/** the wire part's nominal height (its callout anchor sits this far above `pos`) */
+const WIRE_H = 0.3

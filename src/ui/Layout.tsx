@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Lesson, Tweak } from '../engine/types'
 import { BenchActions } from './BenchActions'
@@ -14,9 +14,22 @@ import type { StatusLineProps } from './StatusLine'
 import { StatusPanel } from './StatusPanel'
 import type { StatusPanelProps } from './StatusPanel'
 import { Toast } from './Toast'
-import { TryItYourself } from './TryItYourself'
 import { Tweaks } from './Tweaks'
 import type { Settings, ToastMessage } from './types'
+
+// CodeMirror is heavy: the editor loads as its own chunk.
+const TryItYourself = lazy(() => import('./TryItYourself').then((m) => ({ default: m.TryItYourself })))
+
+function EditorFallback() {
+  return (
+    <section className="note" aria-labelledby="try-h" aria-busy="true">
+      <h2 id="try-h" className="note-head">
+        <span>B</span> Try it yourself
+      </h2>
+      <p className="muted">Loading the editor…</p>
+    </section>
+  )
+}
 
 export interface LayoutProps {
   lesson: Lesson
@@ -43,13 +56,38 @@ export interface LayoutProps {
 
 export function Layout(p: LayoutProps) {
   const [drawer, setDrawer] = useState(false)
+  const burger = useRef<HTMLButtonElement>(null)
+  const wasOpen = useRef(false)
   const { lesson } = p
+
+  // drawer: focus moves into it on open and back to the burger on close; Escape closes it from anywhere
+  useEffect(() => {
+    if (drawer) {
+      wasOpen.current = true
+      const t = setTimeout(() => {
+        const el = document.querySelector<HTMLElement>('.sidebar[data-open="true"] .drawer-close, .sidebar[data-open="true"] .lesson-link')
+        el?.focus()
+      }, 0)
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setDrawer(false)
+      }
+      document.addEventListener('keydown', onKey)
+      return () => {
+        clearTimeout(t)
+        document.removeEventListener('keydown', onKey)
+      }
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false
+      burger.current?.focus()
+    }
+  }, [drawer])
   return (
     <div className="shell">
       <Sidebar {...p.syllabus} open={drawer} onClose={() => setDrawer(false)} />
       <div className="main">
         <header className="topbar">
-          <button type="button" className="burger" onClick={() => setDrawer(true)} aria-label="Open syllabus">
+          <button ref={burger} type="button" className="burger" aria-expanded={drawer} onClick={() => setDrawer(true)} aria-label="Open syllabus">
             <span /><span /><span />
           </button>
           <span className="topbar-name">Circuit Atelier</span>
@@ -83,15 +121,20 @@ export function Layout(p: LayoutProps) {
         <div className="notes">
           <MeetTheBoard meet={lesson.meet} mechanicalAnalogy={lesson.mechanicalAnalogy} proTips={lesson.proTips} />
           {lesson.sketch ? (
-            <TryItYourself
-              sketch={lesson.sketch}
-              code={p.code}
-              onCodeChange={p.onCodeChange}
-              onUpload={p.onUpload}
-              uploadDisabled={!p.actions.powered}
-              serialLines={p.serialLines}
-              error={p.sketchError}
-            />
+            <div className="note-stack">
+              <Suspense fallback={<EditorFallback />}>
+                <TryItYourself
+                  sketch={lesson.sketch}
+                  code={p.code}
+                  onCodeChange={p.onCodeChange}
+                  onUpload={p.onUpload}
+                  uploadDisabled={!p.actions.powered}
+                  serialLines={p.serialLines}
+                  error={p.sketchError}
+                />
+              </Suspense>
+              {lesson.tweaks?.length ? <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} onTweak={p.onTweak} /> : null}
+            </div>
           ) : lesson.tweaks?.length ? (
             <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} onTweak={p.onTweak} />
           ) : (
