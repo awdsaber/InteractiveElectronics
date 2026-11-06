@@ -346,6 +346,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       serial(line) {
         serial.push(line)
         if (serial.length > SERIAL_KEEP) serial.shift()
+        if (disposed) return
+        for (const inst of instances) inst.def.onSerial?.(inst.ctx, line)
       },
       warn(message) {
         if (disposed) return

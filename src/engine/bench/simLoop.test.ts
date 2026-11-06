@@ -372,6 +372,20 @@ describe('createBench: behaviors', () => {
     expect(b.snapshot().serial).toContain('7')
   })
 
+  it('hands each complete Serial line to onSerial (not the [mcu] warnings)', async () => {
+    const lines: string[] = []
+    const tap: Behavior = { id: 'tap', onSerial: (ctx, line) => void (lines.push(line), ctx.publish('n', lines.length)) }
+    const b = createBench(
+      { ...l, behaviors: ['tap'], sketch: { ...l.sketch!, code: 'void setup() { Serial.begin(9600); Serial.print("a:"); Serial.println(1); Serial.println("b:2"); }\nvoid loop() { delay(100); }\n' } },
+      { registry: { tap } },
+    )
+    b.dispatch('power')
+    b.upload()
+    for (let i = 0; i < 5; i++) await b.frame(FRAME)
+    expect(lines).toEqual(['a:1', 'b:2'])
+    expect(b.snapshot().published['tap.n']).toBe(2)
+  })
+
   it('ctx.burn fails a part like a rating would', async () => {
     const burner: Behavior = { id: 'burner', tick: (ctx) => ctx.t > 0.05 && ctx.burn('R1', 'overpower') }
     const b = createBench({ ...dcLesson, behaviors: ['burner'] }, { registry: { burner } })
