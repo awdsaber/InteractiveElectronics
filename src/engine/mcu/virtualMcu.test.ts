@@ -471,19 +471,16 @@ describe('VirtualMcu: errors and guards', () => {
 
   it('a runtime error stops the program and is reported via warn', async () => {
     const { mcu, warnings, lines } = harness()
-    mcu.load(`void setup(){ Serial.println("a"); nope(3); Serial.println("b"); }`)
+    mcu.load(`void setup(){ Serial.println("a"); int a[2]; a[9].v = 1; Serial.println("b"); }`)
     mcu.start()
     await mcu.advance(10)
     expect(lines).toEqual(['a'])
-    expect(warnings.some((w) => /nope/.test(w))).toBe(true)
+    expect(warnings.some((w) => /runtime error/.test(w))).toBe(true)
   })
 
-  it('sketches cannot reach the host globals', async () => {
-    const { mcu, warnings } = harness()
-    mcu.load(`void setup(){ window.x = 1; }`)
-    mcu.start()
-    await mcu.advance(1)
-    expect(warnings.length).toBeGreaterThan(0)
+  it('sketches cannot reach the host globals', () => {
+    const { mcu } = harness()
+    expect(() => mcu.load(`void setup(){ window.x = 1; }`)).toThrow(TranspileError)
   })
 })
 

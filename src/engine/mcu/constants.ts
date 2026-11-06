@@ -53,3 +53,18 @@ export const ARDUINO_CONSTANTS: Record<string, number> = {
   OCT,
   BIN,
 }
+
+/** Functions and objects the sandbox provides to sketches (used by the transpiler's unknown-name check). */
+export const BUILTIN_NAMES: readonly string[] = [
+  ...Object.keys(ARDUINO_CONSTANTS),
+  'pinMode', 'digitalWrite', 'digitalRead', 'analogWrite', 'analogRead', 'delay', 'delayMicroseconds', 'millis', 'micros',
+  'map', 'constrain', 'random', 'randomSeed', 'abs', 'min', 'max', 'sq', 'sqrt', 'pow', 'sin', 'cos', 'tan', 'asin', 'acos',
+  'atan', 'atan2', 'exp', 'log', 'log10', 'floor', 'ceil', 'round', 'radians', 'degrees', 'lowByte', 'highByte', 'bitRead',
+  'bit', 'F', 'Serial', 'Wire', 'Servo',
+]
+
+/** Real Arduino functions the simulator does not model (for a friendlier error). */
+export const UNSUPPORTED_API: readonly string[] = [
+  'tone', 'noTone', 'pulseIn', 'attachInterrupt', 'detachInterrupt', 'digitalPinToInterrupt', 'bitWrite', 'bitSet', 'bitClear',
+  'shiftOut', 'shiftIn', 'analogReference', 'analogReadResolution', 'interrupts', 'noInterrupts',
+]

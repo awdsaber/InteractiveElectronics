@@ -8,6 +8,19 @@ export class FloatBox {
   }
 }
 
+/** Marks a value that is a char (numeric code) so Serial.print shows the character. */
+export class CharBox {
+  readonly c: number
+  constructor(c: number) {
+    this.c = c
+  }
+}
+
+/** `char s[] = "hi"` -> char codes plus the terminating 0. */
+export function cstr(s: string): number[] {
+  return [...s].map((ch) => ch.charCodeAt(0) & 0xff).concat(0)
+}
+
 export function toInt(v: unknown): unknown {
   if (typeof v === 'number') return Math.trunc(v)
   if (typeof v === 'boolean') return v ? 1 : 0
@@ -73,6 +86,15 @@ export function makeRng(seed: number): () => number {
 /** Format a value the way Serial.print would. `fmt` is the base for integers or the digits for floats. */
 export function formatPrint(v: unknown, fmt?: number): string {
   if (v instanceof FloatBox) return formatNumber(v.v, fmt, true)
+  if (v instanceof CharBox) return fmt === undefined ? String.fromCharCode(v.c) : formatNumber(v.c, fmt, false)
+  if (Array.isArray(v)) {
+    // a char array prints as a C string (up to the terminating 0)
+    const end = v.indexOf(0)
+    return v
+      .slice(0, end < 0 ? v.length : end)
+      .map((c) => String.fromCharCode(Number(c)))
+      .join('')
+  }
   if (typeof v === 'number') return formatNumber(v, fmt, false)
   if (typeof v === 'boolean') return v ? '1' : '0'
   if (v === undefined || v === null) return ''

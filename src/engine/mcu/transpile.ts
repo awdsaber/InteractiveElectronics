@@ -1,3 +1,5 @@
+import { ARDUINO_CONSTANTS, BUILTIN_NAMES, UNSUPPORTED_API } from './constants'
+
 // Arduino-C subset -> JavaScript async function body.
 //
 // Approach: tokenise (comments stripped, strings protected), validate bracket structure and
@@ -48,6 +50,22 @@ function normalizeNumber(raw: string): string {
   const s = raw.replace(/[uUlLfF]+$/, '')
   if (/^0\d+$/.test(s)) return String(parseInt(s, 8)) // C octal
   return s
+}
+
+const ESCAPES: Record<string, number> = { n: 10, t: 9, r: 13, a: 7, b: 8, f: 12, v: 11, '\\': 92, "'": 39, '"': 34, '?': 63 }
+
+/** Numeric value of a C character literal such as 'a', '\n', '\0', '\x41'. */
+function charCode(raw: string, line: number): number {
+  const inner = raw.slice(1, -1)
+  if (inner[0] !== '\\') {
+    if ([...inner].length !== 1) throw new TranspileError(line, 'a character literal must hold exactly one character')
+    return inner.codePointAt(0) as number
+  }
+  const body = inner.slice(1)
+  if (body.length === 1 && body in ESCAPES) return ESCAPES[body]
+  if (/^x[0-9a-fA-F]{1,2}$/.test(body)) return parseInt(body.slice(1), 16)
+  if (/^[0-7]{1,3}$/.test(body)) return parseInt(body, 8)
+  throw new TranspileError(line, `unknown escape sequence in ${raw}`)
 }
 
 function tokenize(src: string): Tok[] {
@@ -128,7 +146,8 @@ function tokenize(src: string): Tok[] {
       }
       if (i >= n || src[i] !== c) throw new TranspileError(line, c === '"' ? 'unterminated string' : 'unterminated character literal')
       i++
-      push(c === '"' ? 'str' : 'chr', src.slice(start, i))
+      if (c === '"') push('str', src.slice(start, i))
+      else push('chr', src.slice(start, i), String(charCode(src.slice(start, i), line)))
       continue
     }
     if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] ?? ''))) {
@@ -250,6 +269,9 @@ const JS_RESERVED = new Set(['var', 'function', 'in', 'of', 'with', 'yield', 'aw
 const KNOWN_INCLUDES = new Set(['Arduino', 'Servo', 'Wire', 'SPI', 'EEPROM', 'math', 'stdlib', 'stdint', 'string', 'stdio'])
 /** builtins whose result is an integer, so Serial.print must not add decimals */
 const INT_FUNCS = new Set(['map', 'analogRead', 'digitalRead', 'millis', 'micros', 'random', 'sizeof', 'length'])
+const CONTROL_KW = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break', 'continue', 'return', 'true', 'false', 'sizeof'])
+const COMPOUND = new Set(['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>='])
+const isFloatLit = (v: string): boolean => !/^0[xXbB]/.test(v) && (v.includes('.') || /[eE]/.test(v))
 const TICK = '(++__g.n>__g.limit?await __g.pause():0)'
 
 const jsName = (v: string) => (JS_RESERVED.has(v) ? `${v}_c` : v)
@@ -271,7 +293,7 @@ function castPrefix(words: string[]): string | null {
   if (w.has('float') || w.has('double')) return null // JS numbers are already floating point
   if (w.has('bool') || w.has('boolean')) return 'Boolean'
   if (w.has('String')) return 'String'
-  if (w.has('char')) return w.has('unsigned') ? '__u8' : '__chr'
+  if (w.has('char')) return '__u8' // chars are numeric codes
   if (w.has('byte') || w.has('uint8_t')) return '__u8'
   if (w.has('uint16_t') || w.has('word')) return '__u16'
   if (w.has('void')) return null
@@ -306,6 +328,16 @@ class Transpiler {
   warnings: string[] = []
   private funcs = new Set<string>()
   private floatNames = new Set<string>()
+  private intFuncs = new Set<string>()
+  private intArrays = new Set<string>()
+  private charNames = new Set<string>()
+  private charArrays = new Set<string>()
+  private stringNames = new Set<string>()
+  private byteNames = new Set<string>()
+  private declared = new Set<string>()
+  private known: Set<string>
+  /** source token index -> position in an output array just before that token was emitted */
+  private outPos = new Map<number, { arr: Tok[]; pos: number }>()
   private intNames = new Set<string>()
   private classTypes: Set<string>
   private knownLibs: Set<string>
@@ -318,6 +350,7 @@ class Transpiler {
     this.toks = toks
     this.match = match
     this.classTypes = new Set(['Servo', ...(opts.classTypes ?? [])])
+    this.known = new Set([...BUILTIN_NAMES, ...(opts.knownLibraries ?? []), ...(opts.classTypes ?? [])])
     this.knownLibs = new Set([...KNOWN_INCLUDES, ...(opts.knownLibraries ?? []).map((l) => l.replace(/\.h$/, ''))])
   }
 
@@ -342,10 +375,15 @@ class Transpiler {
   }
 
   private join(toks: Tok[]): string {
+    // JS line N corresponds to Arduino line N, so parse and runtime errors can be mapped back.
     let s = ''
     let prev: Tok | undefined
+    let cur = 1
     for (const tk of toks) {
-      if (prev) s += tk.line > prev.line && prev.v !== 'return' ? '\n' : ' '
+      if (tk.line > cur && prev?.v !== 'return') {
+        s += '\n'.repeat(tk.line - cur)
+        cur = tk.line
+      } else if (prev) s += ' '
       s += tk.v
       prev = tk
     }
@@ -411,7 +449,9 @@ class Transpiler {
             words.push(toks[j].v)
             j--
           }
-          if (kindOf(words) === 'float') this.floatNames.add(tk.v)
+          const fk = kindOf(words)
+          if (fk === 'float') this.floatNames.add(tk.v)
+          else if (fk !== 'void' && fk !== 'string') this.intFuncs.add(tk.v)
           i = match[i + 1] + 1
           continue
         }
@@ -434,6 +474,7 @@ class Transpiler {
       this.flushClose(i)
       const tk = toks[i]
       this.line = tk.line
+      this.outPos.set(i, { arr: this.out, pos: this.out.length })
       const wasStart = atStart
       atStart = false
 
@@ -463,8 +504,15 @@ class Transpiler {
         i++
         continue
       }
-      if (tk.t === 'str' || tk.t === 'chr') {
-        this.emit(tk.v, tk.t)
+      if (tk.t === 'str') {
+        this.emit(tk.v, 'str')
+        i++
+        continue
+      }
+      if (tk.t === 'chr') {
+        const code = Number(tk.text)
+        if (this.charInString(i)) this.emit(JSON.stringify(String.fromCharCode(code)), 'str')
+        else this.emit(String(code), 'num')
         i++
         continue
       }
@@ -515,16 +563,70 @@ class Transpiler {
           i += 3
           continue
         }
-        if (wasStart && !isMember && this.intNames.has(v) && !this.floatNames.has(v) && next?.t === 'p' && next.v === '=') {
-          const e = this.exprEnd(i + 2, end)
+        if (!isMember && next?.t === 'p' && this.intNames.has(v) && !this.floatNames.has(v)) {
+          const wrap = this.byteNames.has(v) ? '__u8' : '__int'
+          if (wasStart && next.v === '=') {
+            const e = this.exprEnd(i + 2, end)
+            this.emit(jsName(v), 'id')
+            this.emit('=')
+            this.emit(wrap, 'id')
+            this.emit('(')
+            this.run(i + 2, e, false)
+            this.emit(')')
+            i = e
+            continue
+          }
+          if (wasStart && COMPOUND.has(next.v)) {
+            // x op= y  ->  x = trunc(x op (y)), as C converts back to the variable's integer type
+            const e = this.exprEnd(i + 2, end)
+            this.emit(jsName(v), 'id')
+            this.emit('=')
+            this.emit(wrap, 'id')
+            this.emit('(')
+            this.emit(jsName(v), 'id')
+            this.emit(next.v.slice(0, -1))
+            this.emit('(')
+            this.run(i + 2, e, false)
+            this.emit(')')
+            this.emit(')')
+            i = e
+            continue
+          }
+          const before = toks[i - 1]
+          if (
+            this.byteNames.has(v) &&
+            (next.v === '++' || next.v === '--') &&
+            [';', ')', ','].includes(toks[i + 2]?.v) &&
+            (wasStart || before?.v === ';' || before?.v === ',')
+          ) {
+            this.emit(jsName(v), 'id')
+            this.emit('=')
+            this.emit('__u8', 'id')
+            this.emit('(')
+            this.emit(jsName(v), 'id')
+            this.emit(next.v === '++' ? '+' : '-')
+            this.emit('1', 'num')
+            this.emit(')')
+            i += 2
+            continue
+          }
+        }
+        if (!isMember && next?.t === 'p' && next.v === '[' && this.stringNames.has(v)) {
+          // String indexing yields a char code
           this.emit(jsName(v), 'id')
-          this.emit('=')
-          this.emit('__int', 'id')
+          this.emit('.')
+          this.emit('charCodeAt', 'id')
           this.emit('(')
-          this.run(i + 2, e, false)
+          this.run(i + 2, this.match[i + 1], false)
           this.emit(')')
-          i = e
+          i = this.match[i + 1] + 1
           continue
+        }
+        if (!isMember && !CONTROL_KW.has(v) && !this.declared.has(v) && !this.funcs.has(v) && !this.known.has(v) && !TYPE_WORDS.has(v) && !this.classTypes.has(v)) {
+          throw new TranspileError(
+            tk.line,
+            UNSUPPORTED_API.includes(v) ? `'${v}' is not supported by the simulator yet` : `'${v}' is not defined - check the spelling, or declare it before use`,
+          )
         }
         this.emit(isMember ? v : jsName(v), 'id')
         i++
@@ -606,6 +708,10 @@ class Transpiler {
           i++
           continue
         }
+        case '/':
+          if (!this.tryIdiv(i)) this.emit('/')
+          i++
+          continue
         case ':':
           this.emit(':')
           if (caseColon && paren === 0) {
@@ -654,6 +760,11 @@ class Transpiler {
     if (tk.v === '#define') {
       let e = i + 1
       while (e < this.toks.length && this.toks[e].v !== '#enddef') e++
+      const body = this.toks.slice(i + 1, e)
+      this.declared.add(tk.text as string)
+      const b0 = body[body.length - 1]
+      const intBody = (body.length === 1 || (body.length === 2 && body[0].v === '-')) && (b0.t === 'chr' || (b0.t === 'num' && !isFloatLit(b0.v)))
+      if (intBody) this.intNames.add(tk.text as string)
       this.emit('const', 'id')
       this.emit(tk.text as string, 'id')
       this.emit('=')
@@ -745,24 +856,153 @@ class Transpiler {
     return close + 1
   }
 
-  private isFloatExpr(from: number, to: number): boolean {
-    let float = false
-    for (let k = from; k < to; k++) {
-      const t = this.toks[k]
-      const isMember = this.toks[k - 1]?.v === '.'
-      if (t.t === 'id') {
-        if (isMember) continue
-        if (INT_FUNCS.has(t.v)) return false
-        if (TYPE_WORDS.has(t.v)) {
-          const kind = kindOf([t.v])
-          if (kind === 'float') float = true
-          else if (kind === 'int' || kind === 'char' || kind === 'bool') return false
-        } else if (this.floatNames.has(t.v) || t.v === 'PI') float = true
-      } else if (t.t === 'num' && !/^0[xXbB]/.test(t.v) && (t.v.includes('.') || /[eE]/.test(t.v))) {
-        float = true
-      }
+  /** Static type of the expression in toks[a, b): known int, known float, or unknown. */
+  private classify(a: number, b: number): 'int' | 'float' | 'unknown' {
+    const { toks, match } = this
+    let sawF = false
+    let sawI = false
+    const bail = (): 'float' | 'unknown' => (sawF ? 'float' : 'unknown')
+    let k = a
+    while (k < b) {
+      const t = toks[k]
+      if (t.t === 'num') {
+        if (isFloatLit(t.v)) sawF = true
+        else sawI = true
+        k++
+      } else if (t.t === 'chr') {
+        sawI = true
+        k++
+      } else if (t.t === 'str') {
+        return bail()
+      } else if (t.t === 'id') {
+        const v = t.v
+        const next = toks[k + 1]
+        if (k > a && toks[k - 1].v === '.') {
+          if (v === 'length' && next?.v === '(') {
+            sawI = true
+            k += 3
+            continue
+          }
+          return bail()
+        }
+        if (next?.v === '(') {
+          if (TYPE_WORDS.has(v)) {
+            if (kindOf([v]) === 'float') sawF = true
+            else sawI = true
+          } else if (this.funcs.has(v) && this.floatNames.has(v)) sawF = true
+          else if (INT_FUNCS.has(v) || this.intFuncs.has(v)) sawI = true
+          else return bail()
+          k = match[k + 1] + 1
+        } else if (next?.v === '[') {
+          let q = k + 1
+          while (toks[q]?.v === '[') q = match[q] + 1
+          if (this.floatNames.has(v)) sawF = true
+          else if (this.intArrays.has(v) || this.charArrays.has(v)) sawI = true
+          else return bail()
+          k = q
+        } else {
+          if (this.floatNames.has(v) || (v in ARDUINO_CONSTANTS && !Number.isInteger(ARDUINO_CONSTANTS[v]))) sawF = true
+          else if (this.intNames.has(v) || this.charNames.has(v) || (v in ARDUINO_CONSTANTS && Number.isInteger(ARDUINO_CONSTANTS[v]))) sawI = true
+          else return bail()
+          k++
+        }
+      } else if (t.v === '(') {
+        let j = k + 1
+        const words: string[] = []
+        while (toks[j]?.t === 'id' && TYPE_WORDS.has(toks[j].v)) words.push(toks[j++].v)
+        if (words.length && toks[j]?.v === ')' && j < b) {
+          if (kindOf(words) === 'float') {
+            sawF = true
+            k = j + 1
+          } else {
+            sawI = true
+            k = this.operandEnd(j + 1) // the cast result is an int whatever the operand was
+          }
+        } else k++
+      } else k++
     }
-    return float
+    return sawF ? 'float' : sawI ? 'int' : 'unknown'
+  }
+
+  private isCharExpr(a: number, b: number): boolean {
+    const { toks, match } = this
+    const t = toks[a]
+    if (b - a === 1) return t.t === 'chr' || (t.t === 'id' && this.charNames.has(t.v))
+    if (t.t === 'id' && toks[a + 1]?.v === '[' && (this.charArrays.has(t.v) || this.stringNames.has(t.v))) {
+      let q = a + 1
+      while (toks[q]?.v === '[') q = match[q] + 1
+      return q === b
+    }
+    if (t.v === '(') {
+      let j = a + 1
+      const words: string[] = []
+      while (toks[j]?.t === 'id' && TYPE_WORDS.has(toks[j].v)) words.push(toks[j++].v)
+      return words.includes('char') && toks[j]?.v === ')' && this.operandEnd(j + 1) === b
+    }
+    return false
+  }
+
+  /** A char literal used where a String is being built ("x" + 'c', s += 'c') becomes a one-character string. */
+  private charInString(i: number): boolean {
+    const { toks } = this
+    const prev = toks[i - 1]
+    const prev2 = toks[i - 2]
+    const next = toks[i + 1]
+    const next2 = toks[i + 2]
+    const isStr = (t?: Tok) => t !== undefined && (t.t === 'str' || (t.t === 'id' && this.stringNames.has(t.v)))
+    if (prev?.v === '(' && prev2?.v === 'String') return true
+    if ((prev?.v === '+=' || prev?.v === '=') && prev2?.t === 'id' && this.stringNames.has(prev2.v)) return true
+    if (prev?.v === '+' && isStr(prev2)) return true
+    if (next?.v === '+' && isStr(next2)) return true
+    return false
+  }
+
+  /** Index of the first token of the operand that ends at toks[j] (calls, indexing, members included). */
+  private backOperand(j: number): number {
+    const { toks, match } = this
+    let k = j
+    for (;;) {
+      const t = toks[k]
+      if (t.t === 'p' && (t.v === ')' || t.v === ']')) {
+        k = match[k]
+        const p = toks[k - 1]
+        const open = toks[k].v
+        if (p && ((open === '(' && p.t === 'id' && !CONTROL_KW.has(p.v)) || (open === '[' && (p.t === 'id' || p.v === ']' || p.v === ')')))) {
+          k--
+          continue
+        }
+        return k
+      }
+      if (k >= 2 && toks[k - 1].v === '.') {
+        k -= 2
+        continue
+      }
+      return k
+    }
+  }
+
+  /** `a / b` with both sides known ints becomes __idiv(a, b). Returns true if it rewrote the '/'. */
+  private tryIdiv(i: number): boolean {
+    const { toks, match } = this
+    if (i < 1 || i + 1 >= toks.length) return false
+    let s = this.backOperand(i - 1)
+    while (s >= 2 && toks[s - 1].t === 'p' && (toks[s - 1].v === '*' || toks[s - 1].v === '/' || toks[s - 1].v === '%')) s = this.backOperand(s - 2)
+    if (s >= 1 && toks[s - 1].t === 'p' && toks[s - 1].v === ')') {
+      const o = match[s - 1]
+      const words = toks.slice(o + 1, s - 1)
+      if (words.length && words.every((t) => t.t === 'id' && TYPE_WORDS.has(t.v))) s = o
+    }
+    const rec = this.outPos.get(s)
+    if (!rec || rec.arr !== this.out) return false
+    if (this.classify(s, i) !== 'int') return false
+    const e = this.operandEnd(i + 1)
+    if (this.classify(i + 1, e) !== 'int') return false
+    const mk = (v: string, t: TokType): Tok => ({ t, v, line: toks[s].line })
+    this.out.splice(rec.pos, 0, mk('__idiv', 'id'), mk('(', 'p'))
+    for (const r of this.outPos.values()) if (r.arr === this.out && r.pos > rec.pos) r.pos += 2
+    this.emit(',')
+    this.closers.set(e, (this.closers.get(e) ?? 0) + 1)
+    return true
   }
 
   private serialPrint(i: number): number {
@@ -775,7 +1015,12 @@ class Transpiler {
     this.emit('(')
     this.splitTop(open + 1, close).forEach(([a, b], n) => {
       if (n) this.emit(',')
-      if (n === 0 && a < b && this.isFloatExpr(a, b)) {
+      if (n === 0 && a < b && this.isCharExpr(a, b)) {
+        this.emit('__C', 'id')
+        this.emit('(')
+        this.run(a, b, false)
+        this.emit(')')
+      } else if (n === 0 && a < b && this.classify(a, b) === 'float') {
         this.emit('__F', 'id')
         this.emit('(')
         this.run(a, b, false)
@@ -846,6 +1091,7 @@ class Transpiler {
     this.line = toks[i].line
     this.emit(isConst ? 'const' : 'let', 'id')
     const fill = kind === 'string' ? '""' : kind === 'bool' ? 'false' : '0'
+    const isByte = !cls && (words.includes('byte') || words.includes('uint8_t') || (words.includes('unsigned') && words.includes('char')))
 
     let k = j
     let first = true
@@ -862,6 +1108,9 @@ class Transpiler {
         dims.push([k + 1, match[k]])
         k = match[k] + 1
       }
+      this.declared.add(name)
+      if (kind === 'char') (dims.length ? this.charArrays : this.charNames).add(name)
+      else if (kind === 'string' && !dims.length) this.stringNames.add(name)
       let ctor: [number, number] | null = null
       let init: [number, number] | null = null
       if (toks[k]?.v === '(' && cls) {
@@ -892,6 +1141,24 @@ class Transpiler {
           this.emit(',')
           this.emit(fill, 'num')
           this.emit(')')
+        } else if (kind === 'char' && init[1] - init[0] === 1 && toks[init[0]].t === 'str') {
+          // char name[] = "text"  ->  char codes + terminating 0
+          const sized = dims[0][0] !== dims[0][1]
+          if (sized) {
+            this.emit('__pad', 'id')
+            this.emit('(')
+          }
+          this.emit('__cstr', 'id')
+          this.emit('(')
+          this.run(init[0], init[1], false)
+          this.emit(')')
+          if (sized) {
+            this.emit(',')
+            this.run(dims[0][0], dims[0][1], false)
+            this.emit(',')
+            this.emit('0', 'num')
+            this.emit(')')
+          }
         } else if (toks[init[0]].v === '{' && dims[0][0] !== dims[0][1]) {
           this.emit('__pad', 'id')
           this.emit('(')
@@ -905,6 +1172,7 @@ class Transpiler {
           this.run(init[0], init[1], false)
         }
         if (kind === 'float') this.floatNames.add(name)
+        else if (kind === 'int') this.intArrays.add(name)
       } else if (ctor) {
         this.emit('new', 'id')
         this.emit(cls as string, 'id')
@@ -913,7 +1181,7 @@ class Transpiler {
         this.emit(')')
       } else if (init) {
         if (kind === 'int') {
-          this.emit('__int', 'id')
+          this.emit(isByte ? '__u8' : '__int', 'id')
           this.emit('(')
           this.run(init[0], init[1], false)
           this.emit(')')
@@ -933,7 +1201,10 @@ class Transpiler {
       }
       if (!dims.length) {
         if (kind === 'float') this.floatNames.add(name)
-        else if (kind === 'int') this.intNames.add(name)
+        else if (kind === 'int') {
+          this.intNames.add(name)
+          if (isByte) this.byteNames.add(name)
+        }
       }
       const sep = toks[k]
       if (sep && sep.t === 'p' && sep.v === ',') {
@@ -962,6 +1233,7 @@ class Transpiler {
       if (b - a === 1 && toks[a].v === 'void') continue
       let sawName: string | null = null
       let kind: Kind = 'int'
+      let isArr = false
       const words: string[] = []
       while (k < b) {
         const t = toks[k]
@@ -976,6 +1248,7 @@ class Transpiler {
         if (t.t === 'p' && t.v === '&') throw new TranspileError(t.line, 'reference parameters are not supported in this Arduino subset')
         if (t.t === 'p' && t.v === '=') throw new TranspileError(t.line, 'default argument values are not supported in this Arduino subset')
         if (t.t === 'p' && t.v === '[') {
+          isArr = true
           k = match[k] + 1
           continue
         }
@@ -997,8 +1270,18 @@ class Transpiler {
       const pname = sawName ?? `__p${params.length}`
       params.push(jsName(pname))
       if (sawName) {
-        if (kind === 'float') this.floatNames.add(sawName)
-        else if (kind === 'int') this.intNames.add(sawName)
+        this.declared.add(sawName)
+        if (words.some((w) => this.classTypes.has(w))) {
+          // class-typed parameter: nothing to track
+        } else if (kind === 'float') this.floatNames.add(sawName)
+        else if (isArr) {
+          if (kind === 'int') this.intArrays.add(sawName)
+          else if (kind === 'char') this.charArrays.add(sawName)
+        } else if (kind === 'int') {
+          this.intNames.add(sawName)
+          if (words.includes('byte') || words.includes('uint8_t')) this.byteNames.add(sawName)
+        } else if (kind === 'char') this.charNames.add(sawName)
+        else if (kind === 'string') this.stringNames.add(sawName)
       }
     }
     if (retKind === 'float') this.floatNames.add(nameTok.v)
@@ -1032,11 +1315,50 @@ export function transpile(src: string, opts: TranspileOptions = {}): TranspileRe
   checkSemicolons(toks, match)
   const tr = new Transpiler(toks, match, opts)
   const js = tr.transpile()
-  try {
-    // parse only (never called) to catch anything our structural checks missed
-    new Function(`return (async () => {\n${js}\n})`)
-  } catch (e) {
-    throw new TranspileError(1, `this sketch could not be understood (${e instanceof Error ? e.message : String(e)})`)
-  }
+  checkCompiles(js)
   return { js, warnings: tr.warnings }
+}
+
+/** Parse the generated JS (never run it) to catch anything the structural checks missed, mapped to an Arduino line. */
+function checkCompiles(js: string): void {
+  const wrap = (body: string) => `return (async () => {\n${body}\n})`
+  try {
+    new Function(wrap(js))
+    return
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    const lines = js.split('\n')
+    // JS line N is Arduino line N. Try the code up to each statement boundary (balanced, closed with the
+    // right number of '}'); the first prefix that no longer parses holds the offending statement.
+    let toks: Tok[] = []
+    try {
+      toks = tokenize(js)
+    } catch {
+      /* fall through to the generic report */
+    }
+    let braces = 0
+    let parens = 0
+    let cutLine = 0
+    let first = 0
+    for (let k = 0; k < toks.length; k++) {
+      const t = toks[k]
+      if (t.t === 'p') {
+        if (t.v === '{') braces++
+        else if (t.v === '}') braces--
+        else if (t.v === '(' || t.v === '[') parens++
+        else if (t.v === ')' || t.v === ']') parens--
+      }
+      if (!first) first = t.line
+      const last = k === toks.length - 1 || toks[k + 1].line > t.line
+      if (!last || parens !== 0 || braces < 0 || !(t.t === 'p' && (t.v === ';' || t.v === '{' || t.v === '}'))) continue
+      try {
+        new Function(wrap(lines.slice(0, t.line).join('\n') + '}'.repeat(braces)))
+      } catch (e2) {
+        if (e2 instanceof SyntaxError) throw new TranspileError(first, `this line could not be understood (${e2.message})`)
+      }
+      cutLine = t.line
+      first = 0
+    }
+    throw new TranspileError(cutLine + 1, `this sketch could not be understood (${detail})`)
+  }
 }

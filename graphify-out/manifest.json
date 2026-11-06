@@ -588,9 +588,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/constants.ts": {
-    "mtime": 1794000231.4300697,
-    "seen": 1794000565.1748574,
-    "ast_hash": "471b0fab676aab209a9a99567150d88c",
+    "mtime": 1794000970.264894,
+    "seen": 1794001326.635493,
+    "ast_hash": "3e2b420645a453173ac95420dfae789c",
     "semantic_hash": ""
   },
   "src/engine/mcu/index.ts": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/runtime.ts": {
-    "mtime": 1794000525.5603426,
-    "seen": 1794000565.1748574,
-    "ast_hash": "55772972441ff3dc3fc7c5650e404fbe",
+    "mtime": 1794000970.265895,
+    "seen": 1794001326.635493,
+    "ast_hash": "273a6381f067ce64b69b64b8d99b1efc",
     "semantic_hash": ""
   },
   "src/engine/mcu/transpile.test.ts": {
@@ -612,21 +612,27 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/transpile.ts": {
-    "mtime": 1794000488.2839918,
-    "seen": 1794000565.1748574,
-    "ast_hash": "5609d3d20f4777e4994352361727227b",
+    "mtime": 1794001311.1016157,
+    "seen": 1794001326.635493,
+    "ast_hash": "8b488e802f7d4a68e6ddb838622ab8b6",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.test.ts": {
-    "mtime": 1794000550.2487872,
-    "seen": 1794000565.1748574,
-    "ast_hash": "143636dbad1c5ce87d466b80a94de1b9",
+    "mtime": 1794000937.9724867,
+    "seen": 1794001326.635493,
+    "ast_hash": "fc08484fec55c38abfb506f828dfce06",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794000526.072034,
-    "seen": 1794000565.1748574,
-    "ast_hash": "9d26663f16b87533d4ef33ecb02a9f3b",
+    "mtime": 1794000970.265895,
+    "seen": 1794001326.635493,
+    "ast_hash": "c9573b2b5130c9f456758f9a21303032",
+    "semantic_hash": ""
+  },
+  "src/engine/mcu/semantics.test.ts": {
+    "mtime": 1794000937.632326,
+    "seen": 1794001326.635493,
+    "ast_hash": "24b81873d8d0e0a8dbee1251f22cdb1c",
     "semantic_hash": ""
   },
   "package-lock.json": {

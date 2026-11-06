@@ -7,12 +7,14 @@
 import type { PinMode, PinState } from '../types'
 import { ARDUINO_CONSTANTS, INPUT_PULLUP, OUTPUT } from './constants'
 import {
+  CharBox,
   FloatBox,
   arduinoMap,
   arduinoRound,
   castInt,
   chr,
   constrain,
+  cstr,
   formatPrint,
   makeArray,
   makeRng,
@@ -58,6 +60,32 @@ interface Guard {
   n: number
   limit: number
   pause: () => Promise<void>
+}
+
+/** The sandbox function body is PREFIX + js, so js line 1 sits at a fixed offset in stack traces. */
+const PREFIX = '"use strict";\nreturn (async () => {\n'
+let probeLine: Promise<number | null> | null = null
+
+/** Stack-trace line at which js line 1 appears, found by running a one-line probe. */
+function probeFirstLine(): Promise<number | null> {
+  probeLine ??= (async () => {
+    try {
+      await (new Function(PREFIX + 'throw new Error("probe");\n})()') as () => Promise<void>)()
+    } catch (e) {
+      const m = /<anonymous>:(\d+):\d+/.exec(e instanceof Error ? (e.stack ?? '') : '')
+      return m ? Number(m[1]) : null
+    }
+    return null
+  })()
+  return probeLine
+}
+
+async function lineOfError(e: unknown): Promise<number | null> {
+  const m = /<anonymous>:(\d+):\d+/.exec(e instanceof Error ? (e.stack ?? '') : '')
+  const base = await probeFirstLine()
+  if (!m || base === null) return null
+  const line = Number(m[1]) - base + 1
+  return line >= 1 ? line : null
 }
 
 const STATEMENT_LIMIT = 1e6
@@ -141,7 +169,7 @@ export class VirtualMcu {
     let loaded: Promise<Program>
     try {
       const body =
-        '"use strict";\nreturn (async () => {\n' +
+        PREFIX +
         this.js +
         '\nreturn { setup: typeof setup === "function" ? setup : null, loop: typeof loop === "function" ? loop : null };\n})()'
       const factory = new Function(...names, ...SHADOWED_GLOBALS, body) as (...args: unknown[]) => Promise<Program>
@@ -150,6 +178,11 @@ export class VirtualMcu {
       loaded = Promise.reject(e)
     }
     void this.runProgram(gen, loaded)
+  }
+
+  /** Names the sandbox provides to sketches. */
+  apiNames(): string[] {
+    return Object.keys(this.buildApi())
   }
 
   stop(): void {
@@ -178,6 +211,8 @@ export class VirtualMcu {
     if (!this.running) return
     const gen = this.gen
     const target = this.now + ms
+    // The statement budget for the loop guard is per advance() call: a loop that never waits gets
+    // STATEMENT_LIMIT iterations, then is paused 1 ms per iteration for the rest of this advance.
     this.guard.n = 0
     await this.settle()
     while (this.running && gen === this.gen) {
@@ -244,7 +279,10 @@ export class VirtualMcu {
         }
       }
     } catch (e) {
-      if (gen === this.gen) this.warn(`runtime error: ${e instanceof Error ? e.message : String(e)}`)
+      if (gen === this.gen) {
+        const line = await lineOfError(e)
+        this.warn(`runtime error${line ? ` on line ${line}` : ''}: ${e instanceof Error ? e.message : String(e)}`)
+      }
     } finally {
       if (gen === this.gen) this.finished = true
     }
@@ -440,6 +478,9 @@ export class VirtualMcu {
     const internals: Record<string, unknown> = {
       __g: this.guard,
       __F: (v: number) => new FloatBox(v),
+      __C: (v: number) => new CharBox(Number(v)),
+      __cstr: cstr,
+      __idiv: (a: number, b: number) => (b === 0 ? 0 : Math.trunc(a / b)),
       __int: toInt,
       __cast: castInt,
       __u8: u8,

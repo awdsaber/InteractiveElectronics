@@ -2,7 +2,7 @@
   "0": "server.cjs",
   "1": "types.ts",
   "2": "Writing Skills",
-  "3": "Skill Discovery Optimization (SDO)",
+  "3": "writing-skills/SKILL.md",
   "4": "subagent-driven-development/SKILL.md",
   "5": "deploy.yml",
   "6": "Test-Driven Development (TDD)",
@@ -83,11 +83,8 @@
   "81": "transpile.ts",
   "82": "virtualMcu.ts",
   "83": "VirtualMcu",
-  "84": "Gemini CLI Tool Mapping",
-  "85": "Bulletproofing Skills Against Rationalization",
-  "86": "REFACTOR Phase: Close Loopholes (Stay Green)",
-  "87": "codex-tools.md",
-  "88": "writing-skills/SKILL.md",
-  "89": "VERIFY GREEN: Pressure Testing",
-  "90": "Example: TDD Skill Bulletproofing"
+  "84": "handleRequest",
+  "85": "startServer",
+  "86": "handleUpgrade",
+  "87": "Circuit Atelier — interactive electronics course"
 }

@@ -1,17 +1,17 @@
 # Graph Report - agent-a4bd7ce2558e67ea2  (2026-11-06)
 
 ## Corpus Check
-- 98 files · ~76,748 words
+- 99 files · ~79,834 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 4, .dot 1, .css 1)
 
 ## Summary
-- 991 nodes · 1164 edges · 91 communities (63 shown, 28 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 41 edges (avg confidence: 0.89)
+- 1012 nodes · 1221 edges · 88 communities (61 shown, 27 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 45 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6e9769f5`
+- Built from commit: `1a580fc3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - server.cjs
 - types.ts
 - Writing Skills
-- Skill Discovery Optimization (SDO)
+- writing-skills/SKILL.md
 - subagent-driven-development/SKILL.md
 - deploy.yml
 - Test-Driven Development (TDD)
@@ -83,31 +83,28 @@
 - transpile.ts
 - virtualMcu.ts
 - VirtualMcu
-- Gemini CLI Tool Mapping
-- Bulletproofing Skills Against Rationalization
-- REFACTOR Phase: Close Loopholes (Stay Green)
-- codex-tools.md
-- writing-skills/SKILL.md
-- VERIFY GREEN: Pressure Testing
-- Example: TDD Skill Bulletproofing
+- handleRequest
+- startServer
+- handleUpgrade
+- Circuit Atelier — interactive electronics course
 
 ## God Nodes (most connected - your core abstractions)
-1. `VirtualMcu` - 27 edges
-2. `Writing Skills` - 21 edges
-3. `Transpiler` - 20 edges
+1. `VirtualMcu` - 30 edges
+2. `Transpiler` - 24 edges
+3. `Writing Skills` - 21 edges
 4. `compilerOptions` - 18 edges
 5. `Testing Skills With Subagents` - 16 edges
-6. `compilerOptions` - 15 edges
-7. `handleRequest()` - 14 edges
-8. `Code Review Reception` - 14 edges
-9. `TranspileError` - 13 edges
-10. `Test-Driven Development (TDD)` - 13 edges
+6. `TranspileError` - 15 edges
+7. `compilerOptions` - 15 edges
+8. `handleRequest()` - 14 edges
+9. `transpile()` - 14 edges
+10. `Code Review Reception` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `5. Virtual MCU (`src/engine/mcu`)` --references--> `TranspileError`  [INFERRED]
-  docs/spec.md → src/engine/mcu/transpile.ts
 - `Circuit Atelier — interactive electronics course` --references--> `main()`  [INFERRED]
   CLAUDE.md → .claude/skills/writing-skills/render-graphs.js
+- `5. Virtual MCU (`src/engine/mcu`)` --references--> `TranspileError`  [INFERRED]
+  docs/spec.md → src/engine/mcu/transpile.ts
 - `5. Virtual MCU (`src/engine/mcu`)` --references--> `constrain()`  [INFERRED]
   docs/spec.md → src/engine/mcu/runtime.ts
 - `5. Virtual MCU (`src/engine/mcu`)` --references--> `VirtualMcu`  [INFERRED]
@@ -118,11 +115,11 @@
 ## Import Cycles
 - None detected.
 
-## Communities (91 total, 28 thin omitted)
+## Communities (88 total, 27 thin omitted)
 
 ### Community 0 - "server.cjs"
-Cohesion: 0.05
-Nodes (57): bootstrapPage(), brandMarkup(), broadcast(), browserLauncherForPlatform(), chmodOwnerOnly(), clients, companionUrl(), computeAcceptKey() (+49 more)
+Cohesion: 0.08
+Nodes (24): brandMarkup(), clients, CONTENT_DIR, crypto, debounceTimers, escapeHtmlText(), frameTemplate, fs (+16 more)
 
 ### Community 1 - "types.ts"
 Cohesion: 0.05
@@ -132,9 +129,9 @@ Nodes (35): 1. Experience, 2. Visual identity (original), 3. Lesson data model, 
 Cohesion: 0.05
 Nodes (39): Anti-Patterns, Bulletproofing Against Rationalization, Code Examples, ❌ Code in Flowcharts, Common Rationalizations for Skipping Testing, Directory Structure, Discipline-Enforcing Skills (rules/requirements), Discovery Workflow (+31 more)
 
-### Community 3 - "Skill Discovery Optimization (SDO)"
-Cohesion: 0.22
-Nodes (8): 1. Rich Description Field, 2. Keyword Coverage, 3. Descriptive Naming, 4. Token Efficiency (Critical), 5. Cross-Referencing Other Skills, Skill Discovery Optimization (SDO), SKILL.md Structure, Writing SKILL.md for Discovery
+### Community 3 - "writing-skills/SKILL.md"
+Cohesion: 0.06
+Nodes (29): Codex App Finishing, Environment Detection, Model routing on spawns, Subagent dispatch requires multi-agent support, Waiting on children, Additional Gemini CLI tools, Gemini CLI Tool Mapping, Instructions file (+21 more)
 
 ### Community 4 - "subagent-driven-development/SKILL.md"
 Cohesion: 0.06
@@ -149,8 +146,8 @@ Cohesion: 0.06
 Nodes (29): Common Rationalizations, Debugging Integration, Example: Bug Fix, Final Rule, Good Tests, GREEN - Minimal Code, Overview, Red Flags - STOP and Start Over (+21 more)
 
 ### Community 7 - "Testing Skills With Subagents"
-Cohesion: 0.15
-Nodes (13): Common Mistakes (Same as TDD), GREEN Phase: Write Minimal Skill (Make It Pass), Meta-Testing (When GREEN Isn't Working), Overview, Quick Reference (TDD Cycle), Real-World Impact, RED Phase: Baseline Testing (Watch It Fail), TDD Mapping for Skill Testing (+5 more)
+Cohesion: 0.07
+Nodes (29): 1. Explicit Negation in Rules, 2. Entry in Rationalization Table, 3. Red Flag Entry, 4. Update description, Common Mistakes (Same as TDD), Example: TDD Skill Bulletproofing, GREEN Phase: Write Minimal Skill (Make It Pass), Initial Test (Failed) (+21 more)
 
 ### Community 8 - "Executing Plans"
 Cohesion: 0.07
@@ -201,8 +198,8 @@ Cohesion: 0.12
 Nodes (15): 1. Authority, 2. Commitment, 3. Scarcity, 4. Social Proof, 5. Unity, 6. Reciprocity, 7. Liking, Ethical Use (+7 more)
 
 ### Community 20 - "render-graphs.js"
-Cohesion: 0.19
-Nodes (10): Circuit Atelier — interactive electronics course, Commands, Memory and context: graphify (use first), Rules, combineGraphs(), extractDotBlocks(), extractGraphBody(), main() (+2 more)
+Cohesion: 0.39
+Nodes (5): combineGraphs(), extractDotBlocks(), extractGraphBody(), main(), renderToSvg()
 
 ### Community 21 - "Finishing a Development Branch"
 Cohesion: 0.13
@@ -337,60 +334,52 @@ Cohesion: 0.67
 Nodes (3): Technical notes, Token budgets, YAML frontmatter requirements
 
 ### Community 81 - "transpile.ts"
-Cohesion: 0.08
-Nodes (31): castPrefix(), checkSemicolons(), CLOSE, DeclResult, Header, HEADER_KW, INT_FUNCS, JS_RESERVED (+23 more)
+Cohesion: 0.07
+Nodes (39): BUILTIN_NAMES, errorOf(), castPrefix(), charCode(), checkCompiles(), checkSemicolons(), CLOSE, COMPOUND (+31 more)
 
 ### Community 82 - "virtualMcu.ts"
-Cohesion: 0.07
-Nodes (43): A0, A1, A2, A3, A4, A5, A6, A7 (+35 more)
+Cohesion: 0.06
+Nodes (47): A0, A1, A2, A3, A4, A5, A6, A7 (+39 more)
 
 ### Community 83 - "VirtualMcu"
-Cohesion: 0.11
-Nodes (8): 5. Virtual MCU (`src/engine/mcu`), constrain(), harness(), PinEvent, Widget, VirtualMcu, VirtualMcuOptions, PinState
+Cohesion: 0.10
+Nodes (10): 5. Virtual MCU (`src/engine/mcu`), constrain(), makeRng(), run(), harness(), PinEvent, Widget, VirtualMcu (+2 more)
 
-### Community 84 - "Gemini CLI Tool Mapping"
+### Community 84 - "handleRequest"
+Cohesion: 0.18
+Nodes (14): bootstrapPage(), getNewestScreen(), handleRequest(), isAuthorized(), isFullDocument(), isRegularFileInsideContentDir(), parseCookies(), pathnameOf() (+6 more)
+
+### Community 85 - "startServer"
+Cohesion: 0.16
+Nodes (11): browserLauncherForPlatform(), chmodOwnerOnly(), companionUrl(), generateToken(), initialToken(), maybeOpenBrowser(), preferredPort(), randomPort() (+3 more)
+
+### Community 86 - "handleUpgrade"
 Cohesion: 0.25
-Nodes (7): Additional Gemini CLI tools, Gemini CLI Tool Mapping, Instructions file, Parallel dispatch, Personal skills directory, Prompt filling, Subagent support
+Nodes (8): broadcast(), computeAcceptKey(), decodeFrame(), encodeFrame(), handleMessage(), handleUpgrade(), isAllowedWebSocketOrigin(), touchActivity()
 
-### Community 85 - "Bulletproofing Skills Against Rationalization"
-Cohesion: 0.25
-Nodes (7): Address "Spirit vs Letter" Arguments, Build Rationalization Table, Bulletproofing Skills Against Rationalization, Bulletproofing Skills Against Rationalization, Close Every Loophole Explicitly, Create Red Flags List, Update SDO for Violation Symptoms
-
-### Community 86 - "REFACTOR Phase: Close Loopholes (Stay Green)"
-Cohesion: 0.29
-Nodes (7): 1. Explicit Negation in Rules, 2. Entry in Rationalization Table, 3. Red Flag Entry, 4. Update description, Plugging Each Hole, Re-verify After Refactoring, REFACTOR Phase: Close Loopholes (Stay Green)
-
-### Community 87 - "codex-tools.md"
+### Community 87 - "Circuit Atelier — interactive electronics course"
 Cohesion: 0.33
-Nodes (5): Codex App Finishing, Environment Detection, Model routing on spawns, Subagent dispatch requires multi-agent support, Waiting on children
-
-### Community 89 - "VERIFY GREEN: Pressure Testing"
-Cohesion: 0.40
-Nodes (5): Key Elements of Good Scenarios, Pressure Types, Testing Setup, VERIFY GREEN: Pressure Testing, Writing Pressure Scenarios
-
-### Community 90 - "Example: TDD Skill Bulletproofing"
-Cohesion: 0.50
-Nodes (4): Example: TDD Skill Bulletproofing, Initial Test (Failed), Iteration 1 - Add Counter, Iteration 2 - Add Foundational Principle
+Nodes (5): Circuit Atelier — interactive electronics course, Commands, Memory and context: graphify (use first), Rules, Workflow: superpowers skills (in `.claude/skills/`)
 
 ## Knowledge Gaps
 - **1 isolated node(s):** `RFC-6455`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 643 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 647 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `vitest` connect `@vitejs/plugin-react` to `transpile.ts`, `package.json`, `VirtualMcu`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
+  _High betweenness centrality (0.027) - this node is a cross-community bridge._
 - **What connects `RFC-6455` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `server.cjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.05257936507936508 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07671957671957672 - nodes in this community are weakly interconnected._
 - **Why does `VirtualMcu` connect `VirtualMcu` to `transpile.ts`, `virtualMcu.ts`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Should `types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.05121951219512195 - nodes in this community are weakly interconnected._
 - **Why does `TranspileError` connect `transpile.ts` to `VirtualMcu`?**
-  _High betweenness centrality (0.007) - this node is a cross-community bridge._
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **Should `Writing Skills` be split into smaller, more focused modules?**
   _Cohesion score 0.05128205128205128 - nodes in this community are weakly interconnected._
