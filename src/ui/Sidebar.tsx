@@ -22,13 +22,13 @@ export function Sidebar({ tracks, lessons, activeId, completed, pinned = [], onS
   const byTrack = (id: TrackId) => lessons.filter((l) => l.track === id)
   const pinnedLessons = pinned.map((id) => lessons.find((l) => l.id === id)).filter((l): l is LessonSummary => !!l)
 
-  const item = (l: LessonSummary) => (
+  const item = (l: LessonSummary, primary = true) => (
     <li key={l.id}>
       <button
         type="button"
         className="lesson-link"
         data-active={l.id === activeId}
-        aria-current={l.id === activeId ? 'page' : undefined}
+        aria-current={primary && l.id === activeId ? 'page' : undefined}
         onClick={() => {
           onSelect(l.id)
           onClose?.()
@@ -49,7 +49,7 @@ export function Sidebar({ tracks, lessons, activeId, completed, pinned = [], onS
   return (
     <>
       <div className="scrim" data-open={open} onClick={onClose} aria-hidden="true" />
-      <aside className="sidebar" data-open={open} aria-label="Course syllabus">
+      <aside className="sidebar" data-open={open} onKeyDown={(e) => e.key === 'Escape' && onClose?.()} aria-label="Course syllabus">
         <div className="brand">
           <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
             <rect x="2" y="2" width="28" height="28" rx="6" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -69,7 +69,7 @@ export function Sidebar({ tracks, lessons, activeId, completed, pinned = [], onS
               <h2 className="track-head start">
                 <span className="track-id">★</span> Start here
               </h2>
-              <ul>{pinnedLessons.map(item)}</ul>
+              <ul>{pinnedLessons.map((l) => item(l, true))}</ul>
             </section>
           )}
           {tracks.map((t) => {
@@ -85,7 +85,7 @@ export function Sidebar({ tracks, lessons, activeId, completed, pinned = [], onS
                     {n}/{ls.length}
                   </span>
                 </h2>
-                <ul>{ls.map(item)}</ul>
+                <ul>{ls.map((l) => item(l, !pinned.includes(l.id)))}</ul>
               </section>
             )
           })}

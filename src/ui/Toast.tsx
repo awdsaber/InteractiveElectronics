@@ -25,7 +25,7 @@ function Item({ t, onDismiss, duration }: { t: ToastMessage; onDismiss: (id: num
 
 export function Toast({ toasts, onDismiss, duration = 4200 }: ToastProps) {
   return (
-    <div className="toasts" aria-live="polite">
+    <div className="toasts">
       {toasts.map((t) => (
         <Item key={t.id} t={t} onDismiss={onDismiss} duration={duration} />
       ))}

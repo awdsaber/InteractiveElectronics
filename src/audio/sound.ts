@@ -142,6 +142,7 @@ function schedule() {
   const c = ctx
   const s = lofi
   if (!c || !s) return
+  s.nextTime = Math.max(s.nextTime, c.currentTime + 0.05)
   while (s.nextTime < c.currentTime + 1.2) {
     playChord(c, s.bus, s.nextTime, s.chordIndex, s.rnd)
     playDrums(c, s.bus, s.nextTime, s.rnd)
@@ -244,6 +245,7 @@ function stopWhir() {
   if (!whirNodes || !ctx) return
   const { osc, gain } = whirNodes
   gain.gain.setTargetAtTime(0, ctx.currentTime, 0.08)
+  osc.onended = () => gain.disconnect()
   osc.stop(ctx.currentTime + 0.4)
   whirNodes = null
 }
@@ -253,8 +255,9 @@ function stopWhir() {
  * call sfx('whir', 0) to stop it.
  */
 export function sfx(name: SfxName, param = 0.5): void {
+  if (!effectsOn) return
   const c = ensure()
-  if (!c || !effectsOn) return
+  if (!c) return
   const t = c.currentTime
   switch (name) {
     case 'click':

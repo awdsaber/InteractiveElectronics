@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "src/audio/sound.ts": {
-    "mtime": 1793999876.215969,
-    "seen": 1794000107.8781703,
-    "ast_hash": "02a8c556ffbc90f926a8bb0dd9bc1f56",
+    "mtime": 1794000238.9291675,
+    "seen": 1794000262.8428571,
+    "ast_hash": "c19d3ea266a8b54e4e7e778f2be9bf8b",
     "semantic_hash": ""
   },
   "src/ui/BenchActions.tsx": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "src/ui/Controls.tsx": {
-    "mtime": 1793999936.9655263,
-    "seen": 1794000107.8781703,
-    "ast_hash": "4c96d7f604124d8a4097c8f37d0943de",
+    "mtime": 1794000227.0126863,
+    "seen": 1794000262.8428571,
+    "ast_hash": "a9f0d080ac20f57a245877c1b7317f1a",
     "semantic_hash": ""
   },
   "src/ui/Layout.tsx": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "src/ui/Sidebar.tsx": {
-    "mtime": 1793999936.7522907,
-    "seen": 1794000107.8781703,
-    "ast_hash": "dc956bffcf50f859b8098b9c4cdaefda",
+    "mtime": 1794000238.9397523,
+    "seen": 1794000262.8428571,
+    "ast_hash": "a1414cdccd2d3cbaf2728d7b495fd3a1",
     "semantic_hash": ""
   },
   "src/ui/StatusLine.tsx": {
@@ -654,15 +654,15 @@
     "semantic_hash": ""
   },
   "src/ui/StatusPanel.tsx": {
-    "mtime": 1793999936.890508,
-    "seen": 1794000107.8781703,
-    "ast_hash": "bb656c08c537f76c1c7be5edb18da17c",
+    "mtime": 1794000238.94937,
+    "seen": 1794000262.8428571,
+    "ast_hash": "8e77b54dec3e1c92fdc7d0904ef043a1",
     "semantic_hash": ""
   },
   "src/ui/Toast.tsx": {
-    "mtime": 1793999937.1877122,
-    "seen": 1794000107.8781703,
-    "ast_hash": "5870ed40e1af080e41693ea88b9e4c61",
+    "mtime": 1794000238.9437604,
+    "seen": 1794000262.8428571,
+    "ast_hash": "08ad3a72cde28250e4d4ce313ad2e4ce",
     "semantic_hash": ""
   },
   "src/ui/TryItYourself.tsx": {
@@ -678,15 +678,15 @@
     "semantic_hash": ""
   },
   "src/ui/format.test.ts": {
-    "mtime": 1793999853.8899074,
-    "seen": 1794000107.8781703,
-    "ast_hash": "5b28410397035b14c517b0d31df05d4e",
+    "mtime": 1794000238.9377244,
+    "seen": 1794000262.8428571,
+    "ast_hash": "4b69531b293d7428656c7b5e113c581b",
     "semantic_hash": ""
   },
   "src/ui/format.ts": {
-    "mtime": 1793999853.8438113,
-    "seen": 1794000107.8781703,
-    "ast_hash": "d9afafbdf3fc3dd980865d01545eb868",
+    "mtime": 1794000238.9322038,
+    "seen": 1794000262.8428571,
+    "ast_hash": "1b22147106f558cfacd9084131e89a48",
     "semantic_hash": ""
   },
   "src/ui/types.ts": {

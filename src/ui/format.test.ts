@@ -33,4 +33,8 @@ describe('siLabel', () => {
     expect(siLabel(5, 'V')).toBe('5 V')
     expect(siLabel(0, 'V')).toBe('0 V')
   })
+  it('does not render 1000 of a prefix', () => {
+    expect(siLabel(999.7, 'Ω')).toBe('1 kΩ')
+    expect(siLabel(0.9997, 'A')).toBe('1 A')
+  })
 })

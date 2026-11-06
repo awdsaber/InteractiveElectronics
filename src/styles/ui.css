@@ -564,7 +564,7 @@ input[type='range']:active::-webkit-slider-thumb {
   padding: 2px 0;
   font-size: 12.5px;
 }
-.toggle .track {
+.toggle .switch-track {
   position: relative;
   width: 34px;
   height: 18px;
@@ -974,11 +974,14 @@ input[type='range']:active::-webkit-slider-thumb {
     width: min(320px, 86vw);
     height: 100dvh;
     transform: translateX(-102%);
-    transition: transform 0.25s ease;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
+    visibility: hidden;
     box-shadow: 6px 0 0 rgba(29, 27, 23, 0.25);
   }
   .sidebar[data-open='true'] {
     transform: none;
+    visibility: visible;
+    transition: transform 0.25s ease, visibility 0s;
   }
   .scrim {
     display: block;

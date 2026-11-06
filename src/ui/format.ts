@@ -29,8 +29,13 @@ export function siLabel(value: number, unit: string, digits = 2): string {
   if (!isFinite(value)) return `— ${unit}`.trim()
   if (value === 0) return `0 ${unit}`.trim()
   const abs = Math.abs(value)
-  const [scale, prefix] = PREFIXES.find(([s]) => abs >= s * 0.9995) ?? PREFIXES[PREFIXES.length - 1]
-  const n = value / scale
-  const s = Number(n.toPrecision(digits)).toString()
-  return `${s} ${prefix}${unit}`.trim()
+  let i = PREFIXES.findIndex(([s]) => abs >= s)
+  if (i < 0) i = PREFIXES.length - 1
+  let n = Number((value / PREFIXES[i][0]).toPrecision(digits))
+  // rounding can reach 1000 (e.g. 999.7 -> 1000): step up to the next prefix
+  if (Math.abs(n) >= 1000 && i > 0) {
+    i--
+    n = Number((value / PREFIXES[i][0]).toPrecision(digits))
+  }
+  return `${n} ${PREFIXES[i][1]}${unit}`.trim()
 }

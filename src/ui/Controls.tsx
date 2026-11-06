@@ -14,7 +14,7 @@ export interface ControlsProps {
 function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" role="switch" aria-checked={on} className="toggle" onClick={() => onChange(!on)}>
-      <span className="track" aria-hidden="true">
+      <span className="switch-track" aria-hidden="true">
         <span className="knob" />
       </span>
       {label}

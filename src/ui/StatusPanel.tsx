@@ -12,7 +12,7 @@ const toneOf = (s: BenchStatus) => (s === 'FAULT' ? 'warn' : s === 'POWERED' || 
 
 export function StatusPanel({ placed, total, status, readouts }: StatusPanelProps) {
   return (
-    <section className="status-panel" aria-label="Bench status" aria-live="polite">
+    <section className="status-panel" aria-label="Bench status">
       <dl>
         <div className="row">
           <dt>PARTS</dt>
@@ -22,7 +22,7 @@ export function StatusPanel({ placed, total, status, readouts }: StatusPanelProp
         </div>
         <div className="row">
           <dt>STATUS</dt>
-          <dd className="state" data-tone={toneOf(status)}>
+          <dd className="state" data-tone={toneOf(status)} aria-live="polite">
             <i aria-hidden="true" />
             {status}
           </dd>
