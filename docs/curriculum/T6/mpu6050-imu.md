@@ -228,7 +228,7 @@ The MPU-6050 contains two very different sensors.
 
 **Wiring:** the GY-521's 3.3 V LDO lets it run from 5 V. Its pull-ups go to 3.3 V, which the Uno's TWI usually accepts even though it is under the datasheet's 0.7 × VCC = 3.5 V threshold.
 
-Note: TDK lists the MPU-6050 as not recommended for new designs. Check the current status. The ICM-42688-P and similar parts are the modern equivalents.
+Note: TDK lists the MPU-6050 as not recommended for new designs. Check the current status.
 
 ## For mechanical engineers
 

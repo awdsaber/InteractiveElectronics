@@ -210,7 +210,7 @@ SIM NOTE: the pot needs a linked tweak, with `pot_top = 10 kΩ − pot_bot`.
 
 ## Meet the board
 
-The Uno R3 is a carrier for one chip, the **ATmega328P**. It runs at 16 MHz, so one clock cycle takes 62.5 ns. Most AVR instructions take one or two cycles.
+The Uno R3 is a carrier for one chip, the **ATmega328P**. It runs at 16 MHz, so one clock cycle takes 62.5 ns.
 
 **Digital pins.** Each pin is a push-pull switch to 5 V or 0 V. Keep each one to **20 mA** or less (40 mA is the absolute maximum) and the whole chip to under 200 mA. For a red LED: R = (5 − 1.8) V / 13 mA ≈ 246 Ω, so 220 Ω is the nearest common value.
 

@@ -221,7 +221,7 @@ Two hall sensors sit 90° apart (electrically) around a magnet disc, so A and B 
 
 **ISR load:** that 3520 counts/s is 3520 interrupts/s. At about 6 µs each that is about 2 % of the CPU. At the motor's full speed (~190 rpm out) it is about 4 %. That is fine on an Uno, but at much higher rates you'd use direct port reads (about 10 times faster than `digitalRead`) or a chip with a hardware decoder (the ESP32's PCNT, or STM32 timers).
 
-**The table decoder** rejects "both bits changed" as invalid instead of guessing. Counting those is your health monitor.
+**The table decoder** rejects "both bits changed" as invalid instead of guessing.
 
 ## For mechanical engineers
 

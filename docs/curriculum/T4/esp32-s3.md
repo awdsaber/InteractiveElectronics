@@ -220,7 +220,7 @@ The DevKitC-1 is a breakout for the **ESP32-S3-WROOM-1** module. Inside the meta
 
 **LED maths at 3.3 V.** A red LED needs (3.3 − 1.8)/0.01 = **150 Ω** for 10 mA, and a blue one (2.9 V) has only 0.4 V left to drop. Use 47 Ω for blue, or drive it from 5 V through a transistor.
 
-**RGB LED.** Espressif's v1.0 boards put it on GPIO48 and v1.1 boards on GPIO38. Check the revision on your board's silkscreen or the seller's page. Arduino-ESP32 also defines `RGB_BUILTIN` for the selected board.
+**RGB LED.** Espressif's v1.0 boards put it on GPIO48 and v1.1 boards on GPIO38. Check the revision on your board's silkscreen or the seller's page.
 
 **Power.** A WiFi burst can pull a few hundred mA. A 22 µF capacitor on 3.3 V and a decent cable prevent brown-out resets.
 
