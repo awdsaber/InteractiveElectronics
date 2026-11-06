@@ -196,14 +196,37 @@ export interface Readout {
     | { kind: 'power'; elementId: string }
     | { kind: 'extra'; key: string } // Solution.extra key
     | { kind: 'behavior'; key: string } // value published by a behavior
-  unit: 'A' | 'V' | 'W' | 'Ω' | 'rpm' | '°' | '°C' | 'Hz' | 'g' | 'cm' | ''
+  unit: ReadoutUnit
   digits?: number
 }
 
+export type ReadoutUnit =
+  | 'A'
+  | 'V'
+  | 'W'
+  | 'Ω'
+  | 'mΩ'
+  | 'rpm'
+  | '°'
+  | '°C'
+  | 'Hz'
+  | 'g'
+  | 'cm'
+  | '%'
+  | 's'
+  | 'µs'
+  | 'counts'
+  | 'dBm'
+  | 'C'
+  | ''
+
 export interface Tweak {
   label: string
+  /** netlist element id, or `behavior:<instance>` to drive a behavior param */
   elementId: string
-  key: string // 'value', 'closed', 'r', 'load' ...
+  key: string // 'value', 'closed', 'r', 'load' ... (or the behavior param name)
+  /** slider (default), toggle (0/1), momentary (1 while held) */
+  kind?: 'slider' | 'toggle' | 'momentary'
   min: number
   max: number
   step?: number
@@ -250,9 +273,11 @@ export interface Lesson {
   tagline: string
   board: BoardSpec
   circuit: Netlist
-  /** element id of the power switch/source toggled by "Plug USB / Connect power" */
+  /** element id of the power switch/source toggled by "Plug USB / Connect power". It also powers the MCU. */
   powerElementId: string
   powerLabel?: string // "Plug USB" (default) / "Connect battery"
+  /** extra independently switched sources (each gets its own labelled button), e.g. a motor battery */
+  extraPower?: { elementId: string; label: string }[]
   readouts: Readout[]
   sketch?: Sketch
   tweaks?: Tweak[]
@@ -262,10 +287,18 @@ export interface Lesson {
   mechanicalAnalogy: string // markdown
   proTips: string[]
   quiz: QuizItem[]
-  behaviors?: string[] // ids registered in src/engine/behaviors
-  /** transient step needed? (RC, motors, PWM). default true when C/L/MOTOR present */
+  /** ids registered in src/engine/behaviors, or { id, instance, params } */
+  behaviors?: BehaviorRef[]
+  /** transient step needed? (RC, motors, PWM). default true when C/L/MOTOR present, a sketch or a ticking behavior */
   transient?: boolean
+  /** transient settings: step (default 1 ms) and steps per animation frame */
+  sim?: { dt?: number; stepsPerFrame?: number }
 }
+
+export type BehaviorRef = string | { id: string; instance?: string; params?: Record<string, number | string | boolean> }
+
+/** A lesson as authored in src/lessons: `fig` is optional (assigned in sidebar order unless it is a video figure). */
+export type LessonDef = Omit<Lesson, 'fig'> & { fig?: number }
 
 export type BenchStatus = 'BARE PCB' | 'ASSEMBLING' | 'READY' | 'POWERED' | 'RUNNING' | 'FAULT'
 
@@ -277,16 +310,51 @@ export interface Track {
 
 // ───────────────────────── Behaviors (lesson-specific dynamics) ─────────────────────────
 
+export interface BehaviorEvent {
+  t: number
+  channel: string
+  kind: string
+  data?: unknown
+}
+
+export interface BehaviorMcu {
+  /** brown-out: stop the sketch and float every pin until release() */
+  hold(reason?: string): void
+  release(): void
+  /** restart the uploaded sketch from setup() */
+  reset(): void
+  injectEdge(pin: number, level: number | boolean, tMicros: number): void
+  serialIn(text: string): void
+  attachI2c(address: number, device: unknown): void
+  attachSpi(csPin: number, device: unknown): void
+  /** MCU virtual time, µs */
+  readonly timeMicros: number
+  readonly running: boolean
+}
+
 export interface BehaviorContext {
   /** sim time, seconds */
   t: number
   solution: Solution | null
   pins: Record<number, PinState>
   powered: boolean
+  /** this instance's params (lesson defaults, then tweaks `behavior:<instance>.<param>`) */
+  params: Record<string, number | string | boolean>
+  /** the netlist being simulated (patched, read-only) */
+  readonly netlist: Netlist
+  /** node voltage (relative to `ref`, default ground) from the latest good solution */
+  v(node: NodeId, ref?: NodeId): number
   /** publish a value readable by Readout { kind:'behavior', key } and 3D parts */
   publish(key: string, value: number): void
   /** change a netlist element parameter live (e.g. sensor resistance) */
   setParam(elementId: string, key: string, value: number | boolean): void
+  /** shaft load torque on a MOTOR, N·m */
+  setMotorLoad(elementId: string, torque: number): void
+  /** fail a part as if its rating had been exceeded */
+  burn(elementId: string, reason: BurnEvent['reason']): void
+  /** timeline events for instruments (logic analyser, scope markers) */
+  events: { push(e: BehaviorEvent): void }
+  mcu: BehaviorMcu
 }
 
 export interface Behavior {
@@ -294,6 +362,6 @@ export interface Behavior {
   /** objects exposed to sketches as globals, e.g. { mpu: {...} } or classes like Servo */
   libraries?: (ctx: BehaviorContext) => Record<string, unknown>
   init?(ctx: BehaviorContext): void
-  /** dt in seconds */
+  /** dt in seconds; called once per animation frame with the sim time that frame covered */
   tick?(ctx: BehaviorContext, dt: number): void
 }
