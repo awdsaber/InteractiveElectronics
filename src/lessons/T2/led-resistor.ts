@@ -15,6 +15,12 @@ const gnd = UNO.digital(UNO_AT, 'GND')
 
 const w1 = jumper(pin13, bbHole(BB, 27, 'a'), 'yellow')
 const w2 = jumper(gnd, bbHole(BB, 22, 'a'), 'black', 0.9)
+// the "resistor left out" failure: a bare jumper bridges R1's two columns instead
+const j1 = jumper(r1Left, r1Right, 'green', 0.22)
+
+/** datasheet reverse-voltage rating of a 5 mm red LED (VR = 5 V); the sim limit adds 0.5 V so
+ * exactly 5 V of reverse bias reads as "at the limit" (survives, no margin) rather than a coin toss */
+const LED_RATING = { maxI: 0.03, maxV: 5.5 }
 
 const withCallout = (w: ReturnType<typeof jumper>, callout: [number, number, number]) => ({ ...w, params: { ...w.params, callout } })
 
@@ -36,7 +42,7 @@ void loop() {
 }
 `
 
-export const ledResistor: LessonDef = {
+export const lesson: LessonDef = {
   id: 'led-resistor',
   fig: 2,
   track: 'T2',
@@ -82,6 +88,15 @@ export const ledResistor: LessonDef = {
       },
       { id: 'w1', kind: 'wire', ...withCallout(w1, [1.8, 1.0, -0.2]), mount: 'offboard', label: 'PIN13', role: 'Pin 13 to the resistor.' },
       { id: 'w2', kind: 'wire', ...withCallout(w2, [1.2, 0.2, 1.2]), mount: 'offboard', label: 'GND', role: 'LED cathode back to Uno GND.' },
+      {
+        id: 'jumper',
+        kind: 'wire',
+        ...withCallout(j1, [0.3, 2.0, -0.3]),
+        mount: 'offboard',
+        label: 'JUMPER',
+        role: 'A bare jumper where the resistor should be.',
+        hidden: true,
+      },
     ],
   },
 
@@ -90,7 +105,7 @@ export const ledResistor: LessonDef = {
       { id: 'V_USB', type: 'V', nodes: ['usb5v', '0'], value: 5, rInternal: 0.1, partId: 'uno' },
       { id: 'PIN13', type: 'PIN', nodes: ['p13', '0'], pin: 13, vcc: 5, rOut: 25, rating: { maxI: 0.04 }, partId: 'uno' },
       { id: 'R1', type: 'R', nodes: ['p13', 'a'], value: 220, rating: { maxP: 0.25 }, partId: 'r1' },
-      { id: 'LED1', type: 'LED', nodes: ['a', '0'], color: 'red', rating: { maxI: 0.03, maxV: 5 }, partId: 'led1' },
+      { id: 'LED1', type: 'LED', nodes: ['a', '0'], color: 'red', rating: LED_RATING, partId: 'led1' },
     ],
   },
   powerElementId: 'V_USB',
@@ -109,8 +124,8 @@ export const ledResistor: LessonDef = {
 
   statusLines: [
     { when: { kind: 'pin', pin: 13, level: 0 }, text: 'RUNNING: pin 13 LOW, no current, LED dark' },
-    { when: { kind: 'pin', pin: 13, level: 1 }, text: 'RUNNING: pin 13 HIGH, ≈ 13 mA through the LED' },
-    { when: { kind: 'above', readout: 0, value: 0.02 }, text: 'WARNING: LED above its 20 mA continuous rating' },
+    { when: { kind: 'pin', pin: 13, level: 1 }, text: 'RUNNING: pin 13 HIGH, {0} through the LED' },
+    { when: { kind: 'above', readout: 0, value: 0.02 }, text: 'WARNING: {0} is above the LED\'s 20 mA continuous rating' },
   ],
 
   failures: [
@@ -118,23 +133,24 @@ export const ledResistor: LessonDef = {
       id: 'no-resistor',
       label: 'Leave the resistor out (jumper in its place)',
       explain:
-        "Only the pin's ≈ 25 Ω output resistance limits the current: (5 − ~2)/25 ≈ 120 mA. Both parts are destroyed, and a dead pin can't be fixed.",
+        "Only the pin's ≈ 25 Ω output resistance limits the current: (5 − ~2)/25 ≈ 120 mA. Both parts are destroyed. Repair all is the bench's undo; on a real Uno that pin, and often the ATmega328P, stays damaged.",
       patches: [{ op: 'short', a: 'p13', b: 'a' }],
+      parts: { hide: ['r1'], show: ['jumper'] },
     },
     {
       id: 'r-22',
       label: '22 Ω fitted instead of 220 Ω (red-red-black)',
-      explain: 'I = 3.2/(22 + 25) = 68 mA. A black third band instead of brown is a factor of ten.',
+      explain: 'I = 3.2/(22 + 25) = 68 mA: the LED burns and the pin is overloaded. A black third band instead of brown is a factor of ten.',
       patches: [{ op: 'set', elementId: 'R1', key: 'value', value: 22 }],
     },
     {
       id: 'led-reversed',
       label: 'LED in backwards',
       explain:
-        'Reverse-biased, the LED blocks. 5 V sits exactly at its reverse-voltage rating, so it survives here but has no margin. Reversed LEDs on higher supplies do get damaged.',
+        "Reverse-biased, the LED blocks: no current, and node a sits at the pin's 5 V. That is exactly the LED's 5 V reverse rating, so it survives here with no margin. Reversed LEDs on higher supplies do get damaged.",
       patches: [
         { op: 'remove', elementId: 'LED1' },
-        { op: 'add', element: { id: 'LED1', type: 'LED', nodes: ['0', 'a'], color: 'red', rating: { maxI: 0.03, maxV: 5 }, partId: 'led1' } },
+        { op: 'add', element: { id: 'LED1', type: 'LED', nodes: ['0', 'a'], color: 'red', rating: LED_RATING, partId: 'led1' } },
       ],
     },
   ],
