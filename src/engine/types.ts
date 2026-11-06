@@ -71,6 +71,8 @@ export interface PinState {
   mode: PinMode
   /** 0..1 — digital LOW/HIGH = 0/1, PWM = duty */
   level: number
+  /** set when the pin drives a hobby servo: commanded angle in degrees (level is deg/180) */
+  servoDeg?: number
 }
 
 // ───────────────────────── Failures ─────────────────────────

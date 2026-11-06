@@ -2,7 +2,7 @@
   "0": "server.cjs",
   "1": "types.ts",
   "2": "Writing Skills",
-  "3": "writing-skills/SKILL.md",
+  "3": "Skill Discovery Optimization (SDO)",
   "4": "subagent-driven-development/SKILL.md",
   "5": "deploy.yml",
   "6": "Test-Driven Development (TDD)",
@@ -79,5 +79,15 @@
   "77": "scrub-audit.md",
   "78": "similar-session.md",
   "79": "skill-timeline.md",
-  "80": "stumbles.md"
+  "80": "stumbles.md",
+  "81": "transpile.ts",
+  "82": "virtualMcu.ts",
+  "83": "VirtualMcu",
+  "84": "Gemini CLI Tool Mapping",
+  "85": "Bulletproofing Skills Against Rationalization",
+  "86": "REFACTOR Phase: Close Loopholes (Stay Green)",
+  "87": "codex-tools.md",
+  "88": "writing-skills/SKILL.md",
+  "89": "VERIFY GREEN: Pressure Testing",
+  "90": "Example: TDD Skill Bulletproofing"
 }
