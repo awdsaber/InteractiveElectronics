@@ -2,3 +2,4 @@
 *.png binary
 *.jpg binary
 *.glb binary
+graphify-out/** merge=ours
