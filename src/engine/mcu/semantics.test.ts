@@ -168,7 +168,7 @@ describe('error reporting', () => {
     expect(errorOf(`void setup() {\n  int a = 1;\n  fooBar(3);\n}`).line).toBe(3)
     expect(errorOf(`void setup() {\n\n  y = 3;\n}`).line).toBe(3)
     expect(errorOf(`void setup() {\n  int a = 1;\n  a = b + 1;\n}`).message).toMatch(/'b'/)
-    expect(errorOf(`void setup() {\n  tone(8, 440);\n}`).message).toMatch(/tone/)
+    expect(errorOf(`void setup() {\n  shiftOut(8, 9, MSBFIRST, 1);\n}`).message).toMatch(/'shiftOut' is not supported by the simulator yet/)
   })
 
   it('does not flag declared names, functions, params, defines, constants, libraries', () => {

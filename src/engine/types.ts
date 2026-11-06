@@ -73,6 +73,8 @@ export interface PinState {
   level: number
   /** set when the pin drives a hobby servo: commanded angle in degrees (level is deg/180) */
   servoDeg?: number
+  /** set while tone() drives the pin: square-wave frequency in Hz (level is 0.5, the 50 % duty) */
+  toneHz?: number
 }
 
 // ───────────────────────── Failures ─────────────────────────

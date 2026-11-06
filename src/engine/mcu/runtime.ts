@@ -109,3 +109,95 @@ function formatNumber(n: number, fmt: number | undefined, isFloat: boolean): str
   if (fmt === 2 || fmt === 8 || fmt === 16) return (n < 0 ? n >>> 0 : n).toString(fmt).toUpperCase()
   return String(n)
 }
+
+// ── fixed-width integers (board semantics) ──
+
+function intOf(v: unknown): number {
+  const x = castInt(v)
+  const n = typeof x === 'number' ? x : Number(x)
+  return Number.isFinite(n) ? n : 0
+}
+/** int8_t */
+export const i8 = (v: unknown): number => (intOf(v) << 24) >> 24
+/** Uno int / short / int16_t */
+export const i16 = (v: unknown): number => (intOf(v) << 16) >> 16
+/** Uno unsigned int / uint16_t / word */
+export const u16w = (v: unknown): number => intOf(v) & 0xffff
+/** long / int32_t, and int on the ESP32 */
+export const i32 = (v: unknown): number => intOf(v) | 0
+/** unsigned long / uint32_t */
+export const u32 = (v: unknown): number => intOf(v) >>> 0
+
+// ── bitSet / bitClear / bitWrite (the transpiler turns them into x = helper(x, ...)) ──
+
+export const bitSetFn = (x: number, n: number): number => Math.trunc(Number(x)) | (1 << n)
+export const bitClearFn = (x: number, n: number): number => Math.trunc(Number(x)) & ~(1 << n)
+export const bitWriteFn = (x: number, n: number, b: unknown): number => (b ? bitSetFn(x, n) : bitClearFn(x, n))
+
+// ── Arduino String methods ──
+// Sketch strings are JS strings. `s.method(args)` on a String-only method becomes `__S.method(s, args)`; the methods that
+// change the String in place get a setter as their second argument. A non-string receiver (a library object with a
+// method of the same name) is passed through to its own method.
+
+type Setter = ((v: string) => void) | null
+const asText = (v: unknown): string => (typeof v === 'number' ? String.fromCharCode(v & 0xff) : String(v))
+const passThrough = (x: unknown, m: string, args: unknown[]): unknown => {
+  const f = (x as Record<string, unknown> | null | undefined)?.[m]
+  if (typeof f !== 'function') throw new TypeError(`.${m}() is not available on this value`)
+  return (f as (...a: unknown[]) => unknown).apply(x, args)
+}
+
+function pure(m: string, fn: (s: string, ...args: unknown[]) => unknown) {
+  return (x: unknown, ...args: unknown[]): unknown => (typeof x === 'string' ? fn(x, ...args) : passThrough(x, m, args))
+}
+function inPlace(m: string, fn: (s: string, ...args: unknown[]) => string, ret: unknown = undefined) {
+  return (x: unknown, set: Setter, ...args: unknown[]): unknown => {
+    if (typeof x !== 'string') return passThrough(x, m, args)
+    set?.(fn(x, ...args))
+    return ret
+  }
+}
+
+const INT_RE = /^\s*[+-]?\d+/
+const FLOAT_RE = /^\s*[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/
+const parseLeadingFloat = (s: string): number => {
+  const m = FLOAT_RE.exec(s)
+  return m ? parseFloat(m[0]) : 0
+}
+
+export const STRING_METHODS = {
+  toInt: pure('toInt', (s) => {
+    const m = INT_RE.exec(s)
+    return m ? parseInt(m[0], 10) | 0 : 0
+  }),
+  toFloat: pure('toFloat', parseLeadingFloat),
+  toDouble: pure('toDouble', parseLeadingFloat),
+  indexOf: pure('indexOf', (s, v, from) => s.indexOf(asText(v), from === undefined ? 0 : Number(from))),
+  lastIndexOf: pure('lastIndexOf', (s, v, from) => s.lastIndexOf(asText(v), from === undefined ? Infinity : Number(from))),
+  substring: pure('substring', (s, a, b) => s.substring(Number(a), b === undefined ? undefined : Number(b))),
+  charAt: pure('charAt', (s, i) => {
+    const k = Math.trunc(Number(i))
+    return k >= 0 && k < s.length ? s.charCodeAt(k) & 0xff : 0
+  }),
+  equals: pure('equals', (s, o) => s === String(o)),
+  equalsIgnoreCase: pure('equalsIgnoreCase', (s, o) => s.toLowerCase() === String(o).toLowerCase()),
+  startsWith: pure('startsWith', (s, p, off) => s.startsWith(String(p), off === undefined ? 0 : Number(off))),
+  endsWith: pure('endsWith', (s, p) => s.endsWith(String(p))),
+  compareTo: pure('compareTo', (s, o) => (s < String(o) ? -1 : s > String(o) ? 1 : 0)),
+  c_str: pure('c_str', (s) => s),
+  toUpperCase: inPlace('toUpperCase', (s) => s.toUpperCase()),
+  toLowerCase: inPlace('toLowerCase', (s) => s.toLowerCase()),
+  trim: inPlace('trim', (s) => s.trim()),
+  replace: inPlace('replace', (s, a, b) => s.split(asText(a)).join(asText(b))),
+  remove: inPlace('remove', (s, i, n) => {
+    const k = Math.trunc(Number(i))
+    return n === undefined ? s.slice(0, k) : s.slice(0, k) + s.slice(k + Math.trunc(Number(n)))
+  }),
+  concat: inPlace('concat', (s, v) => s + formatPrint(v), 1),
+}
+
+/** Methods the transpiler routes through STRING_METHODS; the in-place ones take a setter. */
+export const STRING_METHOD_NAMES: ReadonlySet<string> = new Set(Object.keys(STRING_METHODS))
+export const STRING_INPLACE: ReadonlySet<string> = new Set(['toUpperCase', 'toLowerCase', 'trim', 'replace', 'remove', 'concat'])
+export const STRING_INT_METHODS: ReadonlySet<string> = new Set(['toInt', 'indexOf', 'lastIndexOf', 'compareTo', 'charAt'])
+export const STRING_FLOAT_METHODS: ReadonlySet<string> = new Set(['toFloat', 'toDouble'])
