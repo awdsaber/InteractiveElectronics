@@ -4,7 +4,7 @@ import { validateLesson } from '../engine/lessonSchema'
 import type { Lesson } from '../engine/types'
 import { breadboardHole } from '../three/parts/boards'
 import { BENCH_Y as BENCH_Y_3D } from '../three/parts/types'
-import { ledResistor } from './T2/led-resistor'
+import { lesson as ledResistor } from './T2/led-resistor'
 import { getLesson, lessons, pinned, tracks } from './index'
 import { BENCH_Y, bbHole } from './layout'
 
@@ -66,6 +66,43 @@ describe('validateLesson cross-references', () => {
     expect(bad((l) => (l.quiz[0].answer = 9))).toMatch(/quiz.0: answer 9 out of range/)
     expect(bad((l) => (l.board.parts[1].id = l.board.parts[0].id))).toMatch(/duplicate part id "uno"/)
     expect(bad((l) => (l.sketch!.pins = { 13: 'R1' }))).toMatch(/"R1" is a R, not a PIN/)
+  })
+
+  it('catches unknown nodes in readouts, analog pins and short patches', () => {
+    expect(bad((l) => (l.readouts[1].source = { kind: 'voltage', node: 'p31' }))).toMatch(/readouts.1: no node "p31"/)
+    expect(bad((l) => (l.readouts[1].source = { kind: 'voltage', node: 'p13', ref: 'gnd' }))).toMatch(/readouts.1: no node "gnd"/)
+    expect(bad((l) => (l.sketch!.analogPins = { A0: 'sense' }))).toMatch(/sketch.analogPins.A0: no node "sense"/)
+    expect(bad((l) => (l.failures[0].patches = [{ op: 'short', a: 'p13', b: 'b' }]))).toMatch(/no-resistor.patches.0: no node "b"/)
+  })
+
+  it('catches tweak and set-patch keys the element does not have', () => {
+    expect(bad((l) => (l.tweaks![0].key = 'ohms'))).toMatch(/tweaks.0: R "R1" has no key "ohms"/)
+    expect(bad((l) => (l.failures[1].patches = [{ op: 'set', elementId: 'R1', key: 'resistance', value: 22 }]))).toMatch(/r-22.patches.0: R "R1" has no key "resistance"/)
+    // optional fields of the element type, `disabled` and nested rating keys are fine
+    expect(bad((l) => (l.failures[1].patches = [{ op: 'set', elementId: 'PIN13', key: 'rOut', value: 50 }]))).toBe('')
+    expect(bad((l) => (l.failures[1].patches = [{ op: 'set', elementId: 'R1', key: 'rating.maxP', value: 0.125 }]))).toBe('')
+    expect(bad((l) => (l.failures[1].patches = [{ op: 'set', elementId: 'R1', key: 'rating.maxQ', value: 1 }]))).toMatch(/no key "rating.maxQ"/)
+  })
+
+  it('catches unknown or duplicate behaviors and behavior readouts with no instance', () => {
+    expect(bad((l) => (l.behaviors = ['ghost']))).toMatch(/behaviors.0: no behavior "ghost" registered/)
+    const reg = { b: { id: 'b' } }
+    const two = structuredClone(base)
+    two.behaviors = [{ id: 'b', instance: 'x' }, { id: 'b', instance: 'x' }]
+    expect(validateLesson(two, reg).join('\n')).toMatch(/duplicate behavior instance "x"/)
+    const ro = structuredClone(base)
+    ro.behaviors = ['b']
+    ro.readouts.push({ label: 'T', source: { kind: 'behavior', key: 'other.temp' }, unit: '°C' })
+    expect(validateLesson(ro, reg).join('\n')).toMatch(/readouts.4: no behavior instance "other"/)
+  })
+
+  it('catches pin status lines for pins the sketch does not map, and a bad power element', () => {
+    expect(bad((l) => l.statusLines!.push({ when: { kind: 'pin', pin: 9, level: 1 }, text: 'x' }))).toMatch(/statusLines.3: pin 9 is not in sketch.pins/)
+    expect(bad((l) => (l.powerElementId = 'R1'))).toMatch(/power: "R1" is a R; power must be a V or SW/)
+  })
+
+  it('catches failure part lists that name unknown parts', () => {
+    expect(bad((l) => (l.failures[0].parts = { hide: ['r9'] }))).toMatch(/no-resistor.parts: no part "r9"/)
   })
 
   it('catches schema errors with a path', () => {

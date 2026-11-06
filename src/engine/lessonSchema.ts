@@ -3,7 +3,38 @@
 
 import { z } from 'zod'
 import { ALL_PART_KINDS } from '../three/parts/kinds'
-import type { Lesson } from './types'
+import { registry as defaultRegistry } from './behaviors'
+import type { Behavior, Element, Lesson } from './types'
+
+/** optional element fields a tweak or `set` patch may target, beyond the ones the element already has */
+const OPTIONAL_KEYS: Record<string, string[]> = {
+  V: ['rInternal', 'wave', 'iLimit', 'sink'],
+  SW: ['vBreak'],
+  D: ['is', 'n', 'rs'],
+  ZENER: ['rz'],
+  NPN: ['beta', 'is', 'vBreak'],
+  PNP: ['beta', 'is', 'vBreak'],
+  NMOS: ['vth', 'k', 'vBreak'],
+  PMOS: ['vth', 'k', 'vBreak'],
+  C: ['v0', 'polarized'],
+  L: ['i0'],
+  MOTOR: ['l', 'kt', 'j', 'b', 'load'],
+  PIN: ['rOut', 'vccNode'],
+  OPAMP: ['gain'],
+  XFMR: ['lm'],
+  LOGIC: ['vth', 'hyst'],
+  FUSE: ['r', 'blown'],
+  REG: ['iq'],
+}
+const COMMON_KEYS = ['disabled', 'partId']
+const RATING_KEYS = ['maxI', 'maxP', 'maxV', 'failMode', 'rth', 'tauTh', 'tMax', 'rmsWindow']
+
+function hasKey(el: Element, key: string): boolean {
+  const [head, sub] = key.split('.', 2)
+  if (head === 'rating') return sub !== undefined && RATING_KEYS.includes(sub)
+  if (sub !== undefined) return false
+  return key in el || COMMON_KEYS.includes(key) || (OPTIONAL_KEYS[el.type] ?? []).includes(key)
+}
 
 const num = z.number().finite()
 const node = z.string().min(1)
@@ -34,6 +65,7 @@ const part = z.object({
   color: z.string().optional(),
   params: z.record(z.string(), z.unknown()).optional(),
   circuitIds: z.array(z.string()).optional(),
+  hidden: z.boolean().optional(),
 })
 
 const readout = z.object({
@@ -113,7 +145,15 @@ export const lessonSchema = z.object({
     })
     .optional(),
   tweaks: z.array(tweak).optional(),
-  failures: z.array(z.object({ id: z.string().min(1), label: z.string().min(1), explain: z.string().min(1), patches: z.array(patch).min(1) })),
+  failures: z.array(
+    z.object({
+      id: z.string().min(1),
+      label: z.string().min(1),
+      explain: z.string().min(1),
+      patches: z.array(patch).min(1),
+      parts: z.object({ hide: z.array(z.string()).optional(), show: z.array(z.string()).optional() }).optional(),
+    }),
+  ),
   statusLines: z.array(statusLine).optional(),
   meet: z.string().min(1),
   mechanicalAnalogy: z.string().min(1),
@@ -124,17 +164,37 @@ export const lessonSchema = z.object({
   sim: z.object({ dt: num.positive().optional(), method: z.enum(['be', 'trap']).optional(), stepsPerFrame: z.number().int().positive().optional() }).optional(),
 })
 
-/** Every problem with a lesson, as readable strings (empty = valid). */
-export function validateLesson(l: unknown): string[] {
+/**
+ * Every problem with a lesson, as readable strings (empty = valid). `registry` is the behavior
+ * registry ids are checked against (default: the auto-registered behaviors).
+ */
+export function validateLesson(l: unknown, registry: Record<string, Pick<Behavior, 'id'>> = defaultRegistry): string[] {
   const parsed = lessonSchema.safeParse(l)
   if (!parsed.success) return parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
   const lesson = l as Lesson
   const errs: string[] = []
-  const ids = new Set(lesson.circuit.elements.map((e) => e.id))
-  // ids that only exist once a failure adds them still count for patches that follow
-  const added = new Set(lesson.failures.flatMap((f) => f.patches.flatMap((p) => (p.op === 'add' ? [p.element.id] : []))))
-  const has = (id: string) => ids.has(id)
-  const instances = new Set((lesson.behaviors ?? []).map((b) => (typeof b === 'string' ? b : (b.instance ?? b.id))))
+  const els = new Map(lesson.circuit.elements.map((e) => [e.id, e]))
+  // elements that only exist once a failure adds them still count for patches that follow
+  const addedEls = lesson.failures.flatMap((f) => f.patches.flatMap((p) => (p.op === 'add' ? [p.element as Element] : [])))
+  const element = (id: string) => els.get(id) ?? addedEls.find((e) => e.id === id)
+  const has = (id: string) => els.has(id)
+  const nodes = new Set(['0', ...[...lesson.circuit.elements, ...addedEls].flatMap((e) => e.nodes as string[])])
+  const node = (n: string, where: string) => {
+    if (!nodes.has(n)) errs.push(`${where}: no node "${n}"`)
+  }
+  const keyOk = (id: string, key: string, where: string) => {
+    const el = element(id)
+    if (el && !hasKey(el, key)) errs.push(`${where}: ${el.type} "${id}" has no key "${key}"`)
+  }
+
+  // behaviors
+  const refs = (lesson.behaviors ?? []).map((b) => (typeof b === 'string' ? { id: b, instance: b } : { id: b.id, instance: b.instance ?? b.id }))
+  const instances = new Set<string>()
+  refs.forEach((r, i) => {
+    if (!registry[r.id]) errs.push(`behaviors.${i}: no behavior "${r.id}" registered`)
+    if (instances.has(r.instance)) errs.push(`behaviors.${i}: duplicate behavior instance "${r.instance}"`)
+    instances.add(r.instance)
+  })
 
   const dupEl = lesson.circuit.elements.map((e) => e.id).filter((id, i, a) => a.indexOf(id) !== i)
   for (const id of new Set(dupEl)) errs.push(`circuit: duplicate element id "${id}"`)
@@ -144,25 +204,49 @@ export function validateLesson(l: unknown): string[] {
   for (const p of lesson.board.parts)
     for (const c of p.circuitIds ?? []) if (!has(c)) errs.push(`board.parts.${p.id}.circuitIds: no element "${c}"`)
   for (const id of [lesson.powerElementId, ...(lesson.extraPower ?? []).map((x) => x.elementId)]) {
-    if (!has(id)) errs.push(`power: no element "${id}"`)
+    const el = els.get(id)
+    if (!el) errs.push(`power: no element "${id}"`)
+    else if (el.type !== 'V' && el.type !== 'SW') errs.push(`power: "${id}" is a ${el.type}; power must be a V or SW`)
   }
   lesson.readouts.forEach((r, i) => {
     const s = r.source
     if ((s.kind === 'current' || s.kind === 'power') && !has(s.elementId)) errs.push(`readouts.${i}: no element "${s.elementId}"`)
+    if (s.kind === 'voltage') {
+      node(s.node, `readouts.${i}`)
+      if (s.ref !== undefined) node(s.ref, `readouts.${i}`)
+    }
+    if (s.kind === 'behavior') {
+      const inst = s.key.split('.')[0]
+      if (!s.key.includes('.') || !instances.has(inst)) errs.push(`readouts.${i}: no behavior instance "${inst}" (keys are <instance>.<key>)`)
+    }
   })
   lesson.tweaks?.forEach((t, i) => {
     if (t.elementId.startsWith('behavior:')) {
       if (!instances.has(t.elementId.slice(9))) errs.push(`tweaks.${i}: no behavior instance "${t.elementId.slice(9)}"`)
     } else if (!has(t.elementId)) errs.push(`tweaks.${i}: no element "${t.elementId}"`)
+    else keyOk(t.elementId, t.key, `tweaks.${i}`)
     if (!(t.max > t.min)) errs.push(`tweaks.${i}: max must be above min`)
     if (t.log && t.min <= 0) errs.push(`tweaks.${i}: a log slider needs min > 0`)
   })
+  const partSet = new Set(partIds)
   for (const f of lesson.failures) {
     f.patches.forEach((p, i) => {
-      if ((p.op === 'remove' || p.op === 'set') && !has(p.elementId) && !added.has(p.elementId))
-        errs.push(`failures.${f.id}.patches.${i}: no element "${p.elementId}"`)
+      const where = `failures.${f.id}.patches.${i}`
+      if (p.op === 'remove' || p.op === 'set') {
+        if (!element(p.elementId)) errs.push(`${where}: no element "${p.elementId}"`)
+        else if (p.op === 'set') keyOk(p.elementId, p.key, where)
+      }
+      if (p.op === 'short') {
+        node(p.a, where)
+        node(p.b, where)
+      }
     })
+    for (const id of [...(f.parts?.hide ?? []), ...(f.parts?.show ?? [])]) {
+      if (!partSet.has(id)) errs.push(`failures.${f.id}.parts: no part "${id}"`)
+    }
   }
+  const shown = new Set(lesson.failures.flatMap((f) => f.parts?.show ?? []))
+  for (const p of lesson.board.parts) if (p.hidden && !shown.has(p.id)) errs.push(`board.parts.${p.id}: hidden, but no failure shows it`)
   const fIds = lesson.failures.map((f) => f.id)
   for (const id of new Set(fIds.filter((id, i) => fIds.indexOf(id) !== i))) errs.push(`failures: duplicate id "${id}"`)
   lesson.quiz.forEach((q, i) => {
@@ -171,14 +255,19 @@ export function validateLesson(l: unknown): string[] {
   lesson.statusLines?.forEach((s, i) => {
     if ((s.when.kind === 'above' || s.when.kind === 'below') && s.when.readout >= lesson.readouts.length)
       errs.push(`statusLines.${i}: no readout ${s.when.readout}`)
+    if (s.when.kind === 'pin' && !(lesson.sketch && String(s.when.pin) in lesson.sketch.pins))
+      errs.push(`statusLines.${i}: pin ${s.when.pin} is not in sketch.pins`)
+    for (const m of s.text.matchAll(/\{(\d+)\}/g))
+      if (Number(m[1]) >= lesson.readouts.length) errs.push(`statusLines.${i}: no readout {${m[1]}}`)
   })
   if (lesson.sketch) {
     for (const [pin, id] of Object.entries(lesson.sketch.pins)) {
-      const el = lesson.circuit.elements.find((e) => e.id === id)
+      const el = els.get(id)
       if (!el) errs.push(`sketch.pins.${pin}: no element "${id}"`)
       else if (el.type !== 'PIN') errs.push(`sketch.pins.${pin}: "${id}" is a ${el.type}, not a PIN`)
       else if (el.pin !== Number(pin)) errs.push(`sketch.pins.${pin}: "${id}" is pin ${el.pin}`)
     }
+    for (const [name, n] of Object.entries(lesson.sketch.analogPins ?? {})) node(n, `sketch.analogPins.${name}`)
   }
   return errs
 }

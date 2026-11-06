@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ledResistor } from '../../lessons/T2/led-resistor'
+import { lesson as ledResistor } from '../../lessons/T2/led-resistor'
 import type { Behavior, Lesson, LessonDef } from '../types'
 import { type Bench, type BenchSnapshot, createBench } from './simLoop'
 
@@ -136,7 +136,6 @@ describe('createBench: led-resistor end to end (headless)', () => {
     await runUntil(b, pin13High)
     for (let i = 0; i < 30; i++) await b.frame(FRAME)
     const s = b.snapshot()
-    if (pin13High(s)) expect(s.values[2]).toBeGreaterThan(4.9)
     expect(Math.abs(ledI(s))).toBeLessThan(1e-6)
     expect(s.status).toBe('RUNNING')
     expect(s.statusLine.text).toMatch(/blocks/)
@@ -400,5 +399,156 @@ describe('createBench: behaviors', () => {
     const warn: string[] = []
     const b = createBench({ ...dcLesson, behaviors: ['nope'] }, { registry: {}, onNote: (n) => warn.push(n.text) })
     expect(b.snapshot().warnings.join(' ')).toMatch(/nope/)
+  })
+})
+
+describe('review round 1', () => {
+  /** RC charging (tau = 1 s) with an unrelated resistor a behavior keeps retuning */
+  const rc: Lesson = {
+    ...dcLesson,
+    id: 'rc',
+    circuit: {
+      elements: [
+        { id: 'B1', type: 'V', nodes: ['v', '0'], value: 5 },
+        { id: 'R1', type: 'R', nodes: ['v', 'm'], value: 1000 },
+        { id: 'C1', type: 'C', nodes: ['m', '0'], value: 1e-3 },
+        { id: 'R2', type: 'R', nodes: ['v', '0'], value: 1000 },
+      ],
+    },
+    readouts: [{ label: 'VC', source: { kind: 'voltage', node: 'm' }, unit: 'V' }],
+    tweaks: [],
+    statusLines: [],
+  }
+
+  it('a behavior setParam keeps the transient state (no DC fallback for that frame)', async () => {
+    let k = 0
+    const wiggle: Behavior = { id: 'wiggle', tick: (ctx) => ctx.setParam('R2', 'value', 1000 + (k++ % 2)) }
+    const b = createBench({ ...rc, behaviors: ['wiggle'] }, { registry: { wiggle } })
+    b.dispatch('power')
+    for (let i = 0; i < 6; i++) {
+      await b.frame(FRAME)
+      // ≈ 0.1 s into a 1 s charge: far below the 5 V a DC operating point would give
+      expect(b.snapshot().values[0]).toBeLessThan(1)
+    }
+  })
+
+  it('a tweak while powered keeps the transient state too', async () => {
+    const b = createBench({ ...rc, tweaks: [{ label: 'R2', elementId: 'R2', key: 'value', min: 100, max: 1e4, unit: 'Ω' }] })
+    b.dispatch('power')
+    await b.frame(FRAME)
+    b.setTweak('R2.value', 2000)
+    expect(b.snapshot().values[0]).toBeLessThan(1)
+  })
+
+  it('power-off clears thermal shutdown and the part starts cool on the next power-up', async () => {
+    const hot: Lesson = {
+      ...dcLesson,
+      transient: true,
+      circuit: {
+        elements: [
+          { id: 'B1', type: 'V', nodes: ['v', '0'], value: 10 },
+          { id: 'R1', type: 'R', nodes: ['v', 'm'], value: 50, rating: { rth: 400, tauTh: 0.1, tMax: 150, failMode: 'shutdown' } },
+          { id: 'R2', type: 'R', nodes: ['m', '0'], value: 50 },
+        ],
+      },
+    }
+    const b = createBench(hot)
+    b.dispatch('power')
+    await runUntil(b, (x) => x.assembly.disabled.includes('R1'), 2)
+    b.dispatch('power')
+    expect(b.snapshot().assembly.disabled).toEqual([])
+    b.dispatch('power')
+    await b.frame(FRAME)
+    expect(b.snapshot().values[1]).toBeGreaterThan(0.09) // R1 conducts: 10 V / 100 Ω
+    for (let i = 0; i < 3; i++) await b.frame(FRAME)
+    expect(b.snapshot().assembly.disabled).toEqual([]) // cool again, not instantly back in shutdown
+  })
+
+  it('releasing a held MCU does not replay the hold', async () => {
+    let hold = false
+    const supply: Behavior = { id: 'supply', tick: (ctx) => (hold ? ctx.mcu.hold() : ctx.mcu.release()) }
+    const b = createBench({ ...LED, behaviors: ['supply'] }, { registry: { supply } })
+    b.dispatch('power')
+    b.upload()
+    await runUntil(b, pin13High)
+    hold = true
+    for (let i = 0; i < 90; i++) await b.frame(FRAME) // 1.5 s held
+    const lines = b.snapshot().serial.length
+    hold = false
+    await b.frame(FRAME)
+    await b.frame(FRAME)
+    expect(b.snapshot().serial.length - lines).toBeLessThanOrEqual(1)
+  })
+
+  it('behavior lifecycle: onEvent, reset, dispose; published values clear on power-off and strip', async () => {
+    const seen: string[] = []
+    const life: Behavior = {
+      id: 'life',
+      tick: (ctx) => ctx.publish('x', 1),
+      onEvent: (_ctx, ev) => void seen.push(ev),
+      reset: () => void seen.push('reset'),
+      dispose: () => void seen.push('dispose'),
+    }
+    const b = createBench({ ...LED, behaviors: ['life'] }, { registry: { life } })
+    b.dispatch('power')
+    b.upload()
+    await b.frame(FRAME)
+    expect(b.snapshot().published['life.x']).toBe(1)
+    b.dispatch('break:r-22')
+    b.dispatch('repair')
+    b.dispatch('power')
+    expect(b.snapshot().published).toEqual({})
+    b.dispatch('power')
+    await b.frame(FRAME)
+    b.dispatch('strip')
+    expect(b.snapshot().published).toEqual({})
+    b.dispose()
+    expect(seen).toEqual(['power-on', 'upload', 'break', 'repair', 'reset', 'power-off', 'power-on', 'power-off', 'strip', 'reset', 'dispose'])
+  })
+
+  it('status lines interpolate live readouts: {0}', async () => {
+    const b = createBench(LED)
+    b.setTweak('R1.value', 470)
+    b.dispatch('power')
+    b.upload()
+    await runUntil(b, pin13High)
+    await b.frame(FRAME)
+    expect(b.snapshot().statusLine.text).toMatch(/6\.\d+ mA/)
+  })
+
+  it('a reversed LED: node a sits at 5 V while the pin is HIGH, and it survives', async () => {
+    const b = createBench(LED)
+    b.dispatch('power')
+    b.dispatch('break:led-reversed')
+    b.upload()
+    await runUntil(b, pin13High)
+    await b.frame(FRAME)
+    const s = b.snapshot()
+    expect(pin13High(s)).toBe(true)
+    expect(s.values[2]).toBeGreaterThan(4.9)
+    expect(s.assembly.burns).toEqual([])
+  })
+
+  it('failures can hide and show parts (resistor out, jumper in)', () => {
+    const b = createBench(LED)
+    expect(b.snapshot().partVisible).toMatchObject({ r1: true, jumper: false })
+    expect(b.snapshot().totalParts).toBe(6) // the jumper is not part of the build
+    b.dispatch('break:no-resistor')
+    expect(b.snapshot().partVisible).toMatchObject({ r1: false, jumper: true })
+    b.dispatch('strip')
+    expect(b.snapshot().partVisible.jumper).toBe(false)
+  })
+
+  it('drops MCU results from an old run after dispose', async () => {
+    const notes: string[] = []
+    const b = createBench(LED, { onNote: (n) => notes.push(n.text) })
+    b.dispatch('power')
+    b.upload('void setup() { delay(5); int a[2]; a[9].v = 1; }\nvoid loop() {}\n')
+    const p = b.frame(FRAME)
+    b.dispose()
+    const before = notes.length
+    await p
+    expect(notes.length).toBe(before)
+    expect(b.snapshot().sketchError).toBeNull()
   })
 })

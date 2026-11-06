@@ -194,6 +194,8 @@ export interface FailureScenario {
   label: string // menu text e.g. "Remove the current-limiting resistor"
   explain: string // what happens and why (shown after it triggers)
   patches: FailurePatch[]
+  /** 3D parts this failure removes from / adds to the bench while it is active */
+  parts?: { hide?: string[]; show?: string[] }
 }
 
 export interface BurnEvent {
@@ -287,6 +289,8 @@ export interface PartPlacement {
   params?: Record<string, unknown>
   /** netlist element ids rendered by this part (glow, burn) */
   circuitIds?: string[]
+  /** not part of the build: only on the bench while a failure `parts.show`s it (e.g. a jumper in place of R1) */
+  hidden?: boolean
 }
 
 export interface BoardSpec {
@@ -485,6 +489,9 @@ export interface BehaviorContext {
   mcu: BehaviorMcu
 }
 
+/** bench moments a behavior can react to (after the assembly state has changed) */
+export type BehaviorLifecycleEvent = 'power-on' | 'power-off' | 'upload' | 'repair' | 'strip' | 'break'
+
 export interface Behavior {
   id: string
   /** objects exposed to sketches as globals, e.g. { mpu: {...} } or classes like Servo */
@@ -492,4 +499,9 @@ export interface Behavior {
   init?(ctx: BehaviorContext): void
   /** dt in seconds; called once per animation frame with the sim time that frame covered */
   tick?(ctx: BehaviorContext, dt: number): void
+  onEvent?(ctx: BehaviorContext, ev: BehaviorLifecycleEvent): void
+  /** back to the initial state (after repair or strip): forget internal state, timers, latched faults */
+  reset?(ctx: BehaviorContext): void
+  /** the bench is going away (lesson switch): release anything held */
+  dispose?(ctx: BehaviorContext): void
 }

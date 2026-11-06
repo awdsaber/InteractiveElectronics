@@ -44,15 +44,18 @@ export const powerIds = (l: Lesson): string[] => [l.powerElementId, ...(l.extraP
 
 const handPlaced = (p: PartPlacement) => p.mount !== 'smd'
 
+/** the parts you build with (excludes `hidden` parts that only a failure brings onto the bench) */
+export const buildParts = (l: Lesson): PartPlacement[] => l.board.parts.filter((p) => !p.hidden)
+
 /** Solder is a step only on a PCB with through-hole parts. Breadboards and module-only benches skip it. */
 export function needsSolder(l: Lesson): boolean {
-  return l.board.base !== 'breadboard-only' && l.board.parts.some((p) => p.mount === 'tht')
+  return l.board.base !== 'breadboard-only' && buildParts(l).some((p) => p.mount === 'tht')
 }
 
 /** The finished, unpowered board: what a lesson opens on. */
 export function initialAssembly(l: Lesson): AssemblyState {
   return {
-    placed: new Set(l.board.parts.map((p) => p.id)),
+    placed: new Set(buildParts(l).map((p) => p.id)),
     soldered: needsSolder(l),
     powered: Object.fromEntries(powerIds(l).map((id) => [id, false])),
     running: false,
@@ -64,11 +67,11 @@ export function initialAssembly(l: Lesson): AssemblyState {
 }
 
 export function remainingParts(l: Lesson, s: AssemblyState): PartPlacement[] {
-  return l.board.parts.filter((p) => handPlaced(p) && !s.placed.has(p.id))
+  return buildParts(l).filter((p) => handPlaced(p) && !s.placed.has(p.id))
 }
 
-const missingSmd = (l: Lesson, s: AssemblyState) => l.board.parts.some((p) => p.mount === 'smd' && !s.placed.has(p.id))
-const allPlaced = (l: Lesson, s: AssemblyState) => l.board.parts.every((p) => s.placed.has(p.id))
+const missingSmd = (l: Lesson, s: AssemblyState) => buildParts(l).some((p) => p.mount === 'smd' && !s.placed.has(p.id))
+const allPlaced = (l: Lesson, s: AssemblyState) => buildParts(l).every((p) => s.placed.has(p.id))
 
 /** What still has to happen before `what` can: "SMD parts (pick & place), J1, M1". */
 function missingList(l: Lesson, s: AssemblyState): string[] {
@@ -151,6 +154,8 @@ function setPower(l: Lesson, s: AssemblyState, ids: string[], on: boolean, notes
   }
   for (const id of ids) s.powered[id] = on
   if (!mcuPowered(l, s)) s.running = false
+  // with everything off, parts in thermal shutdown cool down and come back
+  if (!isPowered(l, s)) s.disabled.clear()
   notes.push(on ? { text: 'Power on.', tone: 'ok', sound: 'plug' } : { text: 'Power off.', tone: 'info', sound: 'plug' })
 }
 
@@ -187,7 +192,7 @@ export function reduceAssembly(l: Lesson, prev: AssemblyState, a: AssemblyAction
     s.disabled.clear()
     notes.push({ text: 'Stripped to the bare board.', tone: 'info', sound: 'click' })
   } else if (a === 'pick-place') {
-    const smd = l.board.parts.filter((p) => p.mount === 'smd' && !s.placed.has(p.id))
+    const smd = buildParts(l).filter((p) => p.mount === 'smd' && !s.placed.has(p.id))
     for (const p of smd) s.placed.add(p.id)
     notes.push(
       smd.length
@@ -199,7 +204,7 @@ export function reduceAssembly(l: Lesson, prev: AssemblyState, a: AssemblyAction
     for (const p of rest) s.placed.add(p.id)
     if (rest.length) notes.push({ text: `Placed ${rest.length} part${rest.length > 1 ? 's' : ''}.`, tone: 'ok', sound: 'place' })
   } else if (a.startsWith('place:')) {
-    const p = l.board.parts.find((x) => x.id === a.slice(6))
+    const p = buildParts(l).find((x) => x.id === a.slice(6))
     if (!p || !handPlaced(p) || s.placed.has(p.id)) return { state: prev, notes }
     s.placed.add(p.id)
     notes.push({ text: `${p.id.toUpperCase()}: ${p.role}`, tone: 'info', sound: 'place' })

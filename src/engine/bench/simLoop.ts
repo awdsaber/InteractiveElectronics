@@ -24,6 +24,7 @@ import type {
   Behavior,
   BehaviorContext,
   BehaviorEvent,
+  BehaviorLifecycleEvent,
   BenchStatus,
   BurnEvent,
   Element,
@@ -42,6 +43,7 @@ import {
   type AssemblyState,
   type Note,
   benchStatus,
+  buildParts,
   describeBurn,
   initialAssembly,
   isPowered,
@@ -111,6 +113,8 @@ export interface BenchSnapshot {
   elementValues: Record<string, number>
   /** burnt state per 3D part id */
   partBurnt: Record<string, boolean>
+  /** on the bench right now: placed, minus parts an active failure hides, plus parts it shows */
+  partVisible: Record<string, boolean>
   serial: string[]
   sketchError: string | null
   warnings: string[]
@@ -225,6 +229,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   let mcuStart = 0
   let mcuPending: Promise<void> | null = null
   let held = false
+  /** bumps on every upload / stop / dispose: results from an older run are dropped */
+  let gen = 0
   const mcuPins: Record<number, PinState> = {}
   const simPins: Record<number, PinState> = {}
   const serial: string[] = []
@@ -237,6 +243,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   let disposed = false
 
   const note = (ns: Note[]) => {
+    if (disposed) return
     for (const n of ns) opts.onNote?.(n)
   }
 
@@ -269,15 +276,20 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     return off.length ? applyPatches(n, off) : n
   }
 
-  function rebuild(): void {
+  /**
+   * Rebuild the netlist from the lesson + state. `structural` (assembly actions: power, failures,
+   * burns) means the last transient solution describes a different circuit, so until the next frame
+   * steps it, readouts come from the new circuit's operating point. Parameter changes (tweaks,
+   * behavior setParam) keep the transient state and its last solution.
+   */
+  function rebuild(structural = true): void {
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
         sim = createTransient(netlist, dt, { method: lesson.sim?.method })
         for (const [p, st] of Object.entries(simPins)) sim.setPin(Number(p), st)
       } else sim.setNetlist(netlist)
-      // until the next frame steps the new circuit, readouts come from its operating point
-      stale = true
+      if (structural) stale = true
     }
     dcDirty = true
   }
@@ -336,6 +348,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         if (serial.length > SERIAL_KEEP) serial.shift()
       },
       warn(message) {
+        if (disposed) return
         if (message.startsWith('runtime error')) {
           sketchError = message
           act({ type: 'stopped' })
@@ -350,7 +363,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     return mcu
   }
 
-  function startSketch(): void {
+  function startSketch(): boolean {
+    gen++
     const m = ensureMcu()
     serial.length = 0
     sketchError = null
@@ -360,16 +374,18 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       sketchError = e instanceof TranspileError ? `line ${e.line}: ${e.message}` : String(e instanceof Error ? e.message : e)
       asm = reduceAssembly(lesson, asm, { type: 'stopped' }).state
       note([{ text: `Upload failed: ${sketchError}`, tone: 'warn', sound: 'click' }])
-      return
+      return false
     }
     for (const k of Object.keys(mcuPins)) delete mcuPins[Number(k)]
     floatPins()
     held = false
     m.start()
     mcuStart = t
+    return true
   }
 
   function stopSketch(): void {
+    gen++
     mcu?.stop()
     floatPins()
   }
@@ -427,6 +443,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         release() {
           if (!held) return
           held = false
+          // the MCU was frozen: carry on from its own time instead of replaying the hold
+          if (mcu) mcuStart = t - mcu.timeMs / 1000
           if (mcuLive()) for (const [p, st] of Object.entries(mcuPins)) applyPin(Number(p), st)
         },
         reset() {
@@ -459,16 +477,43 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const pendingBurns: BurnEvent[] = []
 
   // ── actions ──
+  function lifecycle(ev: BehaviorLifecycleEvent): void {
+    for (const inst of instances) inst.def.onEvent?.(inst.ctx, ev)
+  }
+  function resetBehaviors(): void {
+    for (const inst of instances) inst.def.reset?.(inst.ctx)
+  }
+  const clearPublished = () => {
+    for (const k of Object.keys(published)) delete published[k]
+  }
+
   function act(a: AssemblyAction): Note[] {
     const prev = asm
     const { state, notes } = reduceAssembly(lesson, asm, a)
     asm = state
     if (state === prev) return notes
-    if (a === 'repair' || a === 'strip') ratings = createRatingState()
+    const wasOn = isPowered(lesson, prev)
+    const isOn = isPowered(lesson, state)
+    // everything off (or a fresh board): heat and overload timers start over
+    if (a === 'repair' || a === 'strip' || (wasOn && !isOn)) ratings = createRatingState()
+    let uploaded = false
     if (prev.running && !state.running) stopSketch()
-    else if (state.running && (!prev.running || a === 'upload')) startSketch()
-    else if (a === 'upload' && state.running) startSketch()
+    else if (state.running && (!prev.running || a === 'upload')) uploaded = startSketch()
     rebuild()
+    if (!wasOn && isOn) lifecycle('power-on')
+    if (wasOn && !isOn) {
+      clearPublished()
+      lifecycle('power-off')
+    }
+    if (uploaded) lifecycle('upload')
+    if (typeof a === 'string') {
+      if (a.startsWith('break:')) lifecycle('break')
+      else if (a === 'repair' || a === 'strip') {
+        if (a === 'strip') clearPublished()
+        lifecycle(a)
+        resetBehaviors()
+      }
+    }
     return notes
   }
 
@@ -511,10 +556,18 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     if (failure) return { text: `BROKEN: ${failure.explain}`, tone: 'warn' }
     if (asm.disabled.size) return { text: `WARNING: ${[...asm.disabled].join(', ')} in thermal shutdown; it restarts once it cools.`, tone: 'warn' }
     let text = ''
-    for (const l of lesson.statusLines ?? []) if (lineMatches(l, values, status)) text = l.text
+    for (const l of lesson.statusLines ?? []) if (lineMatches(l, values, status)) text = interpolate(l.text, values)
     if (!text) text = defaultLine(status)
     const tone = /^(FAULT|WARNING|BROKEN)/.test(text) ? 'warn' : status === 'RUNNING' || status === 'POWERED' ? 'ok' : 'info'
     return { text, tone }
+  }
+
+  /** `{n}` in a status line becomes readout n, formatted like the status panel */
+  function interpolate(text: string, values: number[]): string {
+    return text.replace(/\{(\d+)\}/g, (m, i: string) => {
+      const r = lesson.readouts[Number(i)]
+      return r ? formatSI(values[Number(i)] ?? 0, r.unit, r.digits ?? 3) : m
+    })
   }
 
   function defaultLine(status: BenchStatus): string {
@@ -525,10 +578,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         return bb ? 'BARE PCB: an empty bench. Place the parts to build the circuit.' : 'BARE PCB: pads and traces only. Pick & place the SMD parts, then hand-place the rest.'
       case 'ASSEMBLING': {
         const rest = remainingParts(lesson, asm).map((p) => p.id.toUpperCase())
-        const smd = lesson.board.parts.some((p) => p.mount === 'smd' && !asm.placed.has(p.id))
+        const smd = buildParts(lesson).some((p) => p.mount === 'smd' && !asm.placed.has(p.id))
         const todo = [...(smd ? ['SMD parts'] : []), ...rest]
         return todo.length
-          ? `ASSEMBLING: ${asm.placed.size}/${lesson.board.parts.length} parts placed; still to place ${todo.join(', ')}.`
+          ? `ASSEMBLING: ${asm.placed.size}/${buildParts(lesson).length} parts placed; still to place ${todo.join(', ')}.`
           : 'ASSEMBLING: every part is placed. Solder the joints next.'
       }
       case 'READY':
@@ -540,6 +593,21 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       default:
         return 'FAULT: something burnt.'
     }
+  }
+
+  function partVisible(): Record<string, boolean> {
+    const hide = new Set<string>()
+    const show = new Set<string>()
+    for (const id of asm.failures) {
+      const f = lesson.failures.find((x) => x.id === id)
+      for (const p of f?.parts?.hide ?? []) hide.add(p)
+      for (const p of f?.parts?.show ?? []) show.add(p)
+    }
+    const out: Record<string, boolean> = {}
+    for (const p of lesson.board.parts) {
+      out[p.id] = show.has(p.id) ? asm.placed.size > 0 : !p.hidden && asm.placed.has(p.id) && !hide.has(p.id)
+    }
+    return out
   }
 
   function snapshot(): BenchSnapshot {
@@ -577,10 +645,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         disabled: [...asm.disabled],
       },
       placedCount: asm.placed.size,
-      totalParts: lesson.board.parts.length,
+      totalParts: buildParts(lesson).length,
       remaining: remainingParts(lesson, asm).map((p) => ({ id: p.id, label: `${p.id.toUpperCase()} · ${p.label ?? p.kind}` })),
-      smdPlaced: !lesson.board.parts.some((p) => p.mount === 'smd' && !asm.placed.has(p.id)),
-      allPlaced: lesson.board.parts.every((p) => asm.placed.has(p.id)),
+      smdPlaced: !buildParts(lesson).some((p) => p.mount === 'smd' && !asm.placed.has(p.id)),
+      allPlaced: buildParts(lesson).every((p) => asm.placed.has(p.id)),
       needsSolder: needsSolder(lesson),
       readyToPower: readyToPower(lesson, asm),
       powered: isPowered(lesson, asm),
@@ -593,6 +661,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       published: { ...published },
       elementValues,
       partBurnt,
+      partVisible: partVisible(),
       serial: serial.slice(),
       sketchError,
       warnings: warnings.slice(),
@@ -625,7 +694,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       const m = mcu!
       const ms = (t - mcuStart) * 1000 - m.timeMs
       if (ms > 0) {
+        const runGen = gen
         const p = m.advance(ms).catch((e: unknown) => {
+          if (disposed || runGen !== gen) return
           sketchError = String(e instanceof Error ? e.message : e)
           note(act({ type: 'stopped' }))
         })
@@ -648,7 +719,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     }
     if (liveDirty) {
       liveDirty = false
-      rebuild()
+      rebuild(false)
     }
 
     // ratings: once per frame, on the latest good solution
@@ -700,7 +771,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       if (m) {
         const inst = instances.find((i) => i.r.instance === m[1])
         if (inst) inst.r.params[m[2]] = value
-      } else rebuild()
+      } else rebuild(false)
       emit()
     },
     tweakValues: () => ({ ...tweaks }),
@@ -716,7 +787,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     events: () => events,
     mcuTimeMs: () => (mcu ? mcu.timeMs + mcuStart * 1000 : 0),
     dispose() {
+      if (disposed) return
+      for (const inst of instances) inst.def.dispose?.(inst.ctx)
       disposed = true
+      gen++
       mcu?.stop()
     },
   }
