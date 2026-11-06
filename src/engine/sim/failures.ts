@@ -29,7 +29,7 @@ export function applyPatches(netlist: Netlist, patches: readonly FailurePatch[])
         break
       }
       case 'add':
-        els.push({ ...p.element })
+        els.push({ ...p.element, nodes: [...p.element.nodes] } as Element)
         break
     }
   }

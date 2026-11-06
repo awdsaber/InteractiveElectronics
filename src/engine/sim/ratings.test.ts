@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BurnEvent, Netlist } from '../types'
 import { applyBurn, applyPatches } from './failures'
-import { checkRatings, createRatingState } from './ratings'
+import { checkRatings, createRatingState, pinWarnings } from './ratings'
 import { solveDC } from './solve'
 import { createTransient } from './transient'
 
@@ -102,5 +102,35 @@ describe('checkRatings', () => {
     expect(burn).toBeDefined()
     const after = applyBurn(shorted, burn)
     expect(Math.abs(solveDC(after).current['D1'])).toBeLessThan(1e-6)
+  })
+
+  it('a non-converged step neither burns nor resets the overload timer', () => {
+    const n: Netlist = {
+      elements: [
+        { id: 'V1', type: 'V', nodes: ['a', '0'], value: 5 },
+        { id: 'R1', type: 'R', nodes: ['a', '0'], value: 10, rating: { maxP: 0.25 } },
+      ],
+    }
+    const hot = solveDC(n)
+    const failed = { ok: false, nodeV: {}, current: {}, power: {}, extra: {} }
+    const st = createRatingState()
+    expect(checkRatings(n, hot, 0, st)).toEqual([])
+    expect(checkRatings(n, failed, 0.2, st)).toEqual([])
+    expect(checkRatings(n, hot, 0.3, st)).toHaveLength(1)
+  })
+
+  it('pinWarnings flags GPIO pins above the recommended 20 mA', () => {
+    const n = (r: number): Netlist => ({
+      elements: [
+        { id: 'P13', type: 'PIN', nodes: ['p', '0'], pin: 13, vcc: 5 },
+        { id: 'R1', type: 'R', nodes: ['p', '0'], value: r },
+      ],
+    })
+    const pins = { 13: { mode: 'OUTPUT' as const, level: 1 } }
+    expect(pinWarnings(n(1000), solveDC(n(1000), { pins }))).toEqual([])
+    const w = pinWarnings(n(150), solveDC(n(150), { pins }))
+    expect(w).toHaveLength(1)
+    expect(w[0]).toMatchObject({ elementId: 'P13', pin: 13, limit: 0.02 })
+    expect(w[0].current).toBeCloseTo(5 / 175, 6)
   })
 })

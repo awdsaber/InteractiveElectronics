@@ -134,4 +134,38 @@ describe('createTransient', () => {
     expect(s.nodeV['c']).toBeGreaterThan(charged * 0.99)
     expect(s.nodeV['c']).toBeLessThanOrEqual(charged)
   })
+
+  it('setParam in place matches a fresh simulation and leaves earlier Solutions untouched', () => {
+    const build = (r: number): Netlist => ({
+      elements: [
+        { id: 'V1', type: 'V', nodes: ['in', '0'], value: 5 },
+        { id: 'R1', type: 'R', nodes: ['in', 'c'], value: r },
+        { id: 'C1', type: 'C', nodes: ['c', '0'], value: 1e-3 },
+        { id: 'D1', type: 'LED', nodes: ['c', '0'], color: 'red' },
+      ],
+    })
+    const a = createTransient(build(1000), 1e-3)
+    const b = createTransient(build(1000), 1e-3)
+    let before = a.step()
+    b.step()
+    for (let k = 0; k < 9; k++) {
+      before = a.step()
+      b.step()
+    }
+    a.setParam('R1', 'value', 220)
+    b.setNetlist(build(220))
+    const sa = a.step()
+    const sb = b.step()
+    expect(sa.nodeV['c']).toBeCloseTo(sb.nodeV['c'], 12)
+    expect(sa.current['R1']).toBeCloseTo(sb.current['R1'], 12)
+    // the Solution from before the change still reports the 1 kΩ current
+    expect(before.current['R1']).toBeCloseTo((before.nodeV['in'] - before.nodeV['c']) / 1000, 12)
+  })
+
+  it('keeps the last good solution for rating checks', () => {
+    const sim = createTransient({ elements: [{ id: 'R1', type: 'R', nodes: ['a', '0'], value: 1 }] }, 1e-3)
+    expect(sim.lastGood).toBeNull()
+    const s = sim.step()
+    expect(sim.lastGood).toBe(s)
+  })
 })

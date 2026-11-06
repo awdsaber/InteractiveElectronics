@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { BurnEvent, Netlist } from '../types'
+import type { BurnEvent, Element, Netlist } from '../types'
 import { applyBurn, applyPatches } from './failures'
 
 const base = (): Netlist => ({
@@ -30,6 +30,15 @@ describe('applyPatches', () => {
     const short = out.elements.find((e) => e.type === 'R' && e.nodes[0] === 'a' && e.nodes[1] === '0')
     expect(short).toMatchObject({ type: 'R', value: 0.01 })
     expect(out.elements.at(-1)).toMatchObject({ id: 'R9' })
+  })
+
+  it("'add' copies the element and its nodes array", () => {
+    const element: Element = { id: 'R9', type: 'R', nodes: ['a', 'b'], value: 10 }
+    const out = applyPatches(base(), [{ op: 'add', element }])
+    const added = out.elements[out.elements.length - 1]
+    expect(added).not.toBe(element)
+    expect(added.nodes).not.toBe(element.nodes)
+    expect(added).toEqual(element)
   })
 
   it('gives each short a unique id', () => {

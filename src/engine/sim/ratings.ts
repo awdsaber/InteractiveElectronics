@@ -6,6 +6,8 @@ import type { BurnEvent, Element, ElementType, Netlist, Rating, Solution } from 
 export const BURN_DELAY = 0.3
 /** ATmega328P-style absolute maximum DC current per I/O pin */
 export const PIN_ABS_MAX_I = 0.04
+/** recommended continuous GPIO current: above this a pin works but is out of spec */
+export const PIN_WARN_I = 0.02
 
 /** ratings applied when an element has none of its own (typical 5 mm LED: 30 mA abs max) */
 export const DEFAULT_RATINGS: Partial<Record<ElementType, Rating>> = {
@@ -95,4 +97,23 @@ export function checkRatings(netlist: Netlist, solution: Solution, t: number, st
     }
   }
   return events
+}
+
+export interface PinWarning {
+  elementId: string
+  pin: number
+  /** |current| through the pin, A */
+  current: number
+  limit: number
+}
+
+/** PIN elements carrying more than the recommended 20 mA (not yet the 40 mA absolute maximum) */
+export function pinWarnings(netlist: Netlist, solution: Solution): PinWarning[] {
+  const out: PinWarning[] = []
+  for (const el of netlist.elements) {
+    if (el.type !== 'PIN') continue
+    const i = Math.abs(solution.current[el.id] ?? 0)
+    if (i > PIN_WARN_I) out.push({ elementId: el.id, pin: el.pin, current: i, limit: PIN_WARN_I })
+  }
+  return out
 }

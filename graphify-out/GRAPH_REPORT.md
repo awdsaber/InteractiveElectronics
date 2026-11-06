@@ -1,17 +1,17 @@
 # Graph Report - agent-a998eaa8a4824903b  (2026-11-06)
 
 ## Corpus Check
-- 105 files · ~78,192 words
+- 106 files · ~81,972 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 4, .dot 1, .css 1)
 
 ## Summary
-- 987 nodes · 1202 edges · 83 communities (56 shown, 27 thin omitted)
+- 1007 nodes · 1252 edges · 93 communities (66 shown, 27 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 21 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ab8500ef`
+- Built from commit: `d574438d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,18 +82,28 @@
 - devices.ts
 - Circuit Atelier — Spec
 - package.json
+- transient.ts
+- ratings.ts
+- solve.ts
+- failures.ts
+- stampDevice
+- mna.ts
+- Circuit Atelier — Spec
+- Element
+- measureDevice
+- Netlist
 
 ## God Nodes (most connected - your core abstractions)
-1. `stampDevice()` - 23 edges
-2. `Writing Skills` - 21 edges
+1. `Writing Skills` - 21 edges
+2. `stampDevice()` - 18 edges
 3. `compilerOptions` - 18 edges
-4. `Testing Skills With Subagents` - 16 edges
-5. `compilerOptions` - 15 edges
-6. `handleRequest()` - 14 edges
-7. `Code Review Reception` - 14 edges
-8. `measureDevice()` - 13 edges
-9. `Test-Driven Development (TDD)` - 13 edges
-10. `Netlist` - 12 edges
+4. `compile()` - 16 edges
+5. `Testing Skills With Subagents` - 16 edges
+6. `compilerOptions` - 15 edges
+7. `handleRequest()` - 14 edges
+8. `createTransient()` - 14 edges
+9. `Code Review Reception` - 14 edges
+10. `Test-Driven Development (TDD)` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Task A — Circuit simulator (`src/engine/sim/`)` --references--> `checkRatings()`  [INFERRED]
@@ -110,15 +120,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (83 total, 27 thin omitted)
+## Communities (93 total, 27 thin omitted)
 
 ### Community 0 - "server.cjs"
 Cohesion: 0.05
 Nodes (57): bootstrapPage(), brandMarkup(), broadcast(), browserLauncherForPlatform(), chmodOwnerOnly(), clients, companionUrl(), computeAcceptKey() (+49 more)
 
 ### Community 1 - "types.ts"
-Cohesion: 0.05
-Nodes (59): vitest, captureState(), compile(), Compiled, DynState, StampCtx, applyBurn(), applyPatches() (+51 more)
+Cohesion: 0.09
+Nodes (19): Task E — Integration (after A–D are merged), 3. Lesson data model, Behavior, BehaviorContext, BenchStatus, BoardSpec, ElementBase, FailureScenario (+11 more)
 
 ### Community 2 - "Writing Skills"
 Cohesion: 0.05
@@ -326,35 +336,75 @@ Nodes (3): Technical notes, Token budgets, YAML frontmatter requirements
 
 ### Community 69 - "devices.ts"
 Cohesion: 0.06
-Nodes (62): BJT_BETA, BJT_BETA_R, BJT_IS, BjtEval, bjtEval(), bjtSetup(), branchCount(), Dev (+54 more)
+Nodes (35): BJT_BETA, BJT_BETA_R, BJT_IS, Compiled, DevParams, DIODE_IS, EXP_MAX, EXP_MAX_VAL (+27 more)
 
 ### Community 81 - "Circuit Atelier — Spec"
-Cohesion: 0.07
-Nodes (27): Global constraints, M1 — Engine plan, Task A — Circuit simulator (`src/engine/sim/`), Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), Task C — 3D look and parametric part library (`src/three/`), Task D — App shell, theme, controls and sound (`src/ui/`, `src/audio/`, `src/styles/`), Task E — Integration (after A–D are merged), Tasks A–D are independent and run in parallel worktrees. Task E integrates them. (+19 more)
+Cohesion: 0.14
+Nodes (13): Global constraints, M1 — Engine plan, Task A — Circuit simulator (`src/engine/sim/`), Task B — Arduino transpiler and virtual MCU (`src/engine/mcu/`), Task C — 3D look and parametric part library (`src/three/`), Task D — App shell, theme, controls and sound (`src/ui/`, `src/audio/`, `src/styles/`), Tasks A–D are independent and run in parallel worktrees. Task E integrates them., fixed() (+5 more)
 
 ### Community 82 - "package.json"
 Cohesion: 0.18
 Nodes (10): @uiw/react-codemirror@^4.25.12, jsdom@^31.0.0, typescript@~7.0.2, name, private, type, version, jsdom (+2 more)
 
+### Community 83 - "transient.ts"
+Cohesion: 0.24
+Nodes (16): blankParams(), branchCount(), captureState(), compile(), hasInternalNode(), inheritState(), isNonlinear(), layoutSignature() (+8 more)
+
+### Community 84 - "ratings.ts"
+Cohesion: 0.17
+Nodes (14): BURN_DELAY, checkRatings(), createRatingState(), DEFAULT_RATINGS, PIN_ABS_MAX_I, PIN_WARN_I, PinWarning, pinWarnings() (+6 more)
+
+### Community 85 - "solve.ts"
+Cohesion: 0.19
+Nodes (12): GMIN, Measured, StampCtx, ABSTOL, MAX_ITER, RELTOL, SolveContext, SolveOptions (+4 more)
+
+### Community 86 - "failures.ts"
+Cohesion: 0.23
+Nodes (9): applyBurn(), applyPatches(), failureNodes(), OPEN_R, SHORT_R, uniqueId(), effectiveRating(), BurnEvent (+1 more)
+
+### Community 87 - "stampDevice"
+Cohesion: 0.29
+Nodes (12): fetlim(), pnjlim(), remember(), stampDevice(), addA(), addB(), row(), stampConductance() (+4 more)
+
+### Community 88 - "mna.ts"
+Cohesion: 0.29
+Nodes (11): BRANCH_PIVOT_RTOL, clearSystem(), createLU(), createSystem(), luFactor(), luSolve(), residualOk(), restoreMatrix() (+3 more)
+
+### Community 89 - "Circuit Atelier — Spec"
+Cohesion: 0.20
+Nodes (9): 1. Experience, 2. Visual identity (original), 4. Simulation engine (`src/engine/sim`), 5. Virtual MCU (`src/engine/mcu`), 6. Tracks (syllabus), Bench actions, Circuit Atelier — Spec, Failures (+1 more)
+
+### Community 90 - "Element"
+Cohesion: 0.28
+Nodes (6): vitest, Dev, chain(), msPerFrame(), Element, LedColor
+
+### Community 91 - "measureDevice"
+Cohesion: 0.32
+Nodes (8): bjtEval(), diodeEval(), measureDevice(), mosEval(), pinNorton(), safeExp(), safeExpD(), volt()
+
+### Community 92 - "Netlist"
+Cohesion: 0.38
+Nodes (3): Transient, Netlist, Solution
+
 ## Knowledge Gaps
 - **1 isolated node(s):** `RFC-6455`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 634 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 639 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `types.ts` to `Circuit Atelier — Spec`, `package.json`, `@vitejs/plugin-react`, `devDependencies`?**
+- **Why does `vitest` connect `Element` to `@vitejs/plugin-react`, `devDependencies`, `Circuit Atelier — Spec`, `package.json`, `transient.ts`, `ratings.ts`, `failures.ts`?**
   _High betweenness centrality (0.023) - this node is a cross-community bridge._
 - **What connects `RFC-6455` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `server.cjs` be split into smaller, more focused modules?**
   _Cohesion score 0.05257936507936508 - nodes in this community are weakly interconnected._
-- **Why does `Writing Skills` connect `Writing Skills` to `writing-skills/SKILL.md`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+- **Why does `Element` connect `Element` to `types.ts`, `devices.ts`, `transient.ts`, `ratings.ts`, `failures.ts`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.05063291139240506 - nodes in this community are weakly interconnected._
-- **Why does `Element` connect `devices.ts` to `Circuit Atelier — Spec`, `types.ts`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+  _Cohesion score 0.09057971014492754 - nodes in this community are weakly interconnected._
+- **Why does `3. Lesson data model` connect `types.ts` to `Circuit Atelier — Spec`, `Element`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **Should `Writing Skills` be split into smaller, more focused modules?**
   _Cohesion score 0.05128205128205128 - nodes in this community are weakly interconnected._

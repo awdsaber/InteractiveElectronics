@@ -116,6 +116,40 @@ describe('solveDC: linear circuits', () => {
   })
 })
 
+describe('solveDC: singular and ill-posed circuits', () => {
+  it('flags a current source driving a node with no DC path (held up only by gmin)', () => {
+    const s = solveDC(
+      net(
+        { id: 'I1', type: 'I', nodes: ['0', 'a'], value: 1e-3 },
+        { id: 'C1', type: 'C', nodes: ['a', '0'], value: 1e-6 },
+      ),
+    )
+    expect(s.ok).toBe(false)
+  })
+
+  it('flags voltage-source / inductor loops', () => {
+    const loop = solveDC(
+      net(
+        { id: 'V1', type: 'V', nodes: ['a', '0'], value: 5 },
+        { id: 'V2', type: 'V', nodes: ['b', '0'], value: 3 },
+        { id: 'L1', type: 'L', nodes: ['a', 'b'], value: 1e-3 },
+      ),
+    )
+    expect(loop.ok).toBe(false)
+    const mixed = solveDC(
+      net(
+        { id: 'V1', type: 'V', nodes: ['a', '0'], value: 5 },
+        { id: 'R1', type: 'R', nodes: ['a', 'b'], value: 1000 },
+        { id: 'V2', type: 'V', nodes: ['b', 'c'], value: 3 },
+        { id: 'V3', type: 'V', nodes: ['c', '0'], value: 1 },
+        { id: 'V4', type: 'V', nodes: ['b', '0'], value: 7 },
+        { id: 'R2', type: 'R', nodes: ['c', '0'], value: 330 },
+      ),
+    )
+    expect(mixed.ok).toBe(false)
+  })
+})
+
 describe('solveDC: diodes and LEDs', () => {
   it('LED + 220 Ω on 5 V: red current about 14 mA', () => {
     const s = solveDC(
@@ -305,6 +339,19 @@ describe('solveDC: transistors', () => {
     expect(s.current['RL']).toBeGreaterThan(0.05 * 0.98)
     expect(s.current['RL']).toBeLessThanOrEqual(0.05)
     expect(s.extra['M1.id']).toBeCloseTo(s.current['RL'], 9)
+  })
+
+  it('NMOS with a large gate step converges (Vgs limiting)', () => {
+    const s = solveDC(
+      net(
+        { id: 'VG', type: 'V', nodes: ['g', '0'], value: 20 },
+        { id: 'V1', type: 'V', nodes: ['vcc', '0'], value: 24 },
+        { id: 'RL', type: 'R', nodes: ['vcc', 'd'], value: 10 },
+        { id: 'M1', type: 'NMOS', nodes: ['d', 'g', '0'], vth: 2, k: 5 },
+      ),
+    )
+    expect(s.ok).toBe(true)
+    expect(s.current['RL']).toBeGreaterThan(2.35)
   })
 
   it('NMOS is off below threshold', () => {

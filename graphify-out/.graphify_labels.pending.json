@@ -81,5 +81,15 @@
   "79": "skill-timeline.md",
   "80": "stumbles.md",
   "81": "Circuit Atelier — Spec",
-  "82": "package.json"
+  "82": "package.json",
+  "83": "transient.ts",
+  "84": "ratings.ts",
+  "85": "solve.ts",
+  "86": "failures.ts",
+  "87": "stampDevice",
+  "88": "mna.ts",
+  "89": "Circuit Atelier — Spec",
+  "90": "Element",
+  "91": "measureDevice",
+  "92": "Netlist"
 }

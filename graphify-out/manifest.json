@@ -588,21 +588,21 @@
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
-    "mtime": 1794000396.0804918,
-    "seen": 1794000557.9045074,
-    "ast_hash": "fc0ada42e08e85d25cfed6406322861a",
+    "mtime": 1794001588.4444046,
+    "seen": 1794001854.9204533,
+    "ast_hash": "093f8564fa54b7e8ecee0fd18c7d054b",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.test.ts": {
-    "mtime": 1794000176.6813967,
-    "seen": 1794000557.9045074,
-    "ast_hash": "9dbfaa27a5e785412db33f897fcbac23",
+    "mtime": 1794001779.616251,
+    "seen": 1794001854.9204533,
+    "ast_hash": "1a4162f96cdf74bff1d8672f051d66ef",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.ts": {
-    "mtime": 1794000467.801723,
-    "seen": 1794000557.9045074,
-    "ast_hash": "7cbf0eb744ca57f20cbf063a49510787",
+    "mtime": 1794001176.3195424,
+    "seen": 1794001854.9204533,
+    "ast_hash": "ddaead3b1f3da74a95b6d765a1b6a19f",
     "semantic_hash": ""
   },
   "src/engine/sim/format.test.ts": {
@@ -624,51 +624,57 @@
     "semantic_hash": ""
   },
   "src/engine/sim/mna.ts": {
-    "mtime": 1794000226.148982,
-    "seen": 1794000557.9045074,
-    "ast_hash": "d36beb02a15b1b509a8a457b95093361",
+    "mtime": 1794001687.3695292,
+    "seen": 1794001854.9204533,
+    "ast_hash": "ba4b6469f4e2cdb13d78eaf67974cb17",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.test.ts": {
-    "mtime": 1794000162.6439247,
-    "seen": 1794000557.9045074,
-    "ast_hash": "dd9b65f31d921c20cb38693b286c9b30",
+    "mtime": 1794001779.6147406,
+    "seen": 1794001854.9204533,
+    "ast_hash": "364b7eecf6a0e89ccc2591fdfec57cec",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.ts": {
-    "mtime": 1794000462.0428748,
-    "seen": 1794000557.9045074,
-    "ast_hash": "e92fb55831f334bdccdacb3bd66c44f2",
+    "mtime": 1794001176.3205497,
+    "seen": 1794001854.9204533,
+    "ast_hash": "e2e4c6d343aeddfbbce9e10ba921eabe",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.test.ts": {
-    "mtime": 1794000526.9711182,
-    "seen": 1794000557.9045074,
-    "ast_hash": "5fe954f68abb98d56ea0a9d94c46c50f",
+    "mtime": 1794001779.609741,
+    "seen": 1794001854.9204533,
+    "ast_hash": "5cfe87a44a6633d31fd81152c31a968e",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.ts": {
-    "mtime": 1794000421.193289,
-    "seen": 1794000557.9045074,
-    "ast_hash": "2a280152ddee3fb5c666fb756b7f0f42",
+    "mtime": 1794001687.3705287,
+    "seen": 1794001854.9204533,
+    "ast_hash": "cd98ae82a85aaebdf6ec886044e5793d",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.test.ts": {
-    "mtime": 1794000140.116129,
-    "seen": 1794000557.9045074,
-    "ast_hash": "c56330c7077b1c2d14655a132ea56468",
+    "mtime": 1794001779.6127448,
+    "seen": 1794001854.9204533,
+    "ast_hash": "430723730768077c8473a51f4fc27b33",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.ts": {
-    "mtime": 1794000535.9090562,
-    "seen": 1794000557.9045074,
-    "ast_hash": "5002301489edfb2bc19da063ed6e4f64",
+    "mtime": 1794001588.4444046,
+    "seen": 1794001854.9204533,
+    "ast_hash": "b539e81e0e3685e3978159d555bfe244",
     "semantic_hash": ""
   },
   "docs/plans/m1-engine.md": {
     "mtime": 1793999790.4592476,
     "seen": 1794000557.905506,
     "ast_hash": "cdc691f1b3184e417f1b9e47e2081a85",
+    "semantic_hash": ""
+  },
+  "src/engine/sim/perf.test.ts": {
+    "mtime": 1794001779.6172626,
+    "seen": 1794001854.9204533,
+    "ast_hash": "ba9097dcbaa3cd2fa0eb2f8ffa450531",
     "semantic_hash": ""
   },
   "package-lock.json": {
