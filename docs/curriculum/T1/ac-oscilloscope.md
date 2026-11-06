@@ -109,11 +109,11 @@ so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. Th
 ## Quiz
 
 1. **UK mains is 230 V RMS. What is its peak voltage?**
+   - 325 V
    - 163 V
    - 230 V
-   - 325 V
    - 460 V
-   - **Answer:** 2. *Why:* V_p = √2 × 230 = 325 V.
+   - **Answer:** 0. *Why:* V_p = √2 × 230 = 325 V.
 
 2. **What is the period of a 60 Hz signal?**
    - 6.0 ms
@@ -125,16 +125,16 @@ so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. Th
 3. **What is the reactance of a 1 µF capacitor at 1 kHz?**
    - 1.59 Ω
    - 15.9 Ω
-   - 159 Ω
    - 1.59 kΩ
-   - **Answer:** 2. *Why:* X_C = 1/(2π × 1000 × 10⁻⁶) = 159 Ω.
+   - 159 Ω
+   - **Answer:** 3. *Why:* X_C = 1/(2π × 1000 × 10⁻⁶) = 159 Ω.
 
 4. **What does the scope's trigger do?**
    - Sets the vertical gain
-   - Starts each sweep at the same point on the waveform, so repeated sweeps overlay
    - Removes the DC component
+   - Starts each sweep at the same point on the waveform, so repeated sweeps overlay
    - Measures RMS
-   - **Answer:** 1. *Why:* without a consistent start point, each sweep lands at a different phase and the trace smears.
+   - **Answer:** 2. *Why:* without a consistent start point, each sweep lands at a different phase and the trace smears.
 
 ## SIM NOTE
 

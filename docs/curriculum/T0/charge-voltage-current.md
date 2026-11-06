@@ -105,17 +105,17 @@ By convention, current flows from + to −. The electrons actually drift the oth
 
 1. **A loop carries 12 mA for 10 minutes. How much charge passed?**
    - 0.12 C
-   - 7.2 C
    - 72 C
    - 720 C
-   - **Answer:** 1. *Why:* Q = I·t = 0.012 A × 600 s = 7.2 C.
+   - 7.2 C
+   - **Answer:** 3. *Why:* Q = I·t = 0.012 A × 600 s = 7.2 C.
 
 2. **What does "1 volt" mean physically?**
-   - One coulomb per second
    - One joule of energy per coulomb of charge
+   - One coulomb per second
    - One watt per ampere squared
    - The number of electrons in a wire
-   - **Answer:** 1. *Why:* voltage is energy per unit charge, 1 V = 1 J/C.
+   - **Answer:** 0. *Why:* voltage is energy per unit charge, 1 V = 1 J/C.
 
 3. **A 2500 mAh pack powers a 12 mA load. Roughly how long does it last?**
    - 21 h
@@ -126,10 +126,10 @@ By convention, current flows from + to −. The electrons actually drift the oth
 
 4. **With R1 pulled out, what voltage does a meter read across the empty gap?**
    - 0 V
+   - 3.0 V
    - 1.2 V
    - 1.8 V
-   - 3.0 V
-   - **Answer:** 3. *Why:* with no current there is no drop across the LED or the internal resistance, so the full 3.0 V appears across the gap.
+   - **Answer:** 1. *Why:* with no current there is no drop across the LED or the internal resistance, so the full 3.0 V appears across the gap.
 
 ## SIM NOTE
 

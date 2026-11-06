@@ -106,17 +106,17 @@ The fraction of the energy that reaches the load is η = R_load / (R_load + r): 
 
 1. **A battery has E = 9 V and r = 2 Ω and drives a 16 Ω load. What is the terminal voltage?**
    - 9.0 V
-   - 8.0 V
    - 7.0 V
    - 4.5 V
-   - **Answer:** 1. *Why:* I = 9/18 = 0.5 A, so V = 9 − 0.5 × 2 = 8.0 V.
+   - 8.0 V
+   - **Answer:** 3. *Why:* I = 9/18 = 0.5 A, so V = 9 − 0.5 × 2 = 8.0 V.
 
 2. **A pack reads 4.5 V open-circuit and 4.2 V while delivering 0.3 A. What is its internal resistance?**
    - 0.1 Ω
-   - 0.3 Ω
    - 1.0 Ω
+   - 0.3 Ω
    - 14 Ω
-   - **Answer:** 2. *Why:* r = ΔV/I = 0.3/0.3 = 1.0 Ω.
+   - **Answer:** 1. *Why:* r = ΔV/I = 0.3/0.3 = 1.0 Ω.
 
 3. **A fresh 1.5 V cell has r = 0.15 Ω. What is its short-circuit current?**
    - 0.225 A
@@ -126,11 +126,11 @@ The fraction of the energy that reaches the load is η = R_load / (R_load + r): 
    - **Answer:** 2. *Why:* I = E/r = 1.5/0.15 = 10 A, enough to heat a wire quickly.
 
 4. **At maximum power transfer (R_load = r), the efficiency is…**
+   - 50%
    - 100%
    - 75%
-   - 50%
    - 25%
-   - **Answer:** 2. *Why:* the load and the internal resistance carry the same current and have equal resistance, so they dissipate equal power.
+   - **Answer:** 0. *Why:* the load and the internal resistance carry the same current and have equal resistance, so they dissipate equal power.
 
 ## SIM NOTE
 

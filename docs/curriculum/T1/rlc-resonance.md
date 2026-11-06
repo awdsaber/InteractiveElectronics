@@ -107,11 +107,11 @@ The ringing frequency is f₀√(1 − ζ²), which is nearly f₀ when damping 
 ## Quiz
 
 1. **What is the resonant frequency of 100 µH with 100 nF?**
+   - 50.3 kHz
    - 5.03 kHz
    - 15.9 kHz
-   - 50.3 kHz
    - 159 kHz
-   - **Answer:** 2. *Why:* √(10⁻⁴ × 10⁻⁷) = 3.16 µs, so f₀ = 1/(2π × 3.16 µ) = 50.3 kHz.
+   - **Answer:** 0. *Why:* √(10⁻⁴ × 10⁻⁷) = 3.16 µs, so f₀ = 1/(2π × 3.16 µ) = 50.3 kHz.
 
 2. **What total series resistance critically damps 10 mH with 1 µF?**
    - 20 Ω
@@ -130,9 +130,9 @@ The ringing frequency is f₀√(1 − ζ²), which is nearly f₀ when damping 
 4. **An undamped series LC is hit with a 5 V step. What is the highest the capacitor voltage can reach?**
    - 5 V
    - 7.1 V
-   - 10 V
    - Unlimited
-   - **Answer:** 2. *Why:* with ζ → 0 the overshoot approaches 100%, so the peak approaches 2 × 5 = 10 V.
+   - 10 V
+   - **Answer:** 3. *Why:* with ζ → 0 the overshoot approaches 100%, so the peak approaches 2 × 5 = 10 V.
 
 ## SIM NOTE
 

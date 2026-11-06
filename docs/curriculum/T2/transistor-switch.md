@@ -145,31 +145,31 @@ An NPN bipolar transistor lets a small **base** current control a much larger **
 
 1. **A 300 mA load must be driven with a forced β of 15. What base current is needed?**
    - 2 mA
-   - 4.5 mA
    - 20 mA
+   - 4.5 mA
    - 45 mA
-   - **Answer:** 2. *Why:* I_b = 300/15 = 20 mA, which is at the pin's recommended limit, so a MOSFET is a better choice.
+   - **Answer:** 1. *Why:* I_b = 300/15 = 20 mA, which is at the pin's recommended limit, so a MOSFET is a better choice.
 
 2. **What base resistor gives about 10 mA from a 5 V pin (V_BE ≈ 0.7 V, ignore pin resistance)?**
-   - 43 Ω
    - 430 Ω
+   - 43 Ω
    - 4.3 kΩ
    - 50 Ω
-   - **Answer:** 1. *Why:* R = (5 − 0.7)/0.010 = 430 Ω (470 Ω is the common choice).
+   - **Answer:** 0. *Why:* R = (5 − 0.7)/0.010 = 430 Ω (470 Ω is the common choice).
 
 3. **Q1 carries 0.2 A with V_CE = 0.25 V. What is its dissipation?**
    - 5 mW
-   - 50 mW
    - 0.5 W
+   - 50 mW
    - 1.25 W
-   - **Answer:** 1. *Why:* P = V_CE × I_c = 0.25 × 0.2 = 0.05 W.
+   - **Answer:** 2. *Why:* P = V_CE × I_c = 0.25 × 0.2 = 0.05 W.
 
 4. **Why is the diode across the motor essential?**
    - It increases motor speed
    - It stops the motor running backwards
-   - It gives the winding's current a path at turn-off, preventing a collector voltage spike
    - It filters noise on the 5 V rail
-   - **Answer:** 2. *Why:* the motor's inductance forces current to keep flowing, and without the diode it drives V_CE above 40 V.
+   - It gives the winding's current a path at turn-off, preventing a collector voltage spike
+   - **Answer:** 3. *Why:* the motor's inductance forces current to keep flowing, and without the diode it drives V_CE above 40 V.
 
 ## SIM NOTE
 

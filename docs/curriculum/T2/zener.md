@@ -118,11 +118,11 @@ Zeners near 5–6 V have almost zero temperature coefficient, which made them po
    - **Answer:** 1. *Why:* R = (12 − 5.1)/(0.020 + 0.005) = 276 Ω.
 
 2. **With no load, 30 mA flows through a 5.1 V zener. How much does it dissipate?**
-   - 0.03 W
    - 0.153 W
+   - 0.03 W
    - 0.51 W
    - 1.53 W
-   - **Answer:** 1. *Why:* P = V_z × I_z = 5.1 × 0.030 = 0.153 W.
+   - **Answer:** 0. *Why:* P = V_z × I_z = 5.1 × 0.030 = 0.153 W.
 
 3. **The load demands more current than R1 can supply. What happens?**
    - The zener supplies the extra
@@ -134,9 +134,9 @@ Zeners near 5–6 V have almost zero temperature coefficient, which made them po
 4. **This board is fed 15 V with no load. What does R1 (120 Ω) dissipate, ignoring the battery's internal resistance?**
    - 0.13 W
    - 0.36 W
-   - 0.82 W
    - 1.9 W
-   - **Answer:** 2. *Why:* (15 − 5.1)²/120 = 98/120 ≈ 0.82 W.
+   - 0.82 W
+   - **Answer:** 3. *Why:* (15 − 5.1)²/120 = 98/120 ≈ 0.82 W.
 
 ## SIM NOTE
 

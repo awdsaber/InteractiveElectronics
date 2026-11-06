@@ -116,31 +116,31 @@ Electrolytics are polarised: the stripe marks the negative lead. They typically 
 
 1. **What is the time constant of 47 kΩ and 22 µF?**
    - 0.47 s
-   - 1.03 s
    - 2.14 s
+   - 1.03 s
    - 10.3 s
-   - **Answer:** 1. *Why:* τ = RC = 47 000 × 22 × 10⁻⁶ = 1.034 s.
+   - **Answer:** 2. *Why:* τ = RC = 47 000 × 22 × 10⁻⁶ = 1.034 s.
 
 2. **After two time constants, what fraction of the final voltage has an RC charge reached?**
    - 50%
    - 63.2%
-   - 86.5%
    - 95.0%
-   - **Answer:** 2. *Why:* 1 − e⁻² = 0.865.
+   - 86.5%
+   - **Answer:** 3. *Why:* 1 − e⁻² = 0.865.
 
 3. **How much energy does a 1000 µF capacitor store at 12 V?**
    - 6 mJ
-   - 12 mJ
    - 72 mJ
+   - 12 mJ
    - 144 mJ
-   - **Answer:** 2. *Why:* E = ½CV² = 0.5 × 0.001 × 144 = 0.072 J.
+   - **Answer:** 1. *Why:* E = ½CV² = 0.5 × 0.001 × 144 = 0.072 J.
 
 4. **At the instant the switch closes on an empty capacitor, the current through R is…**
-   - zero
    - V/R
+   - zero
    - V/(2R)
    - set by the capacitance only
-   - **Answer:** 1. *Why:* the capacitor starts at 0 V, so the full supply appears across R and I = V/R.
+   - **Answer:** 0. *Why:* the capacitor starts at 0 V, so the full supply appears across R and I = V/R.
 
 ## SIM NOTE
 

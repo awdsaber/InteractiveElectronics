@@ -121,32 +121,32 @@ Digital logic treats a voltage as one of two states: near 0 V is **0**, near V_C
 ## Quiz
 
 1. **A NAND gate's inputs are A = 1 and B = 1. What is the output?**
-   - 0
    - 1
    - Undefined
+   - 0
    - It depends on V_CC
-   - **Answer:** 0. *Why:* NAND is NOT(A·B), and 1·1 = 1, so the output is 0.
+   - **Answer:** 2. *Why:* NAND is NOT(A·B), and 1·1 = 1, so the output is 0.
 
 2. **A 10 kΩ pull-down is connected to 5 V through a pressed button. What current flows?**
-   - 0.05 mA
    - 0.5 mA
+   - 0.05 mA
    - 5 mA
    - 50 mA
-   - **Answer:** 1. *Why:* I = 5/10 000 = 0.5 mA.
+   - **Answer:** 0. *Why:* I = 5/10 000 = 0.5 mA.
 
 3. **Is 3.3 V a guaranteed logic 1 for a 74HC gate running at 5 V?**
    - Yes, it's above half of V_CC
-   - Yes, anything above 2 V is high
    - No, it's below V_IH = 0.7 × 5 = 3.5 V
+   - Yes, anything above 2 V is high
    - No, 74HC can't run at 5 V
-   - **Answer:** 2. *Why:* 3.3 V falls in the undefined band between 1.5 V and 3.5 V, so use 74HCT.
+   - **Answer:** 1. *Why:* 3.3 V falls in the undefined band between 1.5 V and 3.5 V, so use 74HCT.
 
 4. **How do you make an inverter from a 2-input NAND?**
    - Tie one input to ground
-   - Tie both inputs together
    - Tie the output to an input
    - It can't be done
-   - **Answer:** 1. *Why:* with A = B, NOT(A·A) = NOT A. (Tying the spare input to V_CC also works.)
+   - Tie both inputs together
+   - **Answer:** 3. *Why:* with A = B, NOT(A·A) = NOT A. (Tying the spare input to V_CC also works.)
 
 ## SIM NOTE
 

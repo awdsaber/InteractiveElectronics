@@ -121,10 +121,10 @@ The simulator uses this same idea, called modified nodal analysis: one KCL equat
 
 1. **Three wires meet at a node. 3 mA and 5 mA flow in, and 2 mA flows out on the first exit. What flows out of the second exit?**
    - 0 mA
-   - 4 mA
    - 6 mA
+   - 4 mA
    - 10 mA
-   - **Answer:** 2. *Why:* KCL: 3 + 5 = 2 + I, so I = 6 mA.
+   - **Answer:** 1. *Why:* KCL: 3 + 5 = 2 + I, so I = 6 mA.
 
 2. **A 12 V source drives three series resistors. Two drop 4.5 V and 3.3 V. What does the third drop?**
    - 4.2 V
@@ -135,17 +135,17 @@ The simulator uses this same idea, called modified nodal analysis: one KCL equat
 
 3. **On this board, channel 2 is set to 0 V (output still connected). What is node A?**
    - 0 V
-   - 3.0 V
    - 4.5 V
    - 9.0 V
-   - **Answer:** 1. *Why:* (9 − V_a) + (0 − V_a) = V_a, so 9 = 3·V_a and V_a = 3 V.
+   - 3.0 V
+   - **Answer:** 3. *Why:* (9 − V_a) + (0 − V_a) = V_a, so 9 = 3·V_a and V_a = 3 V.
 
 4. **Your node analysis gives I3 = −0.67 mA. What does that mean?**
    - The calculation is wrong
-   - The current is 0.67 mA, flowing opposite to your assumed arrow
    - The resistor is shorted
+   - The current is 0.67 mA, flowing opposite to your assumed arrow
    - The current is zero because current can't be negative
-   - **Answer:** 1. *Why:* a negative result only says the real direction is opposite to your guess.
+   - **Answer:** 2. *Why:* a negative result only says the real direction is opposite to your guess.
 
 ## SIM NOTE
 

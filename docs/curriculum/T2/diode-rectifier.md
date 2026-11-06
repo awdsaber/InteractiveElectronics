@@ -126,18 +126,18 @@ so the average is about 16.1 − 0.75 ≈ **15.3 V**, and I ≈ 15.3/100 ≈ 0.1
    - **Answer:** 2. *Why:* 9 × √2 = 12.73 V peak, minus two drops of ≈ 0.8 V, gives ≈ 11.1 V.
 
 3. **Compared with full-wave, a half-wave rectifier with the same C and load has…**
+   - twice the ripple
    - half the ripple
    - the same ripple
-   - twice the ripple
    - no ripple
-   - **Answer:** 2. *Why:* it recharges once per cycle instead of twice, so it sags for twice as long.
+   - **Answer:** 0. *Why:* it recharges once per cycle instead of twice, so it sags for twice as long.
 
 4. **In this bridge, roughly what peak reverse voltage does each diode block?**
    - 0.7 V
-   - about one secondary peak (≈ 19 V)
    - twice the peak (≈ 38 V)
    - 1000 V
-   - **Answer:** 1. *Why:* when off, each diode sits across the output in series with a conducting diode, so it sees ≈ V_peak.
+   - about one secondary peak (≈ 19 V)
+   - **Answer:** 3. *Why:* when off, each diode sits across the output in series with a conducting diode, so it sees ≈ V_peak.
 
 ## SIM NOTE
 

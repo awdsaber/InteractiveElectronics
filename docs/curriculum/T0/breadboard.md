@@ -117,20 +117,20 @@ I = (5.0 V − 1.8 V) / 330 Ω ≈ **9.7 mA**, and P_R = I²R = 0.0097² × 330 
 2. **What resistor gives a green LED (Vf 2.1 V) about 10 mA from 5 V?**
    - 29 Ω
    - 210 Ω
-   - 290 Ω (use 270 or 330 Ω)
    - 500 Ω
-   - **Answer:** 2. *Why:* R = (5 − 2.1)/0.010 = 290 Ω. The nearest standard values are 270 Ω and 330 Ω.
+   - 290 Ω (use 270 or 330 Ω)
+   - **Answer:** 3. *Why:* R = (5 − 2.1)/0.010 = 290 Ω. The nearest standard values are 270 Ω and 330 Ω.
 
 3. **On this board the LED's legs end up in the same strip. What current flows through the 330 Ω resistor?**
+   - 15.2 mA
    - 0 mA
    - 9.7 mA
-   - 15.2 mA
    - 30 mA
-   - **Answer:** 2. *Why:* the LED is shorted, so all 5 V falls across R1: 5/330 = 15.2 mA.
+   - **Answer:** 0. *Why:* the LED is shorted, so all 5 V falls across R1: 5/330 = 15.2 mA.
 
 4. **Why do DIP ICs straddle the centre channel?**
    - To keep them cool
-   - So each pin lands in its own strip instead of being shorted to the pin opposite
    - Because the channel carries the supply
+   - So each pin lands in its own strip instead of being shorted to the pin opposite
    - So the chip can't be inserted backwards
-   - **Answer:** 1. *Why:* without the channel, opposite pins would share a strip and be connected together.
+   - **Answer:** 2. *Why:* without the channel, opposite pins would share a strip and be connected together.

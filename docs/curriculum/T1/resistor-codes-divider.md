@@ -105,10 +105,10 @@ V_out = V_in · R2 / (R1 + R2) = 9 × 4.7 / 14.7 = **2.88 V**, with I = 9/14.7k 
 
 1. **What is a resistor banded red-red-brown-gold?**
    - 22 Ω ±5%
-   - 220 Ω ±5%
    - 2.2 kΩ ±5%
    - 221 Ω ±1%
-   - **Answer:** 1. *Why:* 2, 2, ×10¹ = 220 Ω; gold means ±5%.
+   - 220 Ω ±5%
+   - **Answer:** 3. *Why:* 2, 2, ×10¹ = 220 Ω; gold means ±5%.
 
 2. **A divider has R1 = 20 kΩ (top) and R2 = 10 kΩ (bottom) on 12 V. What is V_out?**
    - 4 V
@@ -126,7 +126,7 @@ V_out = V_in · R2 / (R1 + R2) = 9 × 4.7 / 14.7 = **2.88 V**, with I = 9/14.7k 
 
 4. **You need about 3.3 V from 5 V with R1 = 1.8 kΩ on top. Which standard R2 is closest?**
    - 1.0 kΩ
-   - 2.2 kΩ
    - 3.3 kΩ
+   - 2.2 kΩ
    - 6.8 kΩ
-   - **Answer:** 2. *Why:* R2 = 3.3 × 1.8/(5 − 3.3) = 3.49 kΩ. 3.3 kΩ gives 5 × 3.3/5.1 = 3.24 V.
+   - **Answer:** 1. *Why:* R2 = 3.3 × 1.8/(5 − 3.3) = 3.49 kΩ. 3.3 kΩ gives 5 × 3.3/5.1 = 3.24 V.

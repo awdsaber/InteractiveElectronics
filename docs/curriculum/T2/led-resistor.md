@@ -139,25 +139,25 @@ Polarity: the long leg is the anode (+). The short leg and the flat on the rim m
    - **Answer:** 1. *Why:* R = (5 − 2.1)/0.015 = 193 Ω.
 
 2. **A blue LED (V_f = 2.9 V) on pin 13 with 220 Ω (plus 25 Ω pin resistance). What current?**
-   - 2.9 mA
    - 8.6 mA
+   - 2.9 mA
    - 13 mA
    - 20 mA
-   - **Answer:** 1. *Why:* I = (5 − 2.9)/245 = 8.6 mA.
+   - **Answer:** 0. *Why:* I = (5 − 2.9)/245 = 8.6 mA.
 
 3. **What happens if you connect a red LED straight to a 5 V output pin with no resistor?**
    - It glows at a safe 20 mA
    - It doesn't light, because 5 V is above V_f
-   - Current is limited only by the pin's internal resistance, so both the LED and the pin are overloaded
    - The Arduino limits it in firmware
-   - **Answer:** 2. *Why:* about 120 mA flows, above both the LED's 30 mA and the pin's 40 mA absolute maximums.
+   - Current is limited only by the pin's internal resistance, so both the LED and the pin are overloaded
+   - **Answer:** 3. *Why:* about 120 mA flows, above both the LED's 30 mA and the pin's 40 mA absolute maximums.
 
 4. **What power does the 220 Ω resistor dissipate at 13 mA?**
    - 2.9 mW
-   - 37 mW
    - 0.25 W
+   - 37 mW
    - 2.86 W
-   - **Answer:** 1. *Why:* P = I²R = 0.013² × 220 ≈ 0.037 W.
+   - **Answer:** 2. *Why:* P = I²R = 0.013² × 220 ≈ 0.037 W.
 
 ## SIM NOTE
 

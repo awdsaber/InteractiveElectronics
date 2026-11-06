@@ -102,6 +102,8 @@ Check: 1.55 + 1.03 = 2.58 mA ✓.
 
 The current-divider shortcut gives the same answer: I₂ = I·R₃/(R₂ + R₃) = 2.59 × 3.3/5.5 = 1.55 mA. The *larger* resistor takes the *smaller* share.
 
+**Method.** Real networks are just these two moves repeated: find the innermost series or parallel group, replace it with its equivalent, and repeat until one resistor is left. Then work back outward, using I = V/R at each step to recover the individual voltages and currents.
+
 ## For mechanical engineers
 
 > Picture pipes. Pipes in series carry the same flow, and their pressure drops add. Pipes in parallel share the same pressure drop, and their flows add. A fat bypass pipe in parallel steals most of the flow, just as the 100 Ω resistor does in F3. **Where it breaks:** a real pipe tee has junction losses and the flow split depends on Reynolds number. An electrical node is lossless and perfectly linear, so the split is fixed by the resistances alone.

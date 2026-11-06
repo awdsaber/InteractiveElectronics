@@ -118,24 +118,24 @@ Transformers need *changing* flux. Feed one DC and nothing is induced. The prima
 
 2. **An ideal transformer delivers 24 V at 2 A from a 230 V primary. What is the primary current?**
    - 0.104 A
-   - 0.209 A
    - 2.0 A
+   - 0.209 A
    - 19.2 A
-   - **Answer:** 1. *Why:* P = 48 W, so I_p = 48/230 = 0.209 A.
+   - **Answer:** 2. *Why:* P = 48 W, so I_p = 48/230 = 0.209 A.
 
 3. **A 10:1 step-down transformer drives an 8 Ω load. What impedance does the primary see?**
+   - 800 Ω
    - 0.08 Ω
    - 80 Ω
-   - 800 Ω
    - 8 kΩ
-   - **Answer:** 2. *Why:* Z_p = n²·Z_s = 100 × 8 = 800 Ω.
+   - **Answer:** 0. *Why:* Z_p = n²·Z_s = 100 × 8 = 800 Ω.
 
 4. **Why doesn't a transformer work on DC?**
    - DC is too high a voltage
-   - Induction needs changing flux; steady current makes steady flux, which induces nothing
    - The core blocks DC current
    - DC has no RMS value
-   - **Answer:** 1. *Why:* Faraday's law: v = N·dΦ/dt, so constant flux induces zero voltage.
+   - Induction needs changing flux; steady current makes steady flux, which induces nothing
+   - **Answer:** 3. *Why:* Faraday's law: v = N·dΦ/dt, so constant flux induces zero voltage.
 
 ## SIM NOTE
 

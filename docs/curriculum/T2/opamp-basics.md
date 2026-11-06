@@ -120,25 +120,25 @@ The input signal comes from a divider: V_in = 5 × 3k/(47k + 3k) = **0.300 V**.
    - **Answer:** 1. *Why:* 1 + 47/4.7 = 11.
 
 2. **This LM358 on 5 V (gain 11) is given 0.5 V. What is the output?**
+   - about 3.5 V (clipped)
    - 5.5 V
    - 5.0 V
-   - about 3.5 V (clipped)
    - 0.5 V
-   - **Answer:** 2. *Why:* it would need 5.5 V, but the LM358 can only reach ≈ V_CC − 1.5 V ≈ 3.5 V.
+   - **Answer:** 0. *Why:* it would need 5.5 V, but the LM358 can only reach ≈ V_CC − 1.5 V ≈ 3.5 V.
 
 3. **Why does V− equal V+ in a working negative-feedback circuit?**
    - The inputs are shorted inside the chip
-   - The huge open-loop gain drives the output until the fed-back voltage cancels the difference
    - The resistors force it
    - The supply sets both inputs
-   - **Answer:** 1. *Why:* any remaining difference times ≈ 10⁵ would move the output, so it settles only when the difference is ≈ 0.
+   - The huge open-loop gain drives the output until the fed-back voltage cancels the difference
+   - **Answer:** 3. *Why:* any remaining difference times ≈ 10⁵ would move the output, so it settles only when the difference is ≈ 0.
 
 4. **R_G = 10 kΩ. Which R_F gives a non-inverting gain of 6?**
    - 6 kΩ
-   - 50 kΩ (use 51 kΩ)
    - 60 kΩ
+   - 50 kΩ (use 51 kΩ)
    - 100 kΩ
-   - **Answer:** 1. *Why:* 1 + R_F/10k = 6, so R_F = 50 kΩ.
+   - **Answer:** 2. *Why:* 1 + R_F/10k = 6, so R_F = 50 kΩ.
 
 ## SIM NOTE
 

@@ -102,31 +102,31 @@ Design rule: run resistors at **50% or less** of their rating, and less again in
 
 1. **What does a 330 Ω resistor dissipate on 12 V?**
    - 0.036 W
-   - 0.25 W
    - 0.436 W
+   - 0.25 W
    - 3.96 W
-   - **Answer:** 2. *Why:* P = V²/R = 144/330 = 0.436 W.
+   - **Answer:** 1. *Why:* P = V²/R = 144/330 = 0.436 W.
 
 2. **50 mA flows through 100 Ω. What is the power?**
-   - 0.025 W
    - 0.25 W
+   - 0.025 W
    - 5 W
    - 2.5 W
-   - **Answer:** 1. *Why:* P = I²R = 0.0025 × 100 = 0.25 W, right at a 1/4 W rating, so too hot for a real design.
+   - **Answer:** 0. *Why:* P = I²R = 0.0025 × 100 = 0.25 W, right at a 1/4 W rating, so too hot for a real design.
 
 3. **The current through a resistor triples. The heat produced…**
    - triples
    - stays the same
-   - rises 6×
    - rises 9×
-   - **Answer:** 3. *Why:* P = I²R, and 3² = 9.
+   - rises 6×
+   - **Answer:** 2. *Why:* P = I²R, and 3² = 9.
 
 4. **A resistor is rated 0.25 W at 70 °C and derates linearly to 0 W at 155 °C. What may it dissipate at 112.5 °C ambient?**
    - 0.25 W
-   - 0.125 W
    - 0.0625 W
    - 0 W
-   - **Answer:** 1. *Why:* 112.5 °C is halfway between 70 and 155 °C, so half the rating: 0.125 W.
+   - 0.125 W
+   - **Answer:** 3. *Why:* 112.5 °C is halfway between 70 and 155 °C, so half the rating: 0.125 W.
 
 ## SIM NOTE
 

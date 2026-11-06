@@ -133,24 +133,24 @@ A MOSFET's gate is insulated from its channel by a thin oxide layer. Apply V_GS 
 
 1. **What is the conduction loss at 3 A through 25 mΩ?**
    - 0.075 W
-   - 0.225 W
    - 0.75 W
+   - 0.225 W
    - 2.25 W
-   - **Answer:** 1. *Why:* P = I²R = 9 × 0.025 = 0.225 W.
+   - **Answer:** 2. *Why:* P = I²R = 9 × 0.025 = 0.225 W.
 
 2. **A TO-220 in free air (62 °C/W) dissipates 1.5 W. What is its junction temperature rise?**
    - 24 °C
    - 41 °C
-   - 93 °C
    - 155 °C
-   - **Answer:** 2. *Why:* ΔT = P·θ = 1.5 × 62 = 93 °C.
+   - 93 °C
+   - **Answer:** 3. *Why:* ΔT = P·θ = 1.5 × 62 = 93 °C.
 
 3. **What does V_GS(th) on a datasheet tell you?**
-   - The voltage for minimum R_DS(on)
    - The gate voltage at which the device just begins to conduct (a small specified drain current)
+   - The voltage for minimum R_DS(on)
    - The maximum safe gate voltage
    - The drain breakdown voltage
-   - **Answer:** 1. *Why:* it is measured at a tiny drain current (e.g. 250 µA), so the device is far from fully on there.
+   - **Answer:** 0. *Why:* it is measured at a tiny drain current (e.g. 250 µA), so the device is far from fully on there.
 
 4. **Why fit a 10 kΩ resistor from gate to source?**
    - To increase switching speed

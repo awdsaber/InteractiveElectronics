@@ -134,24 +134,24 @@ I_in = (5 × 0.2)/(0.82 × 12) ≈ **0.10 A**, half the linear's input current.
 
 2. **A buck converts 24 V to 5 V at 2 A with 88% efficiency. What is its input current?**
    - 0.42 A
-   - 0.47 A
    - 2.0 A
+   - 0.47 A
    - 2.27 A
-   - **Answer:** 1. *Why:* P_in = 10/0.88 = 11.4 W, so I_in = 11.4/24 = 0.47 A.
+   - **Answer:** 2. *Why:* P_in = 10/0.88 = 11.4 W, so I_in = 11.4/24 = 0.47 A.
 
 3. **A linear regulator dissipates 2 W, with T_J,max = 125 °C and ambient 25 °C. What is the maximum total θ_JA?**
    - 25 °C/W
-   - 50 °C/W
    - 62.5 °C/W
    - 100 °C/W
-   - **Answer:** 1. *Why:* θ ≤ (125 − 25)/2 = 50 °C/W.
+   - 50 °C/W
+   - **Answer:** 3. *Why:* θ ≤ (125 − 25)/2 = 50 °C/W.
 
 4. **Why can a buck's input current be lower than its output current?**
-   - It stores charge in the input capacitor
    - Power is conserved (minus losses), so stepping voltage down steps current up
+   - It stores charge in the input capacitor
    - It draws from the ground pin
    - It doesn't; the meter is wrong
-   - **Answer:** 1. *Why:* V_in·I_in ≈ V_out·I_out/η, and V_in > V_out, so I_in < I_out.
+   - **Answer:** 0. *Why:* V_in·I_in ≈ V_out·I_out/η, and V_in > V_out, so I_in < I_out.
 
 ## SIM NOTE
 

@@ -114,23 +114,23 @@ The current heads for 5/100 = **50 mA**. At t = 0 it rises at di/dt = V/L = 5 A/
 2. **This board's loop heads for 50 mA. What is the current after 3τ?**
    - 31.6 mA
    - 43.2 mA
-   - 47.5 mA
    - 50.0 mA
-   - **Answer:** 2. *Why:* 1 − e⁻³ = 0.95, so 0.95 × 50 = 47.5 mA.
+   - 47.5 mA
+   - **Answer:** 3. *Why:* 1 − e⁻³ = 0.95, so 0.95 × 50 = 47.5 mA.
 
 3. **The current in a 2 H coil drops by 0.1 A in 1 ms. What is the induced voltage?**
    - 0.2 V
-   - 20 V
    - 200 V
+   - 20 V
    - 2000 V
-   - **Answer:** 2. *Why:* v = L·di/dt = 2 × 0.1/0.001 = 200 V.
+   - **Answer:** 1. *Why:* v = L·di/dt = 2 × 0.1/0.001 = 200 V.
 
 4. **What does the flyback diode do?**
    - Speeds up the current rise
-   - Gives the coil current a path when the switch opens, clamping the spike
    - Protects against reversed supply polarity
+   - Gives the coil current a path when the switch opens, clamping the spike
    - Raises the coil's inductance
-   - **Answer:** 1. *Why:* it lets the stored current freewheel and decay, so the voltage stays one diode drop beyond the rail.
+   - **Answer:** 2. *Why:* it lets the stored current freewheel and decay, so the voltage stays one diode drop beyond the rail.
 
 ## SIM NOTE
 

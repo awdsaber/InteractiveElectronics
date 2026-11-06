@@ -110,24 +110,24 @@ Low-resistance loads suffer most. Use the 10 A range (lower burden) or measure t
 
 1. **A 100 kΩ / 100 kΩ divider on 10 V is measured with a 10 MΩ meter. What does it read?**
    - 4.50 V
-   - 4.98 V
    - 5.00 V
+   - 4.98 V
    - 4.76 V
-   - **Answer:** 1. *Why:* the Thévenin resistance is 50 kΩ, so V = 5 × 10M/10.05M ≈ 4.975 V. The error is only 0.5%.
+   - **Answer:** 2. *Why:* the Thévenin resistance is 50 kΩ, so V = 5 × 10M/10.05M ≈ 4.975 V. The error is only 0.5%.
 
 2. **A meter's mA range has a burden of 1.8 mV/mA. What voltage does it drop at 50 mA?**
+   - 90 mV
    - 1.8 mV
    - 36 mV
-   - 90 mV
    - 0.9 V
-   - **Answer:** 2. *Why:* 1.8 mV/mA × 50 mA = 90 mV.
+   - **Answer:** 0. *Why:* 1.8 mV/mA × 50 mA = 90 mV.
 
 3. **To measure the current through a resistor, the ammeter goes…**
    - across the resistor
-   - in series with the resistor
    - across the supply
    - between the circuit and earth
-   - **Answer:** 1. *Why:* the current must flow through the meter, so the loop is broken and the meter inserted in series.
+   - in series with the resistor
+   - **Answer:** 3. *Why:* the current must flow through the meter, so the loop is broken and the meter inserted in series.
 
 4. **Why do multimeters have a fuse in the mA jack?**
    - To measure AC

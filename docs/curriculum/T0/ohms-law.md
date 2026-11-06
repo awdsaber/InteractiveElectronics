@@ -101,18 +101,18 @@ Ohm's law ignores power, but the resistor can't. Every operating point dissipate
 ## Quiz
 
 1. **9 V across a 4.7 kΩ resistor. What current flows?**
-   - 0.52 mA
    - 1.91 mA
+   - 0.52 mA
    - 19.1 mA
    - 42.3 mA
-   - **Answer:** 1. *Why:* I = 9 / 4700 = 1.91 mA.
+   - **Answer:** 0. *Why:* I = 9 / 4700 = 1.91 mA.
 
 2. **You want 10 mA from a 5 V supply through a single resistor. What value?**
    - 0.5 Ω
    - 50 Ω
-   - 500 Ω
    - 5 kΩ
-   - **Answer:** 2. *Why:* R = V/I = 5 / 0.010 = 500 Ω (use 470 Ω or 510 Ω from the standard series).
+   - 500 Ω
+   - **Answer:** 3. *Why:* R = V/I = 5 / 0.010 = 500 Ω (use 470 Ω or 510 Ω from the standard series).
 
 3. **At a fixed voltage the resistance is halved. What happens to the current?**
    - It halves
@@ -123,10 +123,10 @@ Ohm's law ignores power, but the resistor can't. Every operating point dissipate
 
 4. **What power does a 470 Ω resistor dissipate on 12 V?**
    - 0.031 W
-   - 0.25 W
    - 0.31 W
+   - 0.25 W
    - 5.6 W
-   - **Answer:** 2. *Why:* P = V²/R = 144 / 470 = 0.306 W, over a 1/4 W part's rating.
+   - **Answer:** 1. *Why:* P = V²/R = 144 / 470 = 0.306 W, over a 1/4 W part's rating.
 
 ## SIM NOTE
 
