@@ -394,6 +394,12 @@ export interface SimSettings {
   /** integration: 'be' backward Euler (default, damps), 'trap' trapezoidal (keeps LC ringing) */
   method?: 'be' | 'trap'
   stepsPerFrame?: number
+  /**
+   * split the step after each switching event (pin, tweak, failure) into this many substeps
+   * growing ×2, and check ratings on each, so µs events (an inductive kick into a transistor's
+   * vBreak clamp) are seen at a coarse dt. Default: off.
+   */
+  edgeSubsteps?: number
 }
 
 export interface Lesson {

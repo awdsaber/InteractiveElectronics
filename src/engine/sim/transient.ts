@@ -25,6 +25,18 @@ import { type SolveContext, buildSolution, initialGuess, solveCompiled } from '.
 export interface TransientOptions {
   /** 'be' backward Euler (default: robust, damps), 'trap' trapezoidal (keeps LC ringing) */
   method?: 'be' | 'trap'
+  /**
+   * split the first step after an external discontinuity (pin, parameter or netlist change) into
+   * this many backward-Euler substeps growing ×2 (the first is dt/(2^n − 1)), so µs events such as
+   * an inductive kick into an avalanche clamp are resolved at a coarse dt. Default: off.
+   */
+  edgeSubsteps?: number
+}
+
+/** an intermediate solution inside the last step (see TransientOptions.edgeSubsteps) */
+export interface Substep {
+  t: number
+  solution: Solution
 }
 
 export interface Transient {
@@ -43,6 +55,8 @@ export interface Transient {
    * Pass this to checkRatings so a step that fails to converge doesn't reset burn timers.
    */
   readonly lastGood: Solution | null
+  /** intermediate solutions of the last step when it was split by edgeSubsteps (else empty) */
+  readonly substeps: readonly Substep[]
   /** change one element parameter, e.g. setParam('S1', 'closed', true); dotted keys ('wave.freq') reach nested fields */
   setParam(id: string, key: string, value: number | boolean | string): void
   /** set the GPIO state of every PIN element with this pin number */
@@ -84,6 +98,10 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   let lastGood: Solution | null = null
   /** next step must be backward Euler (a discontinuity just happened) */
   let restart = true
+  /** an external discontinuity happened since the last step (edgeSubsteps) */
+  let edge = false
+  const nSub = Math.max(0, Math.floor(opts.edgeSubsteps ?? 0))
+  let substeps: Substep[] = []
   let lastTrap = false
   let squares: Extract<Element, { type: 'V' }>[] = []
   const pins: Record<number, PinState> = {}
@@ -101,6 +119,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     inheritState(compiled, next)
     compiled = next
     restart = true
+    edge = true
     findSquares()
   }
 
@@ -108,6 +127,36 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   const edgeIn = (t0: number, t1: number) => {
     for (const el of squares) if (waveValue(el.wave!, t0) !== waveValue(el.wave!, t1)) return true
     return false
+  }
+
+  /** one dt as nSub backward-Euler substeps h, 2h, 4h, …; returns the solution at t + dt */
+  function splitStep(): Solution {
+    const t0 = t
+    const h0 = dt / (2 ** nSub - 1)
+    const out: Substep[] = []
+    let sol: Solution | null = null
+    let tk = t0
+    for (let k = 0; k < nSub; k++) {
+      const h = k === nSub - 1 ? t0 + dt - tk : h0 * 2 ** k
+      tk = k === nSub - 1 ? t0 + dt : tk + h
+      sc.dt = h
+      sc.t = tk
+      sc.trap = false
+      const r = solveCompiled(compiled, sc, x)
+      sol = buildSolution(compiled, r, sc)
+      if (r.ok) {
+        x.set(r.x)
+        captureState(compiled, x, h, false)
+        lastGood = sol
+      }
+      if (k < nSub - 1) out.push({ t: tk, solution: sol })
+    }
+    sc.dt = dt
+    lastTrap = false
+    restart = true
+    t = t0 + dt
+    substeps = out
+    return sol!
   }
 
   return {
@@ -129,13 +178,22 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     get lastGood() {
       return lastGood
     },
+    get substeps() {
+      return substeps
+    },
     setDt(next) {
       checkDt(next)
-      if (next !== dt) restart = true
+      if (next !== dt) restart = edge = true
       dt = next
       sc.dt = next
     },
     step() {
+      if (substeps.length) substeps = []
+      if (edge && nSub > 1) {
+        edge = false
+        return splitStep()
+      }
+      edge = false
       const tNext = t + dt
       const trap = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
       sc.t = tNext
@@ -167,7 +225,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
         compiled.devs = compiled.devs.map((d) => (d === dev ? nd : d))
         compiled.byId.set(id, nd)
         partition(compiled)
-        restart = true
+        restart = edge = true
         findSquares()
       } else recompile()
     },
@@ -176,7 +234,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       pins[pin] = { ...state }
       if (!prev || prev.mode !== state.mode || prev.level !== state.level) {
         compiled.linValid = false
-        restart = true
+        restart = edge = true
       }
     },
     setNetlist(n) {
