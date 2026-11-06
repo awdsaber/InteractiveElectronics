@@ -175,6 +175,9 @@ interface Guard {
 interface PendingIrq {
   pin: number
   fn: IsrFn | null
+  /** pin level right after the edge that raised the request, and when it happened (µs) */
+  level: 0 | 1
+  t: number
 }
 
 /** The sandbox function body is PREFIX + js, so js line 1 sits at a fixed offset in stack traces. */
@@ -213,8 +216,9 @@ function isClass(v: unknown): boolean {
 
 const STATEMENT_LIMIT = 1e6
 const SERIAL_RING = 1000
-/** pulseIn() polls a pin that has no injected edges at this interval, µs */
+/** pulseIn() polls a pin that has no injected edges every max(PULSE_POLL_US, timeout / PULSE_POLLS) µs */
 const PULSE_POLL_US = 10
+const PULSE_POLLS = 1000
 const NEVER = new Promise<never>(() => undefined)
 const SHADOWED_GLOBALS = ['window', 'document', 'globalThis', 'self', 'fetch', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'process', 'require', 'Function']
 
@@ -250,6 +254,9 @@ export class VirtualMcu {
   private pendingPins = new Set<number>()
   private irqEnabled = true
   private inIsr = false
+  /** while a pin's ISR runs: that pin reads the level of the edge that raised it (even if serviced late) */
+  private isrPin = -1
+  private isrLevel: 0 | 1 = 0
   /** pins driven by injectEdge: their level comes from the injected edges */
   private injected = new Set<number>()
   private injLevel = new Map<number, 0 | 1>()
@@ -634,12 +641,12 @@ export class VirtualMcu {
     const hit = m === CHANGE || (m === RISING && prev === 0 && level === 1) || ((m === FALLING || m === LOW) && prev === 1 && level === 0)
     if (!hit || this.pendingPins.has(pin)) return // like an AVR flag, one pending request per interrupt
     this.pendingPins.add(pin)
-    this.pending.push({ pin, fn: null })
+    this.pending.push({ pin, fn: null, level, t: this.now })
     this.refreshIrq()
   }
 
   private raiseFn(fn: IsrFn): void {
-    this.pending.push({ pin: -1, fn })
+    this.pending.push({ pin: -1, fn, level: 0, t: this.now })
     this.refreshIrq()
   }
 
@@ -667,7 +674,13 @@ export class VirtualMcu {
         }
         if (typeof fn !== 'function') continue
         this.guard.n = 0
-        await fn()
+        this.isrPin = e.pin
+        this.isrLevel = e.level
+        try {
+          await fn()
+        } finally {
+          this.isrPin = -1
+        }
       }
     } catch (err) {
       if (gen === this.gen) {
@@ -736,10 +749,11 @@ export class VirtualMcu {
     if (this.inIsr) return 0
     const want = state ? 1 : 0
     const deadline = this.now + timeout
+    const poll = Math.max(PULSE_POLL_US, timeout / PULSE_POLLS)
     const read = () => this.digitalRead(pin)
     const wait = async (): Promise<boolean> => {
       if (this.now >= deadline) return false
-      await this.waitPin(pin, this.injected.has(pin) ? deadline : Math.min(deadline, this.now + PULSE_POLL_US))
+      await this.waitPin(pin, this.injected.has(pin) ? deadline : Math.min(deadline, this.now + poll))
       return true
     }
     while (read() === want) if (!(await wait())) return 0 // a pulse already in progress does not count
@@ -813,6 +827,7 @@ export class VirtualMcu {
   private digitalRead(pin: number): number {
     const st = this.pins.get(pin)
     if (st && st.mode === 'OUTPUT') return st.level >= 0.5 ? 1 : 0
+    if (pin === this.isrPin) return this.isrLevel
     const inj = this.injLevel.get(pin)
     if (inj !== undefined) return inj
     return this.opts.readDigital(pin) ? 1 : 0

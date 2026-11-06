@@ -360,6 +360,8 @@ class Transpiler {
   private floatNames = new Set<string>()
   private intFuncs = new Set<string>()
   private intArrays = new Set<string>()
+  /** int arrays whose element writes wrap like the board's integer type (only when intBits is set) */
+  private arrayWraps = new Map<string, string>()
   private charNames = new Set<string>()
   private charArrays = new Set<string>()
   private stringNames = new Set<string>()
@@ -584,7 +586,7 @@ class Transpiler {
             i++
             continue
           }
-          if (this.classTypes.has(v)) {
+          if (this.classTypes.has(v) && !this.funcs.has(v)) {
             // Foo(args) outside a declaration constructs the class: SPISettings(...), Adafruit_PWMServoDriver(0x40)
             this.emit('new', 'id')
             this.emit(v, 'id')
@@ -652,6 +654,13 @@ class Transpiler {
             this.emit('1', 'num')
             this.emit(')')
             i += 2
+            continue
+          }
+        }
+        if (!isMember && next?.t === 'p' && next.v === '[' && this.arrayWraps.has(v)) {
+          const r = this.arrayElementWrite(i, end, wasStart)
+          if (r !== null) {
+            i = r
             continue
           }
         }
@@ -989,6 +998,12 @@ class Transpiler {
   private isCharExpr(a: number, b: number): boolean {
     const { toks, match } = this
     const t = toks[a]
+    const close = toks[b - 1]
+    if (close?.v === ')') {
+      // recv.charAt(i): the char code prints as a character
+      const open = match[b - 1]
+      if (toks[open - 1]?.v === 'charAt' && toks[open - 2]?.v === '.' && this.backOperand(b - 1) === a) return true
+    }
     if (b - a === 1) return t.t === 'chr' || (t.t === 'id' && this.charNames.has(t.v))
     if (t.t === 'id' && toks[a + 1]?.v === '[' && (this.charArrays.has(t.v) || this.stringNames.has(t.v))) {
       let q = a + 1
@@ -1065,6 +1080,50 @@ class Transpiler {
     this.emit(',')
     this.closers.set(e, (this.closers.get(e) ?? 0) + 1)
     return true
+  }
+
+  /**
+   * `a[i] = v`, `a[i] op= v` and statement-form `a[i]++` / `a[i]--` on a wrapping int array:
+   * the stored value goes through the element type's wrapper. Returns the next index, or null if not such a write.
+   */
+  private arrayElementWrite(i: number, end: number, wasStart: boolean): number | null {
+    const { toks, match } = this
+    const wrap = this.arrayWraps.get(toks[i].v) as string
+    let q = i + 1
+    while (toks[q]?.v === '[') q = match[q] + 1
+    const op = toks[q]
+    if (!op || op.t !== 'p') return null
+    const before = toks[i - 1]
+    const lhs = () => {
+      this.emit(jsName(toks[i].v), 'id')
+      this.run(i + 1, q, false) // the [index] part only, so this write is not rewritten again
+    }
+    if ((op.v === '++' || op.v === '--') && [';', ')', ','].includes(toks[q + 1]?.v) && (wasStart || before?.v === ';' || before?.v === ',')) {
+      lhs()
+      this.emit('=')
+      this.emit(wrap, 'id')
+      this.emit('(')
+      lhs()
+      this.emit(op.v === '++' ? '+' : '-')
+      this.emit('1', 'num')
+      this.emit(')')
+      return q + 1
+    }
+    if (!wasStart || !(op.v === '=' || COMPOUND.has(op.v))) return null
+    const e = this.exprEnd(q + 1, end)
+    lhs()
+    this.emit('=')
+    this.emit(wrap, 'id')
+    this.emit('(')
+    if (op.v !== '=') {
+      lhs()
+      this.emit(op.v.slice(0, -1))
+    }
+    this.emit('(')
+    this.run(q + 1, e, false)
+    this.emit(')')
+    this.emit(')')
+    return e
   }
 
   /** bitSet(x, n) / bitClear(x, n) / bitWrite(x, n, b) -> (x = helper(x, n[, b])), as the Arduino macros assign to x. */
@@ -1310,7 +1369,10 @@ class Transpiler {
           this.run(init[0], init[1], false)
         }
         if (kind === 'float') this.floatNames.add(name)
-        else if (kind === 'int') this.intArrays.add(name)
+        else if (kind === 'int') {
+          this.intArrays.add(name)
+          if (this.intBits && wrapper !== '__int') this.arrayWraps.set(name, wrapper)
+        }
       } else if (ctor) {
         this.emit('new', 'id')
         this.emit(cls as string, 'id')

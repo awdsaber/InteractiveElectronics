@@ -252,9 +252,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/transpile.ts": {
-    "mtime": 1794003127.1008768,
-    "seen": 1794003338.2062347,
-    "ast_hash": "1e4ef468244c0310eaec96746a69fee9",
+    "mtime": 1794003600.125965,
+    "seen": 1794003614.6749623,
+    "ast_hash": "9154e6a85e2c747d77edce7418c21f1e",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.test.ts": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794003250.1606016,
-    "seen": 1794003338.2062347,
-    "ast_hash": "f0af92dd8710e5bf008c37c1b8dcc8cf",
+    "mtime": 1794003555.2691545,
+    "seen": 1794003614.6749623,
+    "ast_hash": "736ddc9c23471541f7036a36fe49db30",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/batteries.md": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/extensions.test.ts": {
-    "mtime": 1794003310.0282698,
-    "seen": 1794003338.2062347,
-    "ast_hash": "2533a732214bd0e027e728da4ec77c2b",
+    "mtime": 1794003537.9445846,
+    "seen": 1794003614.6749623,
+    "ast_hash": "1e545dc8c28d2fdbd05daa1008bb6570",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/capstone-balancing-robot.md": {

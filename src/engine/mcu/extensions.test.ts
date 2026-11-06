@@ -674,7 +674,7 @@ describe('curriculum: T6 ultrasonic HC-SR04 (pulseIn)', () => {
     expect(some.lines).toEqual(['cm:100.00,good:3'])
   })
 
-  it('pulseIn also works on a simulated level (polled every 10 us)', async () => {
+  it('pulseIn also works on a simulated level (polled every max(10 us, timeout/1000))', async () => {
     const box: { mcu?: VirtualMcu } = {}
     const h = harness({
       readDigital: (pin) => {
@@ -683,7 +683,7 @@ describe('curriculum: T6 ultrasonic HC-SR04 (pulseIn)', () => {
       },
     })
     box.mcu = h.mcu
-    h.mcu.load(`void setup() { Serial.println(pulseIn(7, HIGH)); Serial.println(pulseIn(7, HIGH, 2000)); }`)
+    h.mcu.load(`void setup() { Serial.println(pulseIn(7, HIGH, 3000)); Serial.println(pulseIn(7, HIGH, 2000)); }`)
     h.mcu.start()
     await h.mcu.advance(10)
     expect(h.lines).toEqual(['500', '0'])
@@ -969,5 +969,79 @@ describe('behaviour library classes', () => {
     )
     expect(warnings).toEqual([])
     expect(lines).toEqual(['65', '50', '64', '42'])
+  })
+})
+
+// ───────────────────────── review round 1 ─────────────────────────
+
+describe('review fixes', () => {
+  it('a deferred ISR reads the level at its edge, not the current level', async () => {
+    const { mcu, lines } = harness({ board: 'uno' })
+    mcu.load(`
+      volatile int seen = -1;
+      void isr() { seen = digitalRead(2); }
+      void setup() {
+        attachInterrupt(digitalPinToInterrupt(2), isr, RISING);
+        noInterrupts();
+        delay(10);
+        interrupts();
+        Serial.println(seen);
+        Serial.println(digitalRead(2));
+      }`)
+    mcu.start()
+    mcu.injectEdge(2, 1, 2000)
+    mcu.injectEdge(2, 0, 3000)
+    await mcu.advance(20)
+    expect(lines).toEqual(['1', '0'])
+  })
+
+  it('String.charAt prints as a character and still compares as a char code', async () => {
+    const { lines } = await runSketch(
+      `void setup() { String s = "hey"; Serial.println(s.charAt(1)); char c = s.charAt(0); Serial.println(c == 'h'); Serial.println(c); }`,
+      1,
+    )
+    expect(lines).toEqual(['e', '1', 'h'])
+  })
+
+  it('uno: int array elements wrap on ++, --, = and op=', async () => {
+    const { lines } = await runSketch(
+      `int a[3] = {32767, -32768, 30000};
+       void setup() {
+         a[0]++;
+         a[1]--;
+         a[2] += 10000;
+         Serial.println(a[0]);
+         Serial.println(a[1]);
+         Serial.println(a[2]);
+         a[0] = 40000;
+         Serial.println(a[0]);
+         for (int i = 0; i < 1; a[1]++) { i++; }
+         Serial.println(a[1]);
+       }`,
+      1,
+      { board: 'uno' },
+    )
+    expect(lines).toEqual(['-32768', '32767', '-25536', '-25536', '-32768'])
+  })
+
+  it('pulseIn on a polled pin scales its poll interval with the timeout', async () => {
+    let reads = 0
+    const { lines } = await runSketch(`void setup() { Serial.println(pulseIn(7, HIGH, 1000000)); }`, 1100, {
+      readDigital: (pin) => {
+        if (pin === 7) reads++
+        return 0
+      },
+    })
+    expect(lines).toEqual(['0'])
+    expect(reads).toBeLessThan(2100)
+  })
+
+  it('a user function wins over a library class of the same name', async () => {
+    class Thing {
+      v = 7
+    }
+    const { lines, warnings } = await runSketch(`int Thing(int x) { return x + 1; } void setup() { Serial.println(Thing(1)); }`, 1, { libraries: { Thing } })
+    expect(warnings).toEqual([])
+    expect(lines).toEqual(['2'])
   })
 })
