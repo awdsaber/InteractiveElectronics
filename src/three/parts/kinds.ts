@@ -1,0 +1,60 @@
+import type { PartKind } from '../../engine/types'
+
+/** Every PartKind at runtime, in gallery order. Type-checked to be exhaustive. */
+export const ALL_PART_KINDS = [
+  'resistor',
+  'resistor-smd',
+  'capacitor-ceramic',
+  'capacitor-smd',
+  'capacitor-electrolytic',
+  'inductor',
+  'diode',
+  'zener',
+  'thermistor',
+  'fuse',
+  'crystal',
+  'led',
+  'led-smd',
+  'transistor-to92',
+  'mosfet-to220',
+  'regulator-to220',
+  'heatsink',
+  'ic-dip',
+  'ic-smd',
+  'logic-ic-label',
+  'testpoint',
+  'header-male',
+  'header-female',
+  'usb-b',
+  'usb-c',
+  'micro-usb',
+  'barrel-jack',
+  'screw-terminal',
+  'button',
+  'switch-slide',
+  'potentiometer',
+  'buzzer',
+  'transformer',
+  'battery-aa-pack',
+  'battery-9v',
+  'battery-lipo',
+  'dc-motor',
+  'gear-motor-wheel',
+  'servo',
+  'stepper-nema17',
+  'breadboard',
+  'module',
+  'wifi-module',
+  'oled',
+  'sensor-ultrasonic',
+  'load-cell',
+  'wire',
+  'probe',
+  'multimeter',
+] as const satisfies readonly PartKind[]
+
+type Listed = (typeof ALL_PART_KINDS)[number]
+// Compile-time exhaustiveness: fails if a PartKind is missing from the list.
+type Missing = Exclude<PartKind, Listed>
+const _exhaustive: [Missing] extends [never] ? true : Missing = true
+void _exhaustive
