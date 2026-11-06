@@ -344,6 +344,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         return el && nodeV(el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
       },
       serial(line) {
+        // a held MCU is frozen: whatever setup() reached before the hold landed prints nothing
+        if (held) return
         serial.push(line)
         if (serial.length > SERIAL_KEEP) serial.shift()
       },
@@ -455,6 +457,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         },
         serialIn(text) {
           mcu?.serialIn(text)
+        },
+        serialOut(line) {
+          serial.push(line)
+          if (serial.length > SERIAL_KEEP) serial.shift()
         },
         attachI2c(address, device) {
           if (mcu) mcu.attachI2c(address, device as never)

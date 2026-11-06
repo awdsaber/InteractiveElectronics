@@ -13,6 +13,7 @@ import { Callout } from './Callout'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
+import { rgbGlow } from './rgbGlow'
 
 const DROP_H = 3
 const DROP_MS = 250
@@ -44,6 +45,9 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   let glow = 0
   if (LED_KINDS.has(p.kind) && cid) glow = Math.min(1.5, Math.max(0, (snap.current[cid] ?? 0) / 0.02))
   else if ((p.kind === 'module' || p.kind === 'oled' || p.kind === 'wifi-module') && snap.assembly.powered[lesson.powerElementId]) glow = 1
+  // addressable RGB LEDs glow at the brightness their behavior publishes (colour: liveParams)
+  const rgb = rgbGlow(p, snap.published)
+  if (rgb) glow = rgb.glow
   const s: PartRenderState = {
     visible: placed,
     soldered: !breadboard && snap.assembly.soldered && (p.mount === 'tht' || p.mount === 'smd'),
@@ -69,6 +73,8 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
 /** Params that follow the simulation: resistor bands follow its value, the Uno's L LED follows pin 13. */
 export function liveParams(p: PartPlacement, snap: BenchSnapshot): PartPlacement {
   const cid = p.circuitIds?.[0]
+  const rgb = rgbGlow(p, snap.published)
+  if (rgb?.color && rgb.color !== p.params?.color) return { ...p, params: { ...p.params, color: rgb.color } }
   if (p.kind === 'resistor' && cid) {
     const ohms = snap.elementValues[`${cid}.value`]
     if (ohms !== undefined && ohms !== p.params?.ohms) return { ...p, params: { ...p.params, ohms: +ohms.toPrecision(3) } }

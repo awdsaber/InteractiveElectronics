@@ -457,6 +457,8 @@ export interface BehaviorMcu {
   reset(): void
   injectEdge(pin: number, level: number | boolean, tMicros: number): void
   serialIn(text: string): void
+  /** a line on the serial monitor from outside the sketch (e.g. the ESP32 ROM bootloader) */
+  serialOut(line: string): void
   attachI2c(address: number, device: unknown): void
   attachSpi(csPin: number, device: unknown): void
   /** MCU virtual time, µs */

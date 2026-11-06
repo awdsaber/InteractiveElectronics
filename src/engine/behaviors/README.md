@@ -40,6 +40,7 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `mcu.reset()` | Restarts the uploaded sketch from `setup()`. |
 | `mcu.injectEdge(pin, level, tMicros)` | A timestamped input edge (encoders, echo pulses), with ISRs firing at that time. |
 | `mcu.serialIn(text)` | Bytes for `Serial.read()`. |
+| `mcu.serialOut(line)` | A line on the serial monitor from outside the sketch (the ESP32 ROM bootloader). A held MCU prints nothing of its own. |
 | `mcu.attachI2c(addr, dev)` / `mcu.attachSpi(cs, dev)` | Bus devices (`I2cDevice` / `SpiDevice` in `src/engine/mcu`). Safe to call before upload. |
 | `mcu.timeMicros`, `mcu.running` | MCU clock and state. |
 
