@@ -58,8 +58,8 @@ function ratingsMs(): number {
 }
 
 describe.skipIf(ON_CI)('checkRatings performance', () => {
-  it('60 rated elements, 30 calls on fresh solutions, under 1 ms', () => {
-    expect(ratingsMs()).toBeLessThan(1)
+  it('60 rated elements, 30 calls on fresh solutions, under 3 ms (measured ≈0.5 ms; headroom for a loaded machine)', () => {
+    expect(ratingsMs()).toBeLessThan(3)
   })
 })
 
