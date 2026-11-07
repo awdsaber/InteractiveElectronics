@@ -7,6 +7,7 @@ import type { BenchSnapshot } from '../engine/bench/simLoop'
 import type { Lesson } from '../engine/types'
 import type { Settings } from '../ui/types'
 import { Board } from './Board'
+import { CalloutHost } from './Callout'
 import { IsoCamera } from './IsoCamera'
 import { InkLights } from './ink'
 import { WobbleClock, setWobble } from './wobble'
@@ -53,6 +54,7 @@ export default function BenchScene({ lesson, snap, settings }: BenchSceneProps) 
   const smoking = Object.values(snap.partBurnt).some(Boolean)
   const live = snap.assembly.running || smoking
   return (
+    <CalloutHost>
     <Canvas
       flat
       dpr={[1, 2]}
@@ -68,5 +70,6 @@ export default function BenchScene({ lesson, snap, settings }: BenchSceneProps) 
       <Camera lesson={lesson} />
       <Board lesson={lesson} snap={snap} settings={settings} />
     </Canvas>
+    </CalloutHost>
   )
 }
