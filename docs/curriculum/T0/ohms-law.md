@@ -31,8 +31,8 @@ Board: `OHM-02`, size 12 × 8, base `mat`.
 
 | id | type | nodes | value / params | rating | notes |
 |---|---|---|---|---|---|
-| `V_PSU` | V | `psu+`, `0` | 5.0 V, rInternal 0.01 Ω | — | bench supply in CV mode |
-| `SW_OUT` | SW | `psu+`, `out` | closed: false | — | **power element**; the supply's output button |
+| `V_PSU` | V | `psu+`, `0` | 5.0 V, rInternal 0.01 Ω, `iLimit` 0.6 A | — | bench supply: CV mode, folds into CC mode at 0.6 A |
+| `SW_OUT` | SW | `psu+`, `out` | closed: true (the bench toggles `disabled` for power) | — | **power element**; the supply's output button |
 | `P_I` | PROBE | `out`, `r_top` | — | — | ammeter |
 | `R1` | R | `r_top`, `0` | 1000 Ω | maxP 0.25 W, maxV 250 V | 1/4 W metal film |
 
@@ -65,11 +65,11 @@ Sweep the voltage with R fixed and the current tracks it in a straight line. Wit
 ### F2: Misread colour bands (10 Ω fitted instead of 1 kΩ)
 - **Patch:** `{op:'set', elementId:'R1', key:'value', value:10}`
 - **Sim shows:** CURRENT 500 mA, R1 POWER 2.5 W, then burnt.
-- **Why:** brown-black-black is 10 Ω and brown-black-red is 1 kΩ. One band's difference is a factor of 100 in current.
+- **Why:** on a 4-band part brown-black-black is 10 Ω and brown-black-red is 1 kΩ. One band's difference is a factor of 100 in current.
 
 ### F3: Resistor lead pulls out of the board
 - **Patch:** `{op:'remove', elementId:'R1'}`
-- **Sim shows:** CURRENT 0 A, VOLTAGE at `r_top` floats (the supply's 5 V now appears across the gap).
+- **Sim shows:** CURRENT 0 A. VOLTAGE at `r_top` reads the full 5 V (the ammeter is a 0 V branch, so the supply's whole 5 V now sits across the gap).
 - **Why:** an open circuit is infinite resistance, so I = V/∞ = 0.
 
 ## Meet the board
@@ -128,6 +128,14 @@ Ohm's law ignores power, but the resistor can't. Every operating point dissipate
    - 5.6 W
    - **Answer:** 1. *Why:* P = V²/R = 144 / 470 = 0.306 W, over a 1/4 W part's rating.
 
-## SIM NOTE
+### F4: Short the output
+- **Patch:** `{op:'short', a:'r_top', b:'0'}`
+- **Sim shows:** supply in CC mode (`V_PSU.cc` = 1): CURRENT holds at the 0.6 A limit, VOLTAGE collapses to about 0 V, nothing burns.
+- **Why:** R ≈ 0 would mean I = V/R of hundreds of amps; the current limit folds the supply back to constant current instead.
 
-- `V` has no current limit. A "short the output" failure would need a constant-current (CC) mode on `V`, e.g. an `iLimit` field, so a bench supply folds back to its limit instead of reporting hundreds of amps. This lesson avoids that scenario until CC mode exists.
+## Verified figures (M3 review)
+Every number above was recomputed: 144/0.25 = 576 Ω, 12 V/470 Ω = 25.5 mA and 0.306 W, 5/2.1 mA = 2.38 kΩ, 9/4.7 kΩ = 1.91 mA, 12 V/100 Ω = 120 mA and 1.44 W (5.8 × the rating), 5 V/10 Ω = 500 mA and 2.5 W. No datasheet error found; only the SIM NOTE was out of date (the engine now has `V.iLimit`), so it is replaced by F4 and the CC tweak and readout.
+
+## Sim notes
+- The lesson adds a tweak "Supply current limit" (`V_PSU.iLimit`, 0.02–0.9 A, log) and a readout "SUPPLY CC" (`V_PSU.cc`, 1 while the supply is in constant-current mode).
+- The sim treats `maxP` as a hard limit (burns after 300 ms above it). A real 1/4 W resistor at 1.2 × its rating runs very hot but does not always fail at once.

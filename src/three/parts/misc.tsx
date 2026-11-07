@@ -111,7 +111,7 @@ const MODES: Record<string, { angle: number; label: string }> = {
 
 function MultimeterBody({ part, state }: PartProps) {
   const reading = state.reading ?? str(part, 'reading', '0.000')
-  const unit = str(part, 'unit', 'V')
+  const unit = state.readingUnit ?? str(part, 'unit', 'V')
   const modeKey = str(part, 'mode', unit === 'Ω' ? 'R' : unit === 'A' ? 'A' : 'V')
   const mode = MODES[modeKey] ?? MODES.V
   const W = 7.4
