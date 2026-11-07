@@ -8,5 +8,7 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     environment: 'node',
     passWithNoTests: true,
+    // Lesson tests simulate many seconds of circuit time; give them room on a loaded machine or CI.
+    testTimeout: 60_000,
   },
 })
