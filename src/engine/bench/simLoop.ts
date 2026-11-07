@@ -288,6 +288,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
    * behavior setParam) keep the transient state and its last solution.
    */
   function rebuild(structural = true): void {
+    behaviorOverrides()
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
@@ -415,6 +416,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       publish(key, value) {
         published[`${r.instance}.${key}`] = value
       },
+      read: (key) => published[key],
       setParam(elementId, key, value) {
         const k = `${elementId}\u0000${key}`
         if (live[k] === value) return
@@ -483,6 +485,20 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     instances.push({ def, r, ctx })
   }
   const pendingBurns: BurnEvent[] = []
+
+  /** active failures' `set` patches on `behavior:<instance>` override that instance's params */
+  function behaviorOverrides(): void {
+    for (const inst of instances) {
+      const id = `behavior:${inst.r.instance}`
+      let over: Record<string, number | string | boolean> | null = null
+      for (const fid of asm.failures) {
+        for (const p of lesson.failures.find((f) => f.id === fid)?.patches ?? []) {
+          if (p.op === 'set' && p.elementId === id) (over ??= {})[p.key] = p.value
+        }
+      }
+      inst.ctx.params = over ? { ...inst.r.params, ...over } : inst.r.params
+    }
+  }
 
   // ── actions ──
   function lifecycle(ev: BehaviorLifecycleEvent): void {
@@ -784,6 +800,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       if (m) {
         const inst = instances.find((i) => i.r.instance === m[1])
         if (inst) inst.r.params[m[2]] = value
+        behaviorOverrides()
       } else rebuild(false)
       emit()
     },

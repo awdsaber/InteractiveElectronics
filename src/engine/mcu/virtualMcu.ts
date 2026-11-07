@@ -49,6 +49,8 @@ export interface I2cDevice {
   write?(bytes: number[]): void
   /** the master asks for `n` bytes (requestFrom); return up to n */
   read?(n: number): number[]
+  /** false: the device is attached but does not answer right now (NACK), e.g. a dead bus or another address */
+  ack?(): boolean
 }
 
 export interface SpiSettingsLike {
@@ -1003,12 +1005,13 @@ export class VirtualMcu {
         const dev = mcu.i2c.get(txAddr)
         const bytes = txBuf
         txBuf = []
-        if (!dev) return 2 // NACK on the address
+        if (!dev || dev.ack?.() === false) return 2 // NACK on the address
         dev.write?.(bytes)
         return 0
       },
       requestFrom: (addr: number, n: number) => {
-        const dev = mcu.i2c.get(Math.trunc(addr) & 0x7f)
+        const found = mcu.i2c.get(Math.trunc(addr) & 0x7f)
+        const dev = found && found.ack?.() !== false ? found : undefined
         const want = Math.max(0, Math.trunc(n))
         rxBuf = dev ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
         return rxBuf.length
