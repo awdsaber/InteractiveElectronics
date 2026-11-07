@@ -79,6 +79,7 @@ const readout = z.object({
   ]),
   unit: z.enum(['A', 'V', 'W', 'Ω', 'mΩ', 'rpm', '°', '°C', 'Hz', 'g', 'cm', '%', 's', 'µs', 'counts', 'dBm', 'C', '']),
   digits: z.number().int().min(1).max(6).optional(),
+  floor: z.number().nonnegative().optional(),
 })
 
 const tweak = z.object({
@@ -127,6 +128,7 @@ export const lessonSchema = z.object({
     pcbColor: z.string().optional(),
     traces: z.array(z.array(z.tuple([num, num]))).optional(),
     base: z.enum(['mat', 'breadboard-only', 'none']).optional(),
+    frame: z.object({ size: z.tuple([num.positive(), num.positive()]), center: z.tuple([num, num]).optional() }).optional(),
     parts: z.array(part),
   }),
   circuit: z.object({ elements: z.array(element).min(1) }),

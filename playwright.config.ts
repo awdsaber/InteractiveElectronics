@@ -1,7 +1,9 @@
 import { defineConfig } from '@playwright/test'
 
 // Smoke tests run in the system Chrome with software WebGL (SwiftShader), so no GPU is needed.
-const PORT = 5179
+// E2E_PORT lets parallel worktrees run the suite side by side. Never reuse a running server:
+// it may be serving another worktree's code.
+const PORT = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.E2E_PORT ?? 5389)
 
 export default defineConfig({
   testDir: 'e2e',
@@ -20,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/InteractiveElectronics/`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 })

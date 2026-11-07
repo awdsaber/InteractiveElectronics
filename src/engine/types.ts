@@ -301,6 +301,11 @@ export interface BoardSpec {
   traces?: [number, number][][]
   /** base / bench object under the board */
   base?: 'mat' | 'breadboard-only' | 'none'
+  /**
+   * the bench area the camera frames and the mat covers, when off-board parts sit beside the PCB
+   * (default: `size`, centred on the PCB). `center` is [x, z] in board units.
+   */
+  frame?: { size: [number, number]; center?: [number, number] }
   parts: PartPlacement[]
 }
 
@@ -319,6 +324,8 @@ export interface Readout {
     | { kind: 'behavior'; key: string } // value published by a behavior
   unit: ReadoutUnit
   digits?: number
+  /** |value| below this reads 0 (default: 1 µV for V, 1 nA / 1 nW for A / W) */
+  floor?: number
 }
 
 export type ReadoutUnit =
@@ -511,6 +518,8 @@ export interface Behavior {
   /** dt in seconds; called once per animation frame with the sim time that frame covered */
   tick?(ctx: BehaviorContext, dt: number): void
   onEvent?(ctx: BehaviorContext, ev: BehaviorLifecycleEvent): void
+  /** one complete line the sketch printed with Serial (without the newline), as it is printed */
+  onSerial?(ctx: BehaviorContext, line: string): void
   /** back to the initial state (after repair or strip): forget internal state, timers, latched faults */
   reset?(ctx: BehaviorContext): void
   /** the bench is going away (lesson switch): release anything held */
