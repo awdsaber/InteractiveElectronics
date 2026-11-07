@@ -127,6 +127,7 @@ export const lessonSchema = z.object({
     pcbColor: z.string().optional(),
     traces: z.array(z.array(z.tuple([num, num]))).optional(),
     base: z.enum(['mat', 'breadboard-only', 'none']).optional(),
+    frame: z.object({ size: z.tuple([num.positive(), num.positive()]), center: z.tuple([num, num]).optional() }).optional(),
     parts: z.array(part),
   }),
   circuit: z.object({ elements: z.array(element).min(1) }),

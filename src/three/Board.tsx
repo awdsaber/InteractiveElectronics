@@ -160,10 +160,10 @@ export function Board({ lesson, snap, settings }: BoardProps) {
     prev.current = new Set(placed)
   }, [placedKey, board.parts])
 
-  const [w, d] = board.size
+  const [w, d] = board.frame?.size ?? board.size
   return (
     <group>
-      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} />}
+      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={board.frame?.center} />}
       {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
       {pcb && <Pcb spec={board} color={color} />}
       {board.parts.map((p) => (

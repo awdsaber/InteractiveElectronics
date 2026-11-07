@@ -301,6 +301,11 @@ export interface BoardSpec {
   traces?: [number, number][][]
   /** base / bench object under the board */
   base?: 'mat' | 'breadboard-only' | 'none'
+  /**
+   * the bench area the camera frames and the mat covers, when off-board parts sit beside the PCB
+   * (default: `size`, centred on the PCB). `center` is [x, z] in board units.
+   */
+  frame?: { size: [number, number]; center?: [number, number] }
   parts: PartPlacement[]
 }
 
