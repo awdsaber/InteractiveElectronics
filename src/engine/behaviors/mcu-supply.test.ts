@@ -144,6 +144,20 @@ describe('mcu-supply behavior', () => {
     b.dispose()
   })
 
+  it('an upload during a brown-out never runs the sketch, not even for one frame', async () => {
+    const b = running()
+    await frames(b, 5)
+    b.setTweak('VS.value', 2.0)
+    await frames(b, 3)
+    b.upload()
+    const tUp = b.t
+    await frames(b, 2)
+    expect(b.mcuTimeMs() - tUp * 1000).toBeLessThan(1e-6) // the MCU clock never started: held from the upload on
+    expect(boots(b)).toBe(0)
+    expect(b.snapshot().pins[13]?.mode ?? 'INPUT').toBe('INPUT')
+    b.dispose()
+  })
+
   it('uses hysteresis: a rail hovering just above 2.7 V does not release a held MCU', async () => {
     const b = running()
     await frames(b, 5)

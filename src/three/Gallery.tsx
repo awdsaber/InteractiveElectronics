@@ -6,6 +6,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardSpec, PartKind, PartPlacement } from '../engine/types'
 import { BenchBase } from './BenchBase'
+import { CalloutHost } from './Callout'
 import { IsoCamera } from './IsoCamera'
 import { InkLights } from './ink'
 import { ACCENT, INK, PAPER, PCB_SWATCHES } from './palette'
@@ -281,6 +282,7 @@ export default function Gallery() {
   const lessonList = useMemo(() => lessonParts(), [])
   return (
     <div style={page}>
+      <CalloutHost>
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true, alpha: true }} style={{ position: 'absolute', inset: 0 }}>
         <InkLights />
         <WobbleClock />
@@ -342,6 +344,7 @@ export default function Gallery() {
           </>
         )}
       </Canvas>
+      </CalloutHost>
 
       <div style={panel}>
         <div style={{ font: `600 22px/1.1 ${SERIF}`, marginBottom: 2 }}>Part library</div>
