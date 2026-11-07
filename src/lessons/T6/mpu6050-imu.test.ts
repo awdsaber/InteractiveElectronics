@@ -106,7 +106,7 @@ describe('T6 mpu6050-imu lesson', () => {
     })
     near(s.values[VIB], 0.5)
     expect(stats(acc).sd).toBeGreaterThan(1)
-    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3)
+    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3) // measured ≈ 31×: the ≈ 245 Hz shake aliases to ≈ 45–50 Hz in the 100 Hz loop
     expect(line).toMatch(/^Shaker on/)
     // and it stops: the vibration readout falls once the sketch turns the shaker off
     const off = await run(b, 1.5)

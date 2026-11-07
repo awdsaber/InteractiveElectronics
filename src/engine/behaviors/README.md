@@ -33,7 +33,7 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `v(node, ref?)` | A node voltage. |
 | `pins` | The pin states the circuit currently sees. |
 | `publish(key, value)` | Exposes a value as `<instance>.<key>` for `{kind:'behavior', key}` readouts. Values are cleared on power-off and strip. |
-| `read?(key)` | Another behavior's published value by its full key `<instance>.<key>` (undefined when unset), e.g. a robot's body pitch feeding `imu-mpu6050`. |
+| `read?(key)` | Another behavior's published value by its full key `<instance>.<key>` (undefined when unset), e.g. a robot's body pitch feeding `imu-mpu6050`. It reads a snapshot taken when the frame's behavior pass begins, so it lags exactly one tick whatever the behavior order (and a behavior reading its own key sees last tick's value). |
 | `setParam(id, key, value)` | Changes an element parameter live (sensor resistance, switch state). It keeps the transient state, and it is cheap when the value is unchanged, so calling it every tick is fine. |
 | `setMotorLoad(id, torque)` | Sets a MOTOR's shaft load in N·m. |
 | `burn(id, reason)` | Fails a part as if a rating had been exceeded (shows smoke, and FAULT). |
@@ -58,4 +58,4 @@ The instance name defaults to the id, and two instances of one behavior need dif
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).
 - Model at the level that teaches the concept. Use real datasheet numbers, and say less rather than invent.
 - `validateLesson` rejects unknown behavior ids, duplicate instances, and behavior readouts or tweaks that name an unknown instance.
-- A failure can override a behavior param while it is active: `{ op: 'set', elementId: 'behavior:<instance>', key, value }` (tweaks keep their value underneath and return on repair).
+- A failure can override a behavior param while it is active: `{ op: 'set', elementId: 'behavior:<instance>', key, value }` (tweaks keep their value underneath and return on repair). The bench swaps `ctx.params` for a merged object while such a failure is active, so read `ctx.params` each tick and never cache the params object.

@@ -238,7 +238,7 @@ describe('imu-mpu6050: shaker vibration', () => {
     near(s.extra['vib.omega'], 1580, 0.05)
     near(P(s, 'vib_g'), 0.5, 0.2)
     expect(stats(acc).sd).toBeGreaterThan(1)
-    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3) // the 100 Hz loop aliases the ~500 Hz shake to a few Hz
+    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3) // the shake reaches the filter attenuated by the DLPF and aliased by the 100 Hz loop
   })
 })
 

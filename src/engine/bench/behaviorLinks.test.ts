@@ -78,6 +78,32 @@ describe('behavior links', () => {
     expect(b.snapshot().published['reader.seen']).toBe(12.5)
   })
 
+  it('ctx.read sees exactly one tick of lag, whatever the behavior order', async () => {
+    const counts = new WeakMap<object, number>()
+    const counter: Behavior = {
+      id: 'counter',
+      tick(ctx) {
+        const n = (counts.get(ctx) ?? 0) + 1
+        counts.set(ctx, n)
+        ctx.publish('n', n)
+      },
+    }
+    const watcher: Behavior = {
+      id: 'watcher',
+      tick(ctx) {
+        ctx.publish('seen', ctx.read?.('counter.n') ?? 0)
+      },
+    }
+    for (const order of [['counter', 'watcher'], ['watcher', 'counter']]) {
+      const b = createBench({ ...lessonWith(), behaviors: order, tweaks: [], failures: ledResistor.failures, readouts: ledResistor.readouts }, { registry: { counter, watcher } })
+      b.dispatch('power')
+      for (let i = 0; i < 5; i++) await b.frame(FRAME)
+      const p = b.snapshot().published
+      expect(p['counter.n']).toBe(5)
+      expect(p['watcher.seen']).toBe(4)
+    }
+  })
+
   it('a failure set patch on behavior:<instance> overrides the param until repaired, then the tweak value returns', async () => {
     const l = lessonWith()
     expect(validateLesson(l, { writer, reader })).toEqual([])

@@ -379,7 +379,7 @@ export const lesson: LessonDef = {
       id: 'no-pullups',
       label: 'Remove the I²C pull-ups',
       explain:
-        'SDA and SCL idle near 0 V: nothing pulls the open-drain lines high, so the MPU-6050 never sees a start condition. testConnection() fails and the sketch prints "MPU-6050 not found". Some GY-521 clones skip the pull-ups. Enabling the Uno\'s internal 20–50 kΩ pull-ups is no fix either: they pull to 5 V, out of spec for the 3.3 V chip\'s pins.',
+        'The bench models a master without internal pull-ups, so SDA and SCL idle near 0 V: nothing pulls the open-drain lines high, the MPU-6050 never sees a start condition, testConnection() fails and the sketch prints "MPU-6050 not found". On a real Uno, Wire.begin() turns on the ATmega\'s internal 20–50 kΩ pull-ups, so the bus often still idles high and may even work, but those pull-ups go to 5 V, above the MPU-6050\'s VDD + 0.5 V absolute maximum on its pins, and are too weak for clean edges at 100–400 kHz. Some GY-521 clones skip the pull-ups: fit 2.2–10 kΩ to 3.3 V.',
       patches: [
         { op: 'remove', elementId: 'r_sda' },
         { op: 'remove', elementId: 'r_scl' },

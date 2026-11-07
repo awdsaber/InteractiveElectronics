@@ -196,6 +196,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   // ── behaviors ──
   const instances: { def: Behavior; r: ResolvedBehavior; ctx: BehaviorContext }[] = []
   const published: Record<string, number> = {}
+  /** `published` as it was when this frame's behavior pass began: ctx.read() lags exactly one tick in any order */
+  const readView: Record<string, number> = {}
   const events: BehaviorEvent[] = []
   const live: Record<string, number | boolean> = {} // `${id}\u0000${key}` → value set by behaviors
   let liveDirty = false
@@ -446,7 +448,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       publish(key, value) {
         published[`${r.instance}.${key}`] = value
       },
-      read: (key) => published[key],
+      read: (key) => readView[key],
       setParam(elementId, key, value) {
         const k = `${elementId}\u0000${key}`
         if (live[k] === value) return
@@ -771,6 +773,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     // behaviors
     const s = solution()
     const pw = mcuPowered(lesson, asm)
+    for (const k in readView) if (!(k in published)) delete readView[k]
+    for (const k in published) readView[k] = published[k]
     for (const inst of instances) {
       const c = inst.ctx
       c.t = t

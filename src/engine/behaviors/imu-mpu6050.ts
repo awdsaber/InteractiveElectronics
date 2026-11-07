@@ -15,7 +15,8 @@
 //                 (σ = density · √BW, as an AR(1) process), and the shaker's vibration
 //                 (a sinusoid at the motor's shaft frequency, amplitude vibGain · ω_motor²) is
 //                 attenuated by 1/√(1 + (f/BW)²)
-// The samples land in a register file served over I²C (0x68, or 0x69 with AD0 high; WHO_AM_I =
+// The last sample of each frame lands in a register file served over I²C (so a sketch polling
+// faster than the frame rate reads repeated samples) (0x68, or 0x69 with AD0 high; WHO_AM_I =
 // 0x68, PWR_MGMT_1 resets to 0x40 = asleep). The chip ACKs only while the bus is healthy
 // (V(3v3) ≥ 2.375 V and SDA/SCL idle above 0.7 × V(3v3)) and at its own address.
 //
