@@ -203,6 +203,7 @@ void loop() { delay(20); }
     expect(vMin).toBeLessThan(2.7)
     expect(trips).toBeGreaterThanOrEqual(2)
     expect(resets).toBeGreaterThanOrEqual(2)
+    expect(b.snapshot().published['mcu.resets']).toBeGreaterThanOrEqual(2) // Uno brown-out resets
     expect(b.snapshot().statusLine.text).toMatch(/^BROKEN: .*boot loop/)
     b.dispose()
   })

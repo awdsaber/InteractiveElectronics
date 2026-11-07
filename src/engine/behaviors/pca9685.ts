@@ -31,8 +31,6 @@
 //            vNom [4.8], slew [600 °/s], band [4°], tauM [0.015 s], iIdle [0.01], iRun [0.24],
 //            iStall [0.65], vOk [4.0], vErratic [3.5], vDead [2.0], seed [1]
 //   chip     oscActual [25e6 Hz]: the real internal oscillator (the sketch states its own guess)
-//   mcu      borNode [''] and bor [2.7 V]: hold the MCU below bor, release + reset above it
-//            (the ATmega328P brown-out detector; '' = off)
 // Publishes: freq_actual, prescale, sleep, addr, i2c_errors, gnd_ok, vplus_V, servo_A_total,
 //   and per servo channel n: ch<n>_us, ch<n>_s, ch<n>_deg (the horn angle), ch<n>_A.
 
@@ -103,7 +101,6 @@ interface State {
   errors: number
   /** VDD was seen below 2.3 V: the next good VDD is a power-on reset */
   vddLow: boolean
-  held: boolean
   rng: () => number
   servoList: string
   servos: Servo[]
@@ -199,7 +196,6 @@ function state(ctx: BehaviorContext): State {
       ptr: 0,
       errors: 0,
       vddLow: false,
-      held: false,
       rng: prng(num(ctx, 'seed', 1)),
       servoList,
       servos: makeServos(ctx, list(servoList)),
@@ -459,20 +455,6 @@ function decode(ctx: BehaviorContext, st: State, powered: boolean): number {
   return f
 }
 
-function brownOut(ctx: BehaviorContext, st: State): void {
-  const node = str(ctx, 'borNode', '')
-  if (!node) return
-  const bor = num(ctx, 'bor', 2.7)
-  const v = ctx.v(node)
-  if (!st.held && ctx.mcu.running && v < bor) {
-    st.held = true
-    ctx.mcu.hold('brown-out')
-  } else if (st.held && v > bor + 0.05) {
-    st.held = false
-    ctx.mcu.release()
-    ctx.mcu.reset()
-  }
-}
 
 export const behavior: Behavior = {
   id: 'pca9685',
@@ -488,8 +470,6 @@ export const behavior: Behavior = {
     const s = ctx.solution
     if (!s) return
     const st = state(ctx)
-
-    brownOut(ctx, st)
 
     // VDD: below 2.3 V the chip is unpowered; coming back is a power-on reset
     const vdOk = vdd(ctx) >= 2.3
@@ -601,7 +581,6 @@ export const behavior: Behavior = {
 
   onEvent(ctx, ev) {
     const st = state(ctx)
-    if (ev === 'power-off' || ev === 'upload') st.held = false
     if (ev === 'power-off') {
       powerOnReset(st.regs)
       st.errors = 0

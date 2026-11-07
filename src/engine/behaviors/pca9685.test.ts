@@ -408,19 +408,6 @@ describe('pca9685 servo model', () => {
     expect(f.pub.ch0_A).toBe(0)
   })
 
-  it('brown-out: holds the MCU below borNode 2.7 V, then releases and resets it', () => {
-    const f = fake({ borNode: '5v', bor: 2.7 })
-    f.tick()
-    f.nodeV['5v'] = 2.0
-    f.tick()
-    expect(f.calls).toEqual(['hold'])
-    f.tick()
-    expect(f.calls).toEqual(['hold'])
-    f.nodeV['5v'] = 4.5
-    f.tick()
-    expect(f.calls).toEqual(['hold', 'release', 'reset'])
-  })
-
   it('reset forgets the registers and the servo positions', () => {
     const f = fake()
     const p = setup50(f)

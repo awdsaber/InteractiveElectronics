@@ -332,10 +332,10 @@ export const lesson: LessonDef = {
         startDeg: START_DEG.join(','),
         load: 0.3,
         oscActual: 25e6,
-        borNode: '5v',
-        bor: 2.7,
       },
     },
+    // the ATmega328P brown-out detector: below 2.7 V the Uno is held in reset, then restarts setup()
+    { id: 'mcu-supply', instance: 'mcu', params: { supplyNode: '5v', bor: 2.7, fClk: 16 } },
   ],
 
   readouts: [
@@ -346,6 +346,7 @@ export const lesson: LessonDef = {
     { label: 'SERVO CURRENT', source: { kind: 'behavior', key: 'pca9685.servo_A_total' }, unit: 'A' },
     { label: 'UNO 5V', source: { kind: 'voltage', node: '5v' }, unit: 'V' },
     { label: 'I²C NACKS', source: { kind: 'behavior', key: 'pca9685.i2c_errors' }, unit: '', digits: 1 },
+    { label: 'BROWN-OUTS', source: { kind: 'behavior', key: 'mcu.resets' }, unit: '', digits: 1 },
   ],
 
   sketch: { title: 'Walking wave', code: sketch, pins: { 18: 'pin_sda', 19: 'pin_scl' }, vcc: 5, board: 'uno' },
