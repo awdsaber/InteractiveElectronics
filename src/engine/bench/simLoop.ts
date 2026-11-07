@@ -336,7 +336,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       libraries,
       onPin(pin, st) {
         mcuPins[pin] = { ...st }
-        if (mcuLive()) applyPin(pin, st)
+        if (mcuLive()) {
+          applyPin(pin, st)
+          for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, st, mcu?.timeMicros ?? 0)
+        }
       },
       readAnalog(pin) {
         for (const [name, node] of Object.entries(sk.analogPins ?? {})) {
@@ -424,13 +427,14 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       setMotorLoad(elementId, torque) {
         ctx.setParam(elementId, 'load', torque)
       },
-      burn(elementId, reason) {
+      burn(elementId, reason, detail) {
         const el = netlist.elements.find((e) => e.id === elementId)
         if (!el || asm.burns.some((b) => b.elementId === elementId)) return
         const s = solution()
         const rating = effectiveRating(el)
-        const value = reason === 'overpower' ? (s?.power[elementId] ?? 0) : (s?.current[elementId] ?? 0)
-        const limit = (reason === 'overpower' ? rating?.maxP : reason === 'overvoltage' ? rating?.maxV : rating?.maxI) ?? 0
+        // a behavior that knows what killed the part (a modelled spike, a rule) says so in `detail`
+        const value = detail?.value ?? (reason === 'overpower' ? (s?.power[elementId] ?? 0) : (s?.current[elementId] ?? 0))
+        const limit = detail?.limit ?? (reason === 'overpower' ? rating?.maxP : reason === 'overvoltage' ? rating?.maxV : rating?.maxI) ?? 0
         pendingBurns.push({ elementId, partId: el.partId, reason, value, limit, t })
       },
       events: {

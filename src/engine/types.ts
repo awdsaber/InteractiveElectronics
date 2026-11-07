@@ -338,6 +338,7 @@ export type ReadoutUnit =
   | 'µs'
   | 'counts'
   | 'dBm'
+  | 'steps'
   | 'C'
   | ''
 
@@ -492,7 +493,7 @@ export interface BehaviorContext {
   /** shaft load torque on a MOTOR, N·m */
   setMotorLoad(elementId: string, torque: number): void
   /** fail a part as if its rating had been exceeded */
-  burn(elementId: string, reason: BurnEvent['reason']): void
+  burn(elementId: string, reason: BurnEvent['reason'], detail?: { value: number; limit: number }): void
   /** timeline events for instruments (logic analyser, scope markers) */
   events: { push(e: BehaviorEvent): void }
   mcu: BehaviorMcu
@@ -509,6 +510,12 @@ export interface Behavior {
   /** dt in seconds; called once per animation frame with the sim time that frame covered */
   tick?(ctx: BehaviorContext, dt: number): void
   onEvent?(ctx: BehaviorContext, ev: BehaviorLifecycleEvent): void
+  /**
+   * A sketch pin change as the circuit sees it (mode, level), at MCU time `tMicros` (µs since upload).
+   * Called synchronously from inside the MCU's advance, so every edge of a fast pulse train arrives
+   * (STEP/DIR drivers); queue them and integrate in tick. Not called while the MCU is held or stopped.
+   */
+  onPin?(ctx: BehaviorContext, pin: number, state: PinState, tMicros: number): void
   /** back to the initial state (after repair or strip): forget internal state, timers, latched faults */
   reset?(ctx: BehaviorContext): void
   /** the bench is going away (lesson switch): release anything held */

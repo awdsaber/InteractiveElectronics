@@ -77,7 +77,7 @@ const readout = z.object({
     z.object({ kind: z.literal('extra'), key: z.string() }),
     z.object({ kind: z.literal('behavior'), key: z.string() }),
   ]),
-  unit: z.enum(['A', 'V', 'W', 'Ω', 'mΩ', 'rpm', '°', '°C', 'Hz', 'g', 'cm', '%', 's', 'µs', 'counts', 'dBm', 'C', '']),
+  unit: z.enum(['A', 'V', 'W', 'Ω', 'mΩ', 'rpm', '°', '°C', 'Hz', 'g', 'cm', '%', 's', 'µs', 'counts', 'dBm', 'C', 'steps', '']),
   digits: z.number().int().min(1).max(6).optional(),
 })
 
