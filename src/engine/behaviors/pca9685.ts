@@ -256,7 +256,8 @@ function writeReg(st: State, r: number, v: number): void {
   } else if (r !== 0xff) regs[r] = v
 }
 
-const nextPtr = (st: State, r: number) => (st.regs[REG.MODE1] & MODE1_AI ? (r + 1) & 0xff : r)
+/** with MODE1.AI the pointer advances, rolling over to MODE1 after LED15_OFF_H (0x45) and PRE_SCALE (0xFE) */
+const nextPtr = (st: State, r: number) => (st.regs[REG.MODE1] & MODE1_AI ? (r === 0x45 || r === REG.PRESCALE ? 0 : (r + 1) & 0xff) : r)
 
 function devWrite(ctx: BehaviorContext, bytes: number[]): void {
   const st = state(ctx)
@@ -313,7 +314,13 @@ function makeLibrary(ctx: BehaviorContext) {
       if (!acks(ctx, this.addr)) return false
       this.reset()
       this.osc = OSC_NOMINAL
-      if (prescale) this.write8(REG.PRESCALE, prescale)
+      if (prescale) {
+        // PRE_SCALE only takes while asleep: sleep, write it, wake with auto-increment
+        const old = this.read8(REG.MODE1)
+        this.write8(REG.MODE1, (old & ~MODE1_RESTART) | MODE1_SLEEP)
+        this.write8(REG.PRESCALE, prescale)
+        this.write8(REG.MODE1, (old & ~MODE1_SLEEP) | MODE1_AI)
+      }
       else this.setPWMFreq(1000)
       return true
     }
@@ -380,12 +387,12 @@ function makeLibrary(ctx: BehaviorContext) {
 
 // ── common ground (servo supply negative tied to the logic ground) ──
 
-/** a cheap structural signature of the netlist: element ids, types, switch states, disables */
+/** a cheap structural signature of the netlist: element ids, types, switch states, disables, blown fuses and\n * resistors at or above 1e8 Ω (the same conditions groundPath uses) */
 function signature(net: Netlist): number {
   let h = net.elements.length
   for (const el of net.elements) {
     for (let k = 0; k < el.id.length; k++) h = (Math.imul(h, 31) + el.id.charCodeAt(k)) | 0
-    h = (Math.imul(h, 7) + el.type.length + (el.disabled ? 3 : 0) + (el.type === 'SW' && el.closed ? 5 : 0)) | 0
+    h = (Math.imul(h, 7) + el.type.length + (el.disabled ? 3 : 0) + (el.type === 'SW' && el.closed ? 5 : 0) + (el.type === 'FUSE' && el.blown ? 11 : 0) + (el.type === 'R' && el.value >= 1e8 ? 13 : 0)) | 0
   }
   return h
 }

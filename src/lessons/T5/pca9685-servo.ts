@@ -161,7 +161,7 @@ export const lesson: LessonDef = {
         pos: onBrd(BRD[0] + 0.3, BRD[1] + 0.2),
         mount: 'smd',
         label: 'PCA9685',
-        role: '16-channel, 12-bit PWM controller with an internal 25 MHz oscillator, I²C up to 1 MHz (NXP, TSSOP-28).',
+        role: '16-channel, 12-bit PWM controller with an internal 25 MHz oscillator, I²C up to 1 MHz (NXP, TSSOP-28; drawn as a SOIC).',
         params: { package: 'SOIC', pins: 28, marking: 'PCA9685', callout: [-1.2, 2.4, -1.2] },
         circuitIds: ['r_pca'],
       },
@@ -410,7 +410,7 @@ export const lesson: LessonDef = {
 
   meet: `A hobby servo wants a pulse **every 20 ms (50 Hz)**. The pulse width, not the duty, sets the angle: from about 0.5 ms to 2.5 ms depending on the model, with roughly 1.5 ms at centre. The PCA9685 makes 16 such signals by itself, so the Uno only sends I²C commands.
 
-**Frequency:** prescale = round(25 MHz / (4096 × f)) − 1. For 50 Hz: 25 000 000 / (4096 × 50) = 122.07, which rounds to 122, minus 1 gives **121**. Actual: 25 MHz / (4096 × 122) = **50.03 Hz**. The internal oscillator is not precise, so real boards may run a few percent off. Measure the frame with a scope and correct it with \`setOscillatorFrequency\`. Try the *Real oscillator* slider at 26.5 MHz while the sketch still says 25 MHz: the frame runs 6 % fast, every pulse is 6 % short, and the servos shift by several degrees.
+**Frequency:** prescale = round(25 MHz / (4096 × f)) − 1. For 50 Hz: 25 000 000 / (4096 × 50) = 122.07, which rounds to 122, minus 1 gives **121**. Actual: 25 MHz / (4096 × 122) = **50.03 Hz**. The internal oscillator is only specified to 23–27 MHz (±8 %), so a real board can run well off 50 Hz. Measure the frame with a scope and correct it with \`setOscillatorFrequency\`. Try the *Real oscillator* slider at 26.5 MHz while the sketch still says 25 MHz: the frame runs 6 % fast, every pulse is 6 % short, and the servos shift by several degrees.
 
 **Counts:** each frame is 4096 counts over 20 ms, or 4.88 µs per count. 1.5 ms = 1500 / 4.88 ≈ **307 counts**, and 0.5–2.5 ms is 102–512 counts. So a servo only uses about 10 % of the 12-bit range: about 410 steps over 180°, or 0.44° per count.
 

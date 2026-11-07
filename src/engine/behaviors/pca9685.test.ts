@@ -36,7 +36,7 @@ interface Fake {
 }
 
 interface Driver {
-  begin(): boolean
+  begin(prescale?: number): boolean
   setOscillatorFrequency(hz: number): void
   setPWMFreq(f: number): void
   setPWM(ch: number, on: number, off: number): number
@@ -194,6 +194,28 @@ describe('pca9685 registers over I²C', () => {
     f.wire(0x40, [REG.LED0, 0x00, 0x00, 0x33, 0x01]) // on 0, off 0x133 = 307
     f.tick()
     expect(f.pub.ch0_us).toBeCloseTo(1498.4, 0)
+  })
+
+  it('auto-increment rolls over to MODE1 after LED15_OFF_H (0x45) and after PRE_SCALE (0xFE)', () => {
+    const f = fake()
+    f.wire(0x40, [REG.MODE1, 0x30]) // asleep + AI
+    f.wire(0x40, [0x45, 0x00, 0x31]) // LED15_OFF_H, then MODE1 = 0x31
+    f.wire(0x40, [REG.PRESCALE, 121, 0x21]) // PRE_SCALE, then MODE1 = 0x21 (awake, AI, ALLCALL)
+    const p = f.pwm()
+    expect(p.readPrescale()).toBe(121)
+    expect(f.wire(0x70, [REG.MODE1])).toBe(0) // ALLCALL set by the rolled-over write
+    f.tick()
+    expect(f.pub.sleep).toBe(0)
+    expect(p.getPWM(15, true)).toBe(0) // full-off bit cleared by the 0x45 write
+  })
+
+  it('begin(prescale) sleeps around the PRE_SCALE write so it takes', () => {
+    const f = fake()
+    const p = f.pwm()
+    p.begin(121)
+    expect(p.readPrescale()).toBe(121)
+    f.tick()
+    expect(f.pub.sleep).toBe(0)
   })
 
   it('ALL_LED registers write every channel; full-off and full-on bits give no servo pulse', () => {
