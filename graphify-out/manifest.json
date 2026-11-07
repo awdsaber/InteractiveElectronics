@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794023434.5844052,
-    "seen": 1794023462.5061505,
-    "ast_hash": "65a699214a51ef22787a35ee55cf473c",
+    "mtime": 1794023886.5625992,
+    "seen": 1794023916.7955184,
+    "ast_hash": "d00de45bb5d0a126dbac63388b6b5081",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -246,9 +246,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/motion.tsx": {
-    "mtime": 1794003642.2228959,
-    "seen": 1794010374.609711,
-    "ast_hash": "67c114dc5c73f0181eb8a3caa664f5ab",
+    "mtime": 1794023886.5662346,
+    "seen": 1794023916.7955184,
+    "ast_hash": "f47c0478e307cd7bac22d50e0aadf2fc",
     "semantic_hash": ""
   },
   "src/three/parts/passives.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794023434.5743904,
-    "seen": 1794023462.5061505,
-    "ast_hash": "dd29ff4565312f15aee16c79837af680",
+    "mtime": 1794023886.5556002,
+    "seen": 1794023916.796517,
+    "ast_hash": "6312e2105f66ed1c0b61bda1aaf5e381",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -384,15 +384,15 @@
     "semantic_hash": ""
   },
   "src/engine/sim/format.test.ts": {
-    "mtime": 1794002003.3862872,
-    "seen": 1794010374.609711,
-    "ast_hash": "843ce4ab0d3b2cf4957fd2bc2298e7b5",
+    "mtime": 1794023886.5616004,
+    "seen": 1794023916.7955184,
+    "ast_hash": "2290b47c488fd139aa69d0593d9f800f",
     "semantic_hash": ""
   },
   "src/engine/sim/format.ts": {
-    "mtime": 1794002003.3872871,
-    "seen": 1794010374.609711,
-    "ast_hash": "f024768b9db479015adbc6786aaf9a17",
+    "mtime": 1794023886.5625992,
+    "seen": 1794023916.7955184,
+    "ast_hash": "d296f7d016bceeb56bed094565bc090f",
     "semantic_hash": ""
   },
   "src/engine/sim/index.ts": {
@@ -918,9 +918,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/assembly.ts": {
-    "mtime": 1794010690.4631944,
-    "seen": 1794010720.4361825,
-    "ast_hash": "16a293f8bb39cd8d626273802bad65bf",
+    "mtime": 1794023886.5585997,
+    "seen": 1794023916.7955184,
+    "ast_hash": "2ea0174b9c268c86d291d0249d546d42",
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.test.ts": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794023434.5804045,
-    "seen": 1794023462.5061505,
-    "ast_hash": "82ee414d1e04a0cde2918d14eb1af09f",
+    "mtime": 1794023896.848086,
+    "seen": 1794023916.7955184,
+    "ast_hash": "ac622219e50337398ea44e63015fd7bc",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794023434.582402,
-    "seen": 1794023462.5061505,
-    "ast_hash": "597bc04584ef225bc082107636b9dd55",
+    "mtime": 1794023886.5605998,
+    "seen": 1794023916.7955184,
+    "ast_hash": "601fe47d55cff1839c81f50b4598f06c",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -984,15 +984,15 @@
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794012598.2762983,
-    "seen": 1794012619.8859131,
-    "ast_hash": "79e79dac006e00ca7ee4a3321d3fbee2",
+    "mtime": 1794023886.564596,
+    "seen": 1794023916.7955184,
+    "ast_hash": "45453d6527c9203088b7daf7e3df934f",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794023434.5763896,
-    "seen": 1794023462.5061505,
-    "ast_hash": "84ad57c1145149e33a914b84578369c3",
+    "mtime": 1794023886.5565996,
+    "seen": 1794023916.796517,
+    "ast_hash": "c8a56148e8c57ef447125480a4d43a9f",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
@@ -1263,6 +1263,42 @@
     "mtime": 1794023434.5894039,
     "seen": 1794023462.5061505,
     "ast_hash": "494a6b3733106abae898bac07a80a936",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/a4988.test.ts": {
+    "mtime": 1794023886.5575998,
+    "seen": 1794023916.7955184,
+    "ast_hash": "108dcad95c4c0d27fbebc368730c1df5",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/a4988.ts": {
+    "mtime": 1794023886.5585997,
+    "seen": 1794023916.7955184,
+    "ast_hash": "7a5208322ff1744c995adbc238081035",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/behaviorOnPin.test.ts": {
+    "mtime": 1794023886.5596,
+    "seen": 1794023916.7955184,
+    "ast_hash": "a20282d7e89706311a80f3b084911e8b",
+    "semantic_hash": ""
+  },
+  "src/lessons/T5/a4988-stepper.test.ts": {
+    "mtime": 1794023886.5635996,
+    "seen": 1794023916.7955184,
+    "ast_hash": "b6e0c72f3a9e5821da0aed00a6f8ab73",
+    "semantic_hash": ""
+  },
+  "src/lessons/T5/a4988-stepper.ts": {
+    "mtime": 1794023886.564596,
+    "seen": 1794023916.7955184,
+    "ast_hash": "4b6aafebbd77bfe1c081356d3fa04029",
+    "semantic_hash": ""
+  },
+  "src/three/stepperAngle.test.ts": {
+    "mtime": 1794023886.5672424,
+    "seen": 1794023916.7955184,
+    "ast_hash": "2bca8953b4cd80f62960212f9a874b08",
     "semantic_hash": ""
   },
   "package-lock.json": {
