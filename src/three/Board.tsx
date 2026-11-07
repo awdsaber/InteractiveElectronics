@@ -78,6 +78,8 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     if (pin && pin.type === 'PIN') s.value = snap.pins[pin.pin]?.servoDeg ?? 90
   }
   if (p.kind === 'potentiometer' && cid) s.value = snap.elementValues[`${cid}.pos`] ?? 0.5
+  // a slide switch that is the lesson's power element sits on while the bench is powered
+  if (p.kind === 'switch-slide' && cid && cid === lesson.powerElementId) s.value = snap.assembly.powered[cid] ? 1 : 0
   if (p.kind === 'multimeter') {
     const i = typeof p.params?.readout === 'number' ? p.params.readout : 0
     s.reading = snap.readouts[i]?.value.split(' ')[0] ?? '----'
@@ -91,6 +93,14 @@ export function liveParams(p: PartPlacement, snap: BenchSnapshot): PartPlacement
   if (p.kind === 'resistor' && cid) {
     const ohms = snap.elementValues[`${cid}.value`]
     if (ohms !== undefined && ohms !== p.params?.ohms) return { ...p, params: { ...p.params, ohms: +ohms.toPrecision(3) } }
+  }
+  // an AA pack follows its source: one cell per 1.5 V (a tweak that adds cells adds cells)
+  if (p.kind === 'battery-aa-pack' && cid) {
+    const v = snap.elementValues[`${cid}.value`]
+    if (v !== undefined) {
+      const cells = Math.max(1, Math.min(4, Math.round(Math.abs(v) / 1.5)))
+      if (cells !== p.params?.cells) return { ...p, params: { ...p.params, cells } }
+    }
   }
   if (p.kind === 'module' && p.params?.variant === 'uno') {
     const pin = snap.pins[13]
