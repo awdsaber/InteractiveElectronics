@@ -324,6 +324,8 @@ export interface Readout {
     | { kind: 'behavior'; key: string } // value published by a behavior
   unit: ReadoutUnit
   digits?: number
+  /** |value| below this reads 0 (default: 1 µV for V, 1 nA / 1 nW for A / W) */
+  floor?: number
 }
 
 export type ReadoutUnit =

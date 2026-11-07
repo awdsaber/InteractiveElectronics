@@ -126,6 +126,24 @@ describe('mcu-supply behavior', () => {
     b.dispose()
   })
 
+  it('an upload during a brown-out keeps the MCU held and counts no second reset', async () => {
+    const b = running()
+    await frames(b, 5)
+    b.setTweak('VS.value', 2.0)
+    await frames(b, 3)
+    expect(pub(b, 'resets')).toBe(1)
+    b.upload()
+    await frames(b, 5)
+    expect(pub(b, 'held')).toBe(1)
+    expect(pub(b, 'resets')).toBe(1)
+    expect(b.snapshot().pins[13]?.mode ?? 'INPUT').toBe('INPUT')
+    b.setTweak('VS.value', 5)
+    await frames(b, 10)
+    expect(pub(b, 'held')).toBe(0)
+    expect(b.snapshot().pins[13]).toMatchObject({ mode: 'OUTPUT', level: 1 })
+    b.dispose()
+  })
+
   it('uses hysteresis: a rail hovering just above 2.7 V does not release a held MCU', async () => {
     const b = running()
     await frames(b, 5)

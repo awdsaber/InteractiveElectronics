@@ -213,6 +213,8 @@ describe('T4 arduino-uno', () => {
     expect(burn.value).toBeGreaterThan(6)
     expect(s.partBurnt.u1).toBe(true)
     expect(s.partVisible.psu).toBe(true)
+    await frames(b, 3)
+    expect(Math.abs(val(b.snapshot(), 'USB CURRENT'))).toBeLessThan(1e-3) // Q1 open: nothing back-feeds the host
     b.dispose()
   })
 })

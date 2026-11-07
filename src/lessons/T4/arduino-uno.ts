@@ -137,7 +137,7 @@ const boardParts: PartPlacement[] = [
     id: 'u5',
     kind: 'ic-smd',
     pos: [0.9, -1.55],
-    role: 'LMV358 dual op-amp. One half buffers pin 13 to the L LED, so the LED never loads the pin. The other half compares VIN with 3.3 V to choose USB or VIN power.',
+    role: 'LMV358 dual op-amp. One half buffers pin 13 to the L LED, so the LED never loads the pin. The other half compares VIN/2 with 3.3 V to choose the supply: VIN takes over above about 6.6 V.',
     params: { package: 'SOIC', pins: 8, marking: 'LMV358', callout: [0.6, 1.2, -0.6] },
     circuitIds: ['u5a'],
   }),
@@ -521,7 +521,7 @@ export const lesson: LessonDef = {
     name: 'UNO R3 · ATELIER',
     size: PCB,
     base: 'mat',
-    frame: { size: [16.0, 6.2], center: [4.2, -1.9] },
+    frame: { size: [16.0, 7.6], center: [4.2, 0.9] },
     traces,
     // the 12 V supply goes first: the Board currently drops the first labelled part's callout
     // (led-resistor loses its UNO tag the same way), and the supply's tag matters least
@@ -563,12 +563,12 @@ export const lesson: LessonDef = {
 
   readouts: [
     { label: '5V RAIL', source: { kind: 'voltage', node: '5v' }, unit: 'V' },
-    { label: 'USB CURRENT', source: { kind: 'current', elementId: 'f1' }, unit: 'A' },
+    { label: 'USB CURRENT', source: { kind: 'current', elementId: 'f1' }, unit: 'A', floor: 1e-6 },
     { label: 'PIN 9 AVG', source: { kind: 'voltage', node: 'd9' }, unit: 'V' },
     { label: 'FADE LED', source: { kind: 'current', elementId: 'led_ext' }, unit: 'A' },
     { label: 'A0', source: { kind: 'voltage', node: 'a0' }, unit: 'V' },
     { label: 'L LED', source: { kind: 'current', elementId: 'led_l' }, unit: 'A' },
-    { label: 'PULL-UP I', source: { kind: 'current', elementId: 'sw_btn' }, unit: 'A' },
+    { label: 'PULL-UP I', source: { kind: 'current', elementId: 'sw_btn' }, unit: 'A', floor: 1e-6 },
     { label: 'ADC AT PRESS', source: { kind: 'behavior', key: 'serial.raw' }, unit: 'counts', digits: 1 },
     { label: 'BROWN-OUTS', source: { kind: 'behavior', key: 'mcu.resets' }, unit: '', digits: 1 },
   ],
@@ -628,14 +628,18 @@ export const lesson: LessonDef = {
       label: 'Feed 12 V into the 5V pin',
       explain:
         "The 5V pin bypasses the regulator, so the ATmega328P sees 12 V, twice its 6.0 V absolute maximum, and fails at once: the board is burnt. 7–12 V belongs on the barrel jack or VIN, where the NCP1117 drops it to 5 V.",
-      patches: [{ op: 'add', element: { id: 'bench12', type: 'V', nodes: ['5v', '0'], value: 12, rInternal: 0.05 } }],
+      patches: [
+        { op: 'add', element: { id: 'bench12', type: 'V', nodes: ['5v', '0'], value: 12, rInternal: 0.05 } },
+        // with the rail far above USB, Q1 no longer passes USB power: open it (no back-feed into the host)
+        { op: 'set', elementId: 'q1_on', key: 'value', value: 1e9 },
+      ],
       parts: { show: ['psu', 'wP1', 'wP2'] },
     },
   ],
 
   meet: `The Uno R3 is a carrier for one chip, the **ATmega328P**. It runs at 16 MHz, so one clock cycle takes 62.5 ns.
 
-**Digital pins.** Each pin is a push-pull switch to 5 V or 0 V. Keep each one to **20 mA** or less (40 mA is the absolute maximum) and the whole chip to under 200 mA. For a red LED: R = (5 − 1.8) V / 13 mA ≈ 246 Ω, so 220 Ω is the nearest common value.
+**Digital pins.** Each pin is a push-pull switch to 5 V or 0 V. Keep each one to **20 mA** or less (40 mA is the absolute maximum) and the whole chip to under 200 mA. For a red LED: R = (5 − 1.8) V / 13 mA ≈ 246 Ω total, minus the pin's ≈ 25 Ω → 220 Ω.
 
 **Analog in.** The ADC is 10-bit, so 5 V is split into 1024 steps of 4.9 mV each. A reading of 614 means 614 × 5 / 1023 ≈ **3.0 V**. Each conversion takes about 104 µs.
 

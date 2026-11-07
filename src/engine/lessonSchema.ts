@@ -79,6 +79,7 @@ const readout = z.object({
   ]),
   unit: z.enum(['A', 'V', 'W', 'Ω', 'mΩ', 'rpm', '°', '°C', 'Hz', 'g', 'cm', '%', 's', 'µs', 'counts', 'dBm', 'C', '']),
   digits: z.number().int().min(1).max(6).optional(),
+  floor: z.number().nonnegative().optional(),
 })
 
 const tweak = z.object({

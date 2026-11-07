@@ -44,6 +44,12 @@ describe('pot-knob behavior', () => {
     b.dispose()
   })
 
+  it('applies the turn at init, before the bench is powered', () => {
+    const b = createBench(lesson, { registry: { 'pot-knob': behavior } })
+    expect(b.snapshot().elementValues['POT.pos']).toBeCloseTo(0.2, 6)
+    b.dispose()
+  })
+
   it('clamps out-of-range turns', async () => {
     const b = createBench(lesson, { registry: { 'pot-knob': behavior } })
     b.setTweak('behavior:knob.turn', 140)

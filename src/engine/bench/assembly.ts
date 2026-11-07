@@ -73,11 +73,52 @@ export function remainingParts(l: Lesson, s: AssemblyState): PartPlacement[] {
 const missingSmd = (l: Lesson, s: AssemblyState) => buildParts(l).some((p) => p.mount === 'smd' && !s.placed.has(p.id))
 const allPlaced = (l: Lesson, s: AssemblyState) => buildParts(l).every((p) => s.placed.has(p.id))
 
-/** What still has to happen before `what` can: "SMD parts (pick & place), J1, M1". */
+const KIND_NOUN: Partial<Record<PartPlacement['kind'], string>> = {
+  'header-female': 'header',
+  'header-male': 'pin header',
+  'capacitor-electrolytic': 'electrolytic capacitor',
+  'capacitor-ceramic': 'ceramic capacitor',
+  'capacitor-smd': 'SMD capacitor',
+  'resistor-smd': 'SMD resistor',
+  led: 'LED',
+  'led-smd': 'SMD LED',
+  'ic-dip': 'DIP chip',
+  'ic-smd': 'SMD chip',
+  'usb-b': 'USB socket',
+  'usb-c': 'USB-C socket',
+  'micro-usb': 'micro-USB socket',
+  'dc-motor': 'DC motor',
+  'mosfet-to220': 'MOSFET',
+  'regulator-to220': 'regulator',
+  'transistor-to92': 'transistor',
+  'switch-slide': 'slide switch',
+  'battery-aa-pack': 'battery pack',
+  'battery-9v': '9 V battery',
+  'battery-lipo': 'LiPo battery',
+  'stepper-nema17': 'stepper motor',
+  'gear-motor-wheel': 'gear motor',
+}
+const noun = (k: PartPlacement['kind']) => KIND_NOUN[k] ?? k.replace(/-/g, ' ')
+const plural = (w: string) => (/(s|x|ch|sh)$/.test(w) ? `${w}es` : `${w}s`)
+
+/**
+ * A readable list of parts for status text: a part that is the only one of its kind goes by its
+ * label (or kind), several of a kind are counted: "USB, 2 headers, 10 wires, POT". Never raw ids.
+ */
+export function describeParts(parts: PartPlacement[]): string {
+  const groups = new Map<string, PartPlacement[]>()
+  for (const p of parts) groups.set(p.kind, [...(groups.get(p.kind) ?? []), p])
+  return [...groups.values()]
+    .map((g) => (g.length === 1 ? (g[0].label ?? noun(g[0].kind)) : `${g.length} ${plural(noun(g[0].kind))}`))
+    .join(', ')
+}
+
+/** What still has to happen before `what` can: "SMD parts (pick & place), USB, 4 headers". */
 function missingList(l: Lesson, s: AssemblyState): string[] {
   const out: string[] = []
   if (missingSmd(l, s)) out.push('SMD parts (pick & place)')
-  for (const p of remainingParts(l, s)) out.push(p.id.toUpperCase())
+  const rest = describeParts(remainingParts(l, s))
+  if (rest) out.push(rest)
   return out
 }
 
