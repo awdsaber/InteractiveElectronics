@@ -149,6 +149,7 @@ const partName = (l: Lesson, elementId: string, partId?: string): string => {
 
 function burnText(l: Lesson, b: BurnEvent): string {
   const name = partName(l, b.elementId, b.partId)
+  if (b.note) return `${name} ${b.note}`
   const v = (x: number, unit: string) => {
     const a = Math.abs(x)
     if (a >= 1) return `${+a.toPrecision(2)} ${unit}`

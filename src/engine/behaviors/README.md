@@ -13,7 +13,7 @@ export const behavior: Behavior = {
   init(ctx) {},                 // once, when the bench is created
   tick(ctx, dt) {},             // every animation frame while powered; dt = sim seconds covered
   onEvent(ctx, ev) {},          // 'power-on' | 'power-off' | 'upload' | 'repair' | 'strip' | 'break'
-  onPin(ctx, pin, state, tMicros) {}, // every sketch pin change, MCU time in µs (see a4988.ts)
+  onPin(ctx, pin, state, tMicros) {}, // every pin change (writes and floats), MCU time in µs (see a4988.ts)
   onSerial(ctx, line) {},       // each complete line the sketch prints with Serial
   reset(ctx) {},                // after repair and strip: forget internal state and latched faults
   dispose(ctx) {},              // lesson switch: release timers, devices, listeners
@@ -36,8 +36,8 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `publish(key, value)` | Exposes a value as `<instance>.<key>` for `{kind:'behavior', key}` readouts. Values are cleared on power-off and strip. |
 | `setParam(id, key, value)` | Changes an element parameter live (sensor resistance, switch state). It keeps the transient state, and it is cheap when the value is unchanged, so calling it every tick is fine. |
 | `setMotorLoad(id, torque)` | Sets a MOTOR's shaft load in N·m. |
-| `burn(id, reason, detail?)` | Fails a part as if a rating had been exceeded (shows smoke, and FAULT). `detail: { value, limit }` sets the numbers in the FAULT text when the element's rating doesn't describe what killed it. |
-| `onPin` (hook, not a member) | Called synchronously for each pin change while the sketch runs, with the MCU's µs timestamp. Pulse trains faster than a frame (STEP at 1/16 microstepping) arrive edge by edge: queue them in preallocated arrays and integrate in `tick` up to `mcu.timeMicros`. |
+| `burn(id, reason, detail?)` | Fails a part as if a rating had been exceeded (shows smoke, and FAULT). `detail: { value, limit }` sets the numbers in the FAULT text when the element's rating doesn't describe what killed it; `detail.note` replaces the text after the part name (e.g. `'failed: …'`). |
+| `onPin` (hook, not a member) | Called for every change of a pin's state, with the MCU's µs timestamp: sketch writes (synchronously inside the MCU's advance, so pulse trains faster than a frame, like STEP at 1/16 microstepping, arrive edge by edge), floats on hold / stop / upload (mode `INPUT`, level 0) and the re-drive on release. Queue them in preallocated arrays and integrate in `tick` up to `mcu.timeMicros`. Don't call `ctx.v` in it: the solution is the last frame's. After `mcu.reset()` or an upload the MCU clock restarts at 0, and the floats carry the old run's time (see `a4988.ts`). |
 | `events.push({t, channel, kind, data})` | Timeline events for instruments (logic analyser, scope markers). |
 | `mcu.hold(reason)` / `mcu.release()` | Brown-out: hold freezes the sketch and floats its pins; release resumes from the MCU's own time and does not replay the hold. Call `mcu.reset()` after release for a real brown-out reset. |
 | `mcu.reset()` | Restarts the uploaded sketch from `setup()`. |

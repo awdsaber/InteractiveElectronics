@@ -28,7 +28,10 @@ interface Fake {
   set: Record<string, number | boolean>
   pub: Record<string, number>
   burns: [string, BurnEvent['reason']][]
+  notes: string[]
   mcu: { timeMicros: number; running: boolean }
+  /** the MCU clock restarts at 0 (upload, mcu.reset()) */
+  restart(): void
   /** advance the MCU clock and tick once per 1/60 s */
   run(seconds: number): void
   edge(pin: number, level: number, tUs?: number): void
@@ -44,6 +47,7 @@ function fake(params: Record<string, number | string | boolean> = {}, net: Netli
   const set: Record<string, number | boolean> = {}
   const pub: Record<string, number> = {}
   const burns: [string, BurnEvent['reason']][] = []
+  const notes: string[] = []
   const solution: Solution = { ok: true, nodeV, current: {}, power: {}, extra: {} }
   const mcuState = { timeMicros: 0, running: true }
   const mcu: BehaviorMcu = {
@@ -77,8 +81,9 @@ function fake(params: Record<string, number | string | boolean> = {}, net: Netli
       set[`${id}.${key}`] = value
     },
     setMotorLoad: () => {},
-    burn: (id, reason) => {
+    burn: (id, reason, detail) => {
       burns.push([id, reason])
+      if (detail?.note) notes.push(detail.note)
     },
     events: { push: () => {} },
     mcu,
@@ -100,7 +105,12 @@ function fake(params: Record<string, number | string | boolean> = {}, net: Netli
     set,
     pub,
     burns,
+    notes,
     mcu: mcuState,
+    restart() {
+      lastTick = 0
+      mcuState.timeMicros = 0
+    },
     run(seconds) {
       tickTo(mcuState.timeMicros + seconds * 1e6)
     },
@@ -297,23 +307,66 @@ describe('a4988: rotor', () => {
 })
 
 describe('a4988: limits and failures', () => {
-  it('runs cool at 1 A: Tj ≈ 25 + 0.7 W × 50 °C/W ≈ 60 °C', () => {
+  it('runs warm but safe at 1 A on a bare carrier: Tj ≈ 25 + 0.7 W × 90 °C/W ≈ 88 °C', () => {
     const f = fake()
     f.edge(DIR, 1)
     f.run(40)
-    near(f.pub.tj, 25 + (0.707 ** 2 * 2) * 0.7 * 50, 0.1)
+    near(f.pub.tj, 25 + (0.707 ** 2 * 2) * 0.7 * 90, 0.1)
     expect(f.pub.tsd_active).toBe(0)
   })
 
-  it('no current limit (Vref 4.95 V): coils cap at V/R ≈ 5.5 A, thermal shutdown trips, then the driver is damaged', () => {
+  it('without a heatsink thermal shutdown trips near 1.5 A, not at 1.3 A', () => {
+    const tsdAt = (amps: number) => {
+      const f = fake()
+      f.nodeV.vref = amps * 8 * 0.068
+      let tripped = false
+      for (let k = 0; k < 240; k++) {
+        f.run(0.25)
+        if (f.pub.tsd_active === 1) tripped = true
+      }
+      return tripped
+    }
+    expect(tsdAt(1.3)).toBe(false)
+    expect(tsdAt(1.6)).toBe(true)
+  })
+
+  it('no current limit on a genuine A4988: the overcurrent latch (> 2.1 A) turns the outputs off; toggling ENABLE retries', () => {
     const f = fake()
+    f.nodeV.vref = 4.95
+    f.setMs(0, 0, 0)
+    f.run(0.05)
+    near(f.pub.itrip_A, 9.1, 0.02)
+    expect(f.pub.ocp_latched).toBe(1)
+    expect(f.pub.coilA_A).toBe(0)
+    expect(f.set['ia.value']).toBe(0)
+    f.run(2)
+    expect(f.burns).toEqual([])
+    expect(f.pub.tj).toBeLessThan(30)
+    f.edge(EN, 1)
+    f.run(0.02)
+    expect(f.pub.ocp_latched).toBe(0)
+    f.edge(EN, 0)
+    f.run(0.05)
+    expect(f.pub.ocp_latched).toBe(1) // the trimmer is still at the stop: it trips again
+    // and a power cycle clears it too
+    behavior.onEvent!(f.ctx, 'power-off')
+    expect(f.pub.ocp_latched).toBe(1) // (published on the next tick)
+    behavior.onEvent!(f.ctx, 'power-on')
+    f.nodeV.vref = 0.544
+    f.run(0.05)
+    expect(f.pub.ocp_latched).toBe(0)
+    near(f.pub.coilA_A, 0.707, 0.05)
+  })
+
+  it('a clone without working protection (ocp false): coils cap at V/R ≈ 5.5 A, thermal shutdown trips, then the driver is damaged', () => {
+    const f = fake({ ocp: false })
     f.nodeV.vref = 4.95
     f.setMs(0, 0, 0)
     f.run(0.05)
     near(f.pub.itrip_A, 9.1, 0.02)
     near(f.pub.coilA_A, 12 / 2.2, 0.05)
     let tsdAt = -1
-    for (let i = 0; i < 600 && !f.burns.length; i++) {
+    for (let i = 0; i < 1500 && !f.burns.length; i++) {
       f.run(1 / 60)
       if (tsdAt < 0 && f.pub.tsd_active === 1) tsdAt = f.mcu.timeMicros / 1e6
     }
@@ -339,8 +392,47 @@ describe('a4988: limits and failures', () => {
     unplugA(f)
     f.run(0.05)
     expect(f.burns).toEqual([['ia', 'overvoltage']])
+    expect(f.notes[0]).toMatch(/coil A was cut open carrying 0\.71 A, and its ½·L·I² = 0\.70 mJ/)
     expect(f.pub.coilA_A).toBe(0)
     expect(f.pub.coilB_A).toBe(0)
+  })
+
+  it('unplugging coil B burns coil B\'s source', () => {
+    const f = fake()
+    f.run(0.1)
+    ;(f.ctx as { netlist: Netlist }).netlist = { elements: netlist().elements.filter((e) => e.id !== 'rcb') }
+    f.run(0.05)
+    expect(f.burns).toEqual([['ib', 'overvoltage']])
+  })
+
+  it('a VMOT power cycle keeps the input levels (VDD is the Uno\'s): ENABLE HIGH stays HIGH', () => {
+    const f = fake()
+    f.edge(EN, 1)
+    f.run(0.05)
+    behavior.onEvent!(f.ctx, 'power-off')
+    behavior.onEvent!(f.ctx, 'power-on')
+    f.run(0.05)
+    expect(f.pub.coilA_A).toBe(0)
+  })
+
+  it('after mcu.reset() the old run\'s queued entries are dropped and the new run\'s edges count', () => {
+    const f = fake()
+    f.edge(DIR, 1)
+    f.pulses(320, 312.5) // 1/16: 36° electrical... 320 microsteps = 36° of shaft
+    f.run(0.1)
+    const t = f.mcu.timeMicros
+    expect(f.pub.steps).toBe(320)
+    // the reset: floats stamped at the old time, then the clock restarts at 0 and the new run writes
+    f.edge(STEP, 0, t)
+    behavior.onPin!(f.ctx, DIR, { mode: 'INPUT', level: 0 }, t + 10)
+    behavior.onPin!(f.ctx, STEP, { mode: 'INPUT', level: 0 }, t + 10)
+    f.restart()
+    f.edge(DIR, 1, 50)
+    f.pulses(320, 312.5)
+    f.run(0.2)
+    expect(f.pub.steps).toBe(640)
+    expect(f.pub.skipped).toBe(0)
+    near(f.pub.shaft_deg, 72, 0.02)
   })
 
   it('a coil that was never energised can be open without damage', () => {

@@ -322,13 +322,17 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const mcuMicros = () => mcu?.timeMicros ?? 0
   function applyPin(pin: number, st: PinState): void {
     const prev = simPins[pin]
-    if (dynamic && (!prev || prev.mode !== st.mode || prev.level !== st.level)) {
+    const changed = !prev || prev.mode !== st.mode || prev.level !== st.level
+    if (dynamic && changed) {
       pinsChangedAt ??= mcuMicros()
       peekCache = null
     }
-    simPins[pin] = { ...st }
+    const next = { ...st }
+    simPins[pin] = next
     if (sim) sim.setPin(pin, st)
     dcDirty = true
+    // every change the circuit sees (sketch writes, floats on hold / stop / upload, release), MCU-timed
+    if (changed) for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, next, mcuMicros())
   }
   /** a node voltage for an MCU read: re-solved when a pin changed since the last transient step */
   function readV(node: string, ref = '0'): number {
@@ -361,10 +365,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       libraries,
       onPin(pin, st) {
         mcuPins[pin] = { ...st }
-        if (mcuLive()) {
-          applyPin(pin, st)
-          for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, st, mcu?.timeMicros ?? 0)
-        }
+        if (mcuLive()) applyPin(pin, st)
       },
       readAnalog(pin) {
         for (const [name, node] of Object.entries(sk.analogPins ?? {})) {
@@ -465,7 +466,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         // a behavior that knows what killed the part (a modelled spike, a rule) says so in `detail`
         const value = detail?.value ?? (reason === 'overpower' ? (s?.power[elementId] ?? 0) : (s?.current[elementId] ?? 0))
         const limit = detail?.limit ?? (reason === 'overpower' ? rating?.maxP : reason === 'overvoltage' ? rating?.maxV : rating?.maxI) ?? 0
-        pendingBurns.push({ elementId, partId: el.partId, reason, value, limit, t })
+        pendingBurns.push({ elementId, partId: el.partId, reason, value, limit, t, ...(detail?.note ? { note: detail.note } : {}) })
       },
       events: {
         push(e) {

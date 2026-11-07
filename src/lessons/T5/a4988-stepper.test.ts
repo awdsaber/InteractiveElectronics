@@ -15,6 +15,8 @@ const COIL_B = 3
 const RPM = 4
 const SKIPPED = 5
 const TJ = 6
+const COIL_T = 7
+const OCP = 8
 
 /** within ±15 % of the curriculum's number */
 const near = (v: number, want: number, tol = 0.15) => expect(Math.abs(v - want)).toBeLessThanOrEqual(Math.abs(want) * tol)
@@ -96,15 +98,60 @@ describe('T5 a4988-stepper lesson', () => {
     b.dispose()
   }, 120_000)
 
-  it('F1 no current limit: Vref ≈ 4.95 V, I_trip ≈ 9.1 A, coils cap at ≈ 5.5 A, thermal shutdown, then the driver dies', async () => {
-    const b = build({ code: null })
+  it('F1 no current limit: Vref ≈ 4.95 V, I_trip ≈ 9.1 A; the genuine part latches its outputs off, the sketch\'s ENABLE toggle retries', async () => {
+    const b = build()
     b.dispatch('break:no-current-limit')
-    let s = await run(b, 0.2)
+    let s = await run(b, 0.3)
     near(s.values[VREF], 4.95, 0.02)
     near(s.values[ITRIP], 9.1, 0.03)
-    near(s.values[COIL_A], 5.5) // VMOT sags to ≈ 10.6 V under the ≈ 11 A draw: ≈ 4.8 A
+    expect(s.values[OCP]).toBe(1)
+    expect(Math.abs(s.values[COIL_A]) + Math.abs(s.values[COIL_B])).toBeLessThan(0.01)
+    expect(s.statusLine.text).toContain('0.44 ms')
+    // the sketch's free phase (EN HIGH from ≈ 4.0 s) clears the latch; EN LOW again at ≈ 6 s trips it again
+    let cleared = false
+    s = await run(b, 7, (x) => {
+      if (x.values[OCP] === 0) cleared = true
+    })
+    expect(cleared).toBe(true)
+    expect(s.values[OCP]).toBe(1)
+    expect(s.status).not.toBe('FAULT')
+    expect(s.values[TJ]).toBeLessThan(40)
+    b.dispose()
+  }, 60_000)
+
+  it('just under the latch, thermal shutdown is the guard: 1.6 A on a bare carrier trips it, a cooler driver does not', async () => {
+    const hot = async (rth: number) => {
+      const b = build({ code: null })
+      b.setTweak('pot.pos', (1.6 * 8 * 0.068) / 5)
+      b.setTweak('behavior:a4988.rthJA', rth)
+      let tsd = false
+      await run(b, 40, (x) => {
+        if (pub(x, 'tsd_active') === 1) tsd = true
+      })
+      b.dispose()
+      return tsd
+    }
+    expect(await hot(90)).toBe(true)
+    expect(await hot(50)).toBe(false)
+  }, 120_000)
+
+  it('F1 on a clone without working protection, from a stiff bench supply: coils cap near V/R, thermal shutdown, then the driver dies', async () => {
+    // (on the lesson's 2 A adapter VMOT just collapses to ≈ 2.2 V: 2 A into two 2.2 Ω coils)
+    const stiff = lesson.circuit.elements.map((e) => (e.id === 'psu' && e.type === 'V' ? { ...e, iLimit: undefined } : e))
+    const b = createBench({
+      ...lesson,
+      circuit: { elements: stiff },
+      behaviors: [{ id: 'a4988', params: { ...(lesson.behaviors![0] as { params: Record<string, number | boolean> }).params, ocp: false } }],
+    })
+    b.dispatch('pick-place')
+    b.dispatch('place-all')
+    b.dispatch('solder')
+    b.dispatch('power')
+    b.dispatch('break:no-current-limit')
+    let s = await run(b, 0.2)
+    expect(s.values[COIL_A]).toBeGreaterThan(2)
     let tsd = false
-    for (let i = 0; i < 20 && s.status !== 'FAULT'; i++) {
+    for (let i = 0; i < 40 && s.status !== 'FAULT'; i++) {
       s = await run(b, 0.5)
       if (pub(s, 'tsd_active') === 1) tsd = true
     }
@@ -123,7 +170,9 @@ describe('T5 a4988-stepper lesson', () => {
     expect(s.status).toBe('FAULT')
     expect(s.partBurnt.u1).toBe(true)
     expect(s.partVisible.w_1a).toBe(false)
-    expect(s.statusLine.text).toMatch(/failed: \d+ V across a 35 V part/)
+    expect(s.statusLine.text).toMatch(/failed: coil A was cut open carrying 0\.7\d A, and its ½·L·I² = 0\.\d\d mJ went into the outputs/)
+    // the removed winding has no temperature of its own: the readout stays at ambient, not 0 °C
+    expect(s.values[COIL_T]).toBeCloseTo(25, 0)
     b.dispose()
   })
 

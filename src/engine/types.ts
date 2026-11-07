@@ -218,6 +218,8 @@ export interface BurnEvent {
   value: number
   limit: number
   t: number
+  /** behavior burns: the FAULT text after the part name, instead of value / limit */
+  note?: string
 }
 
 // ───────────────────────── 3D board ─────────────────────────
@@ -500,7 +502,8 @@ export interface BehaviorContext {
   /** shaft load torque on a MOTOR, N·m */
   setMotorLoad(elementId: string, torque: number): void
   /** fail a part as if its rating had been exceeded */
-  burn(elementId: string, reason: BurnEvent['reason'], detail?: { value: number; limit: number }): void
+  /** `detail` (optional) states what killed the part: value / limit for the FAULT text, or a whole `note` ("failed: …") */
+  burn(elementId: string, reason: BurnEvent['reason'], detail?: { value?: number; limit?: number; note?: string }): void
   /** timeline events for instruments (logic analyser, scope markers) */
   events: { push(e: BehaviorEvent): void }
   mcu: BehaviorMcu
@@ -518,9 +521,11 @@ export interface Behavior {
   tick?(ctx: BehaviorContext, dt: number): void
   onEvent?(ctx: BehaviorContext, ev: BehaviorLifecycleEvent): void
   /**
-   * A sketch pin change as the circuit sees it (mode, level), at MCU time `tMicros` (µs since upload).
-   * Called synchronously from inside the MCU's advance, so every edge of a fast pulse train arrives
-   * (STEP/DIR drivers); queue them and integrate in tick. Not called while the MCU is held or stopped.
+   * A pin change as the circuit sees it (mode, level), at MCU time `tMicros` (µs since upload): every
+   * sketch write that changes the pin, called synchronously inside the MCU's advance (so each edge of
+   * a fast pulse train arrives), plus the floats on hold / stop / upload (mode 'INPUT', level 0) and the
+   * re-drive on release. Queue them and integrate in tick. Don't call `ctx.v` here: the solution is the
+   * last frame's, not the edge's (and a float on upload carries the old run's time).
    */
   onPin?(ctx: BehaviorContext, pin: number, state: PinState, tMicros: number): void
   /** one complete line the sketch printed with Serial (without the newline), as it is printed */

@@ -9,8 +9,8 @@ import { PITCH, jumper } from '../layout'
 
 // ── bench layout (one 15 × 9 stepper bench PCB; everything stands on it, y = 0) ──
 const UNO_AT: [number, number] = [4.4, 0.4] // rot 90: digital header toward the viewer, USB to the right
-const HDR: [number, number] = [-0.5, 1.5] // the carrier's 2 × 8 pins, rot 90: pins run along z
-const MOT: [number, number] = [-4.9, -2.0] // NEMA 17 at the back left, connector toward the viewer
+const HDR: [number, number] = [-0.3, 1.9] // the carrier's 2 × 8 pins, rot 90: pins run along z
+const MOT: [number, number] = [-5.7, -2.9] // NEMA 17 in the back-left corner, connector toward the viewer
 const JACK: [number, number] = [-6.3, 3.5]
 
 const UNO_HEADER_Y = 0.16 + 0.85
@@ -184,7 +184,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'R_SENSE',
         role: 'Current sense for coil A: 0.068 Ω on current Pololu boards, often 0.1 Ω ("R100") on clones. The chopper compares its voltage with Vref/8.',
-        params: { size: '1206', marking: 'R068', callout: [0.2, 2.0, -1.2] },
+        params: { size: '1206', marking: 'R068', callout: [-1.4, 1.2, -0.2] },
       },
       {
         id: 'rs2',
@@ -277,7 +277,7 @@ export const lesson: LessonDef = {
   circuit: {
     elements: [
       // 12 V motor supply, switched
-      { id: 'psu', type: 'V', nodes: ['psu_p', '0'], value: 12, rInternal: 0.05, partId: 'psu' },
+      { id: 'psu', type: 'V', nodes: ['psu_p', '0'], value: 12, rInternal: 0.05, iLimit: 2, partId: 'psu' }, // a 12 V 2 A adapter: it current-limits at about 2 A
       { id: 'pwr', type: 'SW', nodes: ['psu_p', 'vlead'], closed: true, partId: 'psu' },
       { id: 'r_lead', type: 'R', nodes: ['vlead', 'vl2'], value: 0.05, partId: 'w_vmot' }, // 1 m of supply lead
       { id: 'l_lead', type: 'L', nodes: ['vl2', 'vmot'], value: 1e-6, partId: 'w_vmot' }, // ~1 µH per metre of pair
@@ -324,7 +324,8 @@ export const lesson: LessonDef = {
         enable: 8,
         rs: 0.068,
         rdsTotal: 0.7,
-        rthJA: 50,
+        rthJA: 90, // a bare carrier: thermal shutdown near 1.5 A per coil
+        ocp: true, // a genuine A4988: the overcurrent latch works (false: a clone without it)
         tauTh: 8, // time-compressed: a real carrier's die settles over tens of seconds
         tsd: 165,
         tsdHyst: 15,
@@ -344,7 +345,8 @@ export const lesson: LessonDef = {
     { label: 'SHAFT SPEED', source: { kind: 'behavior', key: 'a4988.rpm' }, unit: 'rpm' },
     { label: 'SKIPPED STEPS', source: { kind: 'behavior', key: 'a4988.skipped' }, unit: 'steps', digits: 1 },
     { label: 'DRIVER Tj', source: { kind: 'behavior', key: 'a4988.tj' }, unit: '°C' },
-    { label: 'COIL A TEMP', source: { kind: 'extra', key: 'rca.tj' }, unit: '°C' },
+    { label: 'COIL A TEMP', source: { kind: 'behavior', key: 'a4988.coilA_temp' }, unit: '°C' },
+    { label: 'OVERCURRENT LATCH', source: { kind: 'behavior', key: 'a4988.ocp_latched' }, unit: '', digits: 1 },
   ],
 
   sketch: {
@@ -360,6 +362,7 @@ export const lesson: LessonDef = {
     { label: 'Sense resistor on board', elementId: 'behavior:a4988', key: 'rs', min: 0.05, max: 0.2, step: 0.001, unit: 'Ω' },
     { label: 'Supply voltage', elementId: 'psu', key: 'value', min: 8, max: 30, step: 0.5, unit: 'V' },
     { label: 'Load torque', elementId: 'behavior:a4988', key: 'loadNm', min: 0, max: 0.4, step: 0.01, unit: 'N·m' },
+    { label: 'Driver cooling RθJA, °C/W (90 bare; lower with heatsink and air)', elementId: 'behavior:a4988', key: 'rthJA', min: 40, max: 90, step: 1, unit: '' },
   ],
 
   statusLines: [
@@ -368,6 +371,7 @@ export const lesson: LessonDef = {
     { when: { kind: 'above', readout: 1, value: 1.5 }, text: 'WARNING: the current limit ({1}) is above 1.5 A: add a heatsink and airflow, or turn Vref down.' },
     { when: { kind: 'above', readout: 6, value: 140 }, text: 'WARNING: driver Tj {6} is close to the 165 °C thermal shutdown.' },
     { when: { kind: 'above', readout: 5, value: 0 }, text: 'WARNING: steps lost ({5}, full): the load or acceleration is too much for this current and speed, and nothing tells the sketch.' },
+    { when: { kind: 'above', readout: 8, value: 0.5 }, text: 'WARNING: the overcurrent protection has latched the outputs off (a coil passed 2.1 A). Turn Vref down, then toggle ENABLE or cycle the 12 V.' },
   ],
 
   failures: [
@@ -375,14 +379,14 @@ export const lesson: LessonDef = {
       id: 'no-current-limit',
       label: 'No current limit (trimmer at the stop)',
       explain:
-        'Vref ≈ 4.95 V (already past the REF pin\'s 4 V range) asks for 4.95 / (8 × 0.068) ≈ 9.1 A. The chopper never trips, because a coil can only reach V/R = 12 / (1.5 + 0.7) ≈ 5.5 A. Driver loss ≈ 2 × 5.5² × 0.7 ≈ 42 W, so Tj rockets: thermal shutdown within a second, then it cycles, and the output current far above the 2 A rating destroys the driver. The motor (rated 1.7 A) heats too. Always set Vref before connecting the motor: Vref = I × 8 × R_s = 1.0 × 8 × 0.068 = 0.544 V.',
+        'Vref = 4.95 V (already past the REF pin\'s 4 V range) asks for 4.95 / (8 × 0.068) = 9.1 A, and the chopper never trips, because a coil could only reach V/R = 12 / (1.5 + 0.7) ≈ 5.5 A. A genuine A4988 protects itself: about 0.44 ms after the trimmer hits the stop the coil current passes the 2.1 A overcurrent threshold and the outputs latch off. COIL A/B read 0 A, the shaft goes limp and OVERCURRENT LATCH reads 1. It stays off until ENABLE is toggled (the sketch\'s free phase does that, so it retries and trips again every cycle) or the 12 V is cycled. At a setting just under the latch, thermal shutdown (165 °C) is the next guard: on a bare carrier it trips near 1.5 A per coil. Clones whose protection doesn\'t work can simply die, and so can the motor (rated 1.7 A). Set Vref before connecting the motor: Vref = I × 8 × R_s = 1.0 × 8 × 0.068 = 0.544 V.',
       patches: [{ op: 'set', elementId: 'pot', key: 'pos', value: 0.99 }],
     },
     {
       id: 'unplug-motor',
       label: 'Unplug the motor while powered',
       explain:
-        'Coil A\'s current path opens while it carries current (up to 1 A here, depending on where in the sine table it is). V = L·di/dt: breaking it in about 10 µs gives 2.8 mH × I / 10 µs, tens to hundreds of volts against the outputs\' 35 V rating (280 V at 1 A), and the A4988 is dead. Never connect or disconnect a stepper while the driver is powered; loose screw terminals do the same thing slowly. (Pull it during the sketch\'s 2 s "free" phase, with ENABLE HIGH, and nothing burns: no current, no kick. But with one coil missing the shaft can\'t follow the steps either.)',
+        'Coil A\'s current path opens while it carries current (up to 1 A here, depending on where in the sine table it is). The winding stores ½·L·I² (1.4 mJ at 1 A in 2.8 mH), and that energy has to go somewhere the moment the connector breaks: an arc at the contacts and a fast spike into the driver\'s outputs. The body diodes try to clamp the outputs to about VMOT, but they are not built for repeated hits like this, and the A4988 is dead (the FAULT line quotes the simulated current and energy). Never connect or disconnect a stepper while the driver is powered; loose screw terminals do the same thing slowly. (Pull it during the sketch\'s 2 s "free" phase, with ENABLE HIGH, and nothing burns: no current, no kick. But with one coil missing the shaft can\'t follow the steps either.)',
       patches: [{ op: 'remove', elementId: 'rca' }],
       parts: { hide: ['w_1a', 'w_1b'] },
     },
@@ -418,9 +422,9 @@ In full step θ sits on 45° + k·90°, so each coil carries **70.7 %** of I_tri
 
 **Why 12–24 V, then?** Inductance resists change: di/dt = V/L. At 12 V the current rises 1 A in about 2.8 mH × 1 A / 12 V ≈ 0.23 ms, and the spinning rotor's back-EMF eats into the 12 V as speed rises. Push the step rate past what the current can follow and torque collapses: the motor skips. Raise the supply to 24 V and the top speed before skipping rises by about two-thirds here.
 
-**Ratings:** VMOT 8–35 V, logic 3–5.5 V, 2 A per coil maximum (about 1 A without a heatsink, per Pololu). Thermal shutdown at about 165 °C.
+**Ratings:** VMOT 8–35 V, logic 3–5.5 V, 2 A per coil maximum (about 1 A without a heatsink, per Pololu). Protection: an overcurrent latch (about 2.1 A minimum trip) that holds the outputs off until ENABLE is toggled or the power is cycled, and thermal shutdown at about 165 °C. On a bare carrier the die runs at roughly 25 °C + I² × 0.7 Ω × 90 °C/W: about 90 °C at 1 A, and shutdown near 1.5 A.
 
-*Sim note:* the chopper is simulated as its average: each coil is a current source that follows the table, rising no faster than (VMOT − I·R − back-EMF)/L allows. STEP edges are timestamped to the microsecond and the rotor (holding torque ∝ current, inertia, load) is integrated in 20 µs slices. The die's thermal time constant is compressed to 8 s and the winding's to 30 s, so heating shows within a sketch cycle. Unplugging a coil is a rule (the averaged source hides the spike), and so is the damage from running far above 2 A (after about 0.75 s in total). The 3D shaft follows the simulated rotor angle.`,
+*Sim note:* the chopper is simulated as its average: each coil is a current source that follows the table, rising no faster than (VMOT − I·R − back-EMF)/L allows. STEP edges are timestamped to the microsecond and the rotor (holding torque ∝ current, inertia, load) is integrated in 20 µs slices. The die's thermal time constant is compressed to 8 s and the winding's to 30 s, so heating shows within a sketch cycle. Unplugging a coil is a rule (the averaged source hides the spike). The 12 V adapter current-limits at 2 A. The 3D shaft follows the simulated rotor angle.`,
 
   mechanicalAnalogy: `A stepper with an A4988 is a position-controlled detent mechanism. Each STEP pulse moves the magnetic "detent" by 1.8°/m, and the rotor follows like a spring-loaded follower in a cam track. The current limit sets how stiff the spring is (holding torque), and microstepping is a finer cam profile. Load or acceleration beyond the spring force and the follower jumps a tooth (a skipped step), and nothing tells you, because there is no feedback.
 

@@ -18,22 +18,29 @@
 //     When the rotor falls a whole electrical cycle behind the translator it has skipped 4 full steps.
 //   - Supply draw (`supply`, an I source on VMOT): the power balance (Σ I²·(Rcoil + Rds) + T·ω)/VMOT + iq.
 //   - Die: first order toward 25 °C + Σ I²·Rds·RthJA with tauTh; thermal shutdown at tsd, back on
-//     tsdHyst below it. Output current above iAbsMax (2 A, the A4988's absolute maximum) for a total
-//     of damageS burns the driver ('overcurrent'): a teaching threshold, not a datasheet figure.
+//     tsdHyst below it. RthJA 90 °C/W (a bare carrier) puts the shutdown near 1.5 A per coil.
+//   - Overcurrent protection (genuine part, `ocp` true): a coil current above ocpA (I_OCPST, 2.1 A min)
+//     latches the outputs off until ENABLE is toggled (the latch clears when it goes HIGH) or the
+//     power is cycled. With `ocp` false (a clone whose protection doesn't work), output current above
+//     iAbsMax (2 A, the absolute maximum) for a total of damageS burns the driver ('overcurrent'):
+//     a teaching threshold, not a datasheet figure.
 //   - A coil whose winding element is missing (or burnt open) while it carries > 0.1 A burns the
-//     driver ('overvoltage'): the averaged current source hides the L·di/dt kick, so it is a rule.
+//     driver ('overvoltage', burning that coil's source): the averaged current source hides the kick,
+//     so it is a rule; the FAULT text quotes the coil's stored energy, ½·L·I².
+//   - The inputs (STEP/DIR/ENABLE levels) survive a VMOT power-off: VDD comes from the Uno.
 //
 // Params (defaults in brackets):
 //   pins     step [3], dir [4], enable [8]
 //   nodes    ms1 ['ms1'], ms2 ['ms2'], ms3 ['ms3'], vref ['vref'], vmot ['vmot'], vdd ['5v']
 //   elements coilA ['ia'], coilB ['ib'], rA ['rca'], rB ['rcb'], lA ['lca'], lB ['lcb'], supply ['i_vmot']
-//   numbers  rs [0.068 Ω], rdsTotal [0.7 Ω source + sink], rthJA [50 °C/W], tauTh [8 s], tsd [165 °C],
-//            tsdHyst [15 °C], iq [0.003 A], iAbsMax [2 A], damageS [0.75 s], holdTorque [0.40 N·m],
+//   numbers  rs [0.068 Ω], rdsTotal [0.7 Ω source + sink], rthJA [90 °C/W], tauTh [8 s], tsd [165 °C],
+//            tsdHyst [15 °C], iq [0.003 A], ocp [true], ocpA [2.1 A], iAbsMax [2 A], damageS [0.5 s],
+//            holdTorque [0.40 N·m],
 //            iRated [1.7 A], rotorJ [5.7e-6 kg·m²], loadJ [0], damping [1e-3 N·m·s/rad],
-//            friction [0.005 N·m], loadNm [0 N·m], teeth [50], openUs [10 µs: how fast a pulled connector
-//            breaks the current, for the kick estimate L·I/t], vbbMax [35 V]
+//            friction [0.005 N·m], loadNm [0 N·m], teeth [50]
 // Publishes: microstep, itrip_A, vref_V, coilA_A, coilB_A, steps, shaft_deg (continuous, from home),
-//   rpm, skipped (full steps), tj, tsd_active, driver_W.
+//   rpm, skipped (full steps), tj, tsd_active, ocp_latched, driver_W, coilA_temp / coilB_temp (the
+//   windings' rating temperature floored at ambient, so a removed winding reads 25 °C, not 0).
 
 import type { Behavior, BehaviorContext, Element, Netlist, PinState } from '../types'
 
@@ -131,6 +138,14 @@ interface State {
   overLimit: number
   /** the largest coil current seen (for the damage message) */
   peakI: number
+  ocp: boolean
+  ocpA: number
+  ocpLatched: boolean
+  /** `${rA}.tj` / `${rB}.tj`, rebuilt only when the winding ids change */
+  rAId: string
+  rBId: string
+  kTjA: string
+  kTjB: string
 }
 
 const states = new WeakMap<BehaviorContext, State>()
@@ -184,6 +199,13 @@ function fresh(): State {
     rds: 0.7,
     overLimit: 2,
     peakI: 0,
+    ocp: true,
+    ocpA: 2.1,
+    ocpLatched: false,
+    rAId: '',
+    rBId: '',
+    kTjA: '',
+    kTjB: '',
   }
 }
 
@@ -242,7 +264,11 @@ const mod = (a: number, n: number) => ((a % n) + n) % n
 /** a timestamped input change, applied in time order */
 function applyEdge(st: State, pin: number, high: boolean, tUs: number): void {
   if (pin === PIN_DIR) st.dirHigh = high
-  else if (pin === PIN_EN) st.enHigh = high
+  else if (pin === PIN_EN) {
+    // toggling ENABLE clears the overcurrent latch (the outputs are off while it is HIGH anyway)
+    if (high) st.ocpLatched = false
+    st.enHigh = high
+  }
   else if (high && !st.stepHigh) {
     st.stepHigh = true
     st.stepRiseUs = tUs
@@ -271,7 +297,7 @@ function applyEdge(st: State, pin: number, high: boolean, tUs: number): void {
 /** integrate coils and rotor over h seconds */
 function slice(st: State, h: number): void {
   const idx = mod(st.cmd, UNITS)
-  const on = st.on && !st.tsd && !st.burnt
+  const on = st.on && !st.tsd && !st.burnt && !st.ocpLatched
   const sp = Math.sin(st.phi)
   const cp = Math.cos(st.phi)
   const eA = -st.km * st.omega * sp
@@ -296,10 +322,13 @@ function slice(st: State, h: number): void {
   const i2 = iA * iA + iB * iB
   st.eDrv += i2 * st.rds * h
   st.eIn += (iA * iA * (st.rA + st.rds) + iB * iB * (st.rB + st.rds) + tm * om) * h
-  // over the absolute maximum (only counted while the bridge drives)
   const ipk = Math.max(Math.abs(iA), Math.abs(iB))
   if (ipk > st.peakI) st.peakI = ipk
-  if (on && ipk > st.overLimit) st.overS += h
+  if (on) {
+    // a genuine A4988 latches off past I_OCPST; a clone without it cooks above the absolute maximum
+    if (st.ocp && ipk > st.ocpA) st.ocpLatched = true
+    else if (!st.ocp && ipk > st.overLimit) st.overS += h
+  }
 
   // whole electrical cycles behind (or ahead of) the translator: 4 full steps each
   const k = Math.round((st.cmd * UNIT_RAD - st.phi) / (2 * Math.PI))
@@ -307,6 +336,39 @@ function slice(st: State, h: number): void {
     st.skipped += 4 * Math.abs(k - st.slipK)
     st.slipK = k
   }
+}
+
+/**
+ * After the MCU clock restarts, queued entries stamped after `target` belong to the old run (its last
+ * writes and the floats at the restart). Their levels are taken as they stand, without pulse-width
+ * timing (an old-run time means nothing on the new clock); the new run's entries are kept, in order.
+ */
+function dropStale(st: State, target: number): void {
+  let w = 0
+  for (let k = 0; k < st.qn; k++) {
+    const r = (st.qh + k) % QCAP
+    if (st.qt[r] > target) {
+      const high = st.ql[r] === 1
+      const p = st.qp[r]
+      if (p === PIN_DIR) st.dirHigh = high
+      else if (p === PIN_EN) {
+        if (high) st.ocpLatched = false
+        st.enHigh = high
+      } else {
+        st.stepHigh = high
+        st.stepCounted = false
+        st.stepRiseUs = -1e9
+        st.stepFallUs = -1e9
+      }
+      continue
+    }
+    const d = (st.qh + w) % QCAP
+    st.qt[d] = st.qt[r]
+    st.qp[d] = st.qp[r]
+    st.ql[d] = st.ql[r]
+    w++
+  }
+  st.qn = w
 }
 
 function publishAll(ctx: BehaviorContext, st: State, vref: number, driverW: number): void {
@@ -321,7 +383,13 @@ function publishAll(ctx: BehaviorContext, st: State, vref: number, driverW: numb
   ctx.publish('skipped', st.skipped)
   ctx.publish('tj', st.tj)
   ctx.publish('tsd_active', st.tsd ? 1 : 0)
+  ctx.publish('ocp_latched', st.ocpLatched ? 1 : 0)
   ctx.publish('driver_W', driverW)
+  const s = ctx.solution
+  if (s) {
+    ctx.publish('coilA_temp', Math.max(T_AMB, (s.extraOf ? s.extraOf(st.rAId, st.kTjA) : s.extra[st.kTjA]) || T_AMB))
+    ctx.publish('coilB_temp', Math.max(T_AMB, (s.extraOf ? s.extraOf(st.rBId, st.kTjB) : s.extra[st.kTjB]) || T_AMB))
+  }
 }
 
 const quant = (x: number, step: number) => Math.round(x / step) * step
@@ -392,8 +460,20 @@ export const behavior: Behavior = {
     st.b = num(ctx, 'damping', 1e-3)
     st.tf = Math.max(0, num(ctx, 'friction', 0.005) + num(ctx, 'loadNm', 0))
     st.overLimit = num(ctx, 'iAbsMax', 2)
-    const rA = windingR(net, str(ctx, 'rA', 'rca'))
-    const rB = windingR(net, str(ctx, 'rB', 'rcb'))
+    st.ocp = ctx.params.ocp !== false && ctx.params.ocp !== 0
+    st.ocpA = num(ctx, 'ocpA', 2.1)
+    const rAId = str(ctx, 'rA', 'rca')
+    const rBId = str(ctx, 'rB', 'rcb')
+    if (rAId !== st.rAId) {
+      st.rAId = rAId
+      st.kTjA = `${rAId}.tj`
+    }
+    if (rBId !== st.rBId) {
+      st.rBId = rBId
+      st.kTjB = `${rBId}.tj`
+    }
+    const rA = windingR(net, rAId)
+    const rB = windingR(net, rBId)
     st.lA = windingL(net, str(ctx, 'lA', 'lca'), 2.8e-3)
     st.lB = windingL(net, str(ctx, 'lB', 'lcb'), 2.8e-3)
     st.rA = Math.max(0, rA)
@@ -404,11 +484,13 @@ export const behavior: Behavior = {
     const nowOpenB = rB < 0
     if (!st.burnt && ((nowOpenA && Math.abs(st.iA) > 0.1) || (nowOpenB && Math.abs(st.iB) > 0.1))) {
       st.burnt = true
-      // the kick, V ≈ L·I / t_open (the contact opens in about openUs), against the 35 V output rating
-      const i = nowOpenA && Math.abs(st.iA) > 0.1 ? Math.abs(st.iA) : Math.abs(st.iB)
-      const l = nowOpenA && Math.abs(st.iA) > 0.1 ? st.lA : st.lB
-      const kick = (l * i) / (Math.max(0.1, num(ctx, 'openUs', 10)) * 1e-6)
-      ctx.burn(str(ctx, 'coilA', 'ia'), 'overvoltage', { value: kick, limit: num(ctx, 'vbbMax', 35) })
+      // the coil's stored energy ½·L·I² has to go somewhere: an arc at the connector and the outputs
+      const a = nowOpenA && Math.abs(st.iA) > 0.1
+      const i = a ? Math.abs(st.iA) : Math.abs(st.iB)
+      const e = 0.5 * (a ? st.lA : st.lB) * i * i
+      ctx.burn(a ? str(ctx, 'coilA', 'ia') : str(ctx, 'coilB', 'ib'), 'overvoltage', {
+        note: `failed: coil ${a ? 'A' : 'B'} was cut open carrying ${i.toFixed(2)} A, and its ½·L·I² = ${(e * 1000).toFixed(2)} mJ went into the outputs`,
+      })
     }
     st.openA = nowOpenA
     st.openB = nowOpenB
@@ -422,7 +504,8 @@ export const behavior: Behavior = {
     let target: number
     if (running) {
       target = ctx.mcu.timeMicros
-      // (re)joining the MCU's clock (a new upload restarts it at 0): from its earliest queued edge
+      // the MCU clock restarted (upload, mcu.reset()): drop the old run's entries, then join its clock
+      if (target < st.nowUs) dropStale(st, target)
       if (!st.wasRunning || target < st.nowUs) st.nowUs = st.qn > 0 ? Math.min(target, st.qt[st.qh]) : target
     } else target = st.nowUs + Math.max(0, dt) * 1e6
     st.wasRunning = running
@@ -451,12 +534,12 @@ export const behavior: Behavior = {
     // die temperature and the protections
     const pDrv = span > 0 ? st.eDrv / span : 0
     const tau = num(ctx, 'tauTh', 8)
-    const tss = T_AMB + pDrv * num(ctx, 'rthJA', 50)
+    const tss = T_AMB + pDrv * num(ctx, 'rthJA', 90)
     if (span > 0) st.tj = tau > 0 ? st.tj + (tss - st.tj) * (1 - Math.exp(-span / tau)) : tss
     const tsdOn = num(ctx, 'tsd', 165)
     if (!st.tsd && st.tj >= tsdOn) st.tsd = true
     else if (st.tsd && st.tj < tsdOn - num(ctx, 'tsdHyst', 15)) st.tsd = false
-    if (!st.burnt && st.overS >= num(ctx, 'damageS', 0.75)) {
+    if (!st.burnt && st.overS >= num(ctx, 'damageS', 0.5)) {
       st.burnt = true
       ctx.burn(str(ctx, 'coilA', 'ia'), 'overcurrent', { value: st.peakI, limit: st.overLimit })
     }
@@ -483,15 +566,14 @@ export const behavior: Behavior = {
       st.dirHigh = false
       st.enHigh = false
     } else if (ev === 'power-off') {
-      st.qn = 0
+      // VMOT off: the bridges and the die reset; the inputs keep their levels (VDD comes from the Uno)
       st.iA = 0
       st.iB = 0
       st.omega = 0
       st.rpmF = 0
       st.tj = T_AMB
       st.tsd = false
-      st.stepHigh = false
-      st.enHigh = false
+      st.ocpLatched = false
     } else if (ev === 'power-on') {
       // the translator powers up at home (45°): the home position nearest the rotor
       st.cmd = HOME + UNITS * Math.round((st.phi / UNIT_RAD - HOME) / UNITS)
