@@ -1,28 +1,43 @@
 // L298 dual full-bridge (ST, Multiwatt15) on the red L298N module, as averaged half-bridges.
 //
 // Same netlist structure as `tb6612`: each output (OUT1, OUT2; OUT3, OUT4 for channel B) is a V
-// source referenced to the driver ground, behind a resistor fitted to the datasheet's typical
-// VCE(sat), then a SW that opens when the output is off. The differences this behavior models:
-//   - bipolar outputs: the conducting path is two saturated BJTs, about 1.85 Ω in total (typical
-//     source 0.95 V + sink 0.85 V at 1 A; the resistor fit lives in the netlist, `rTotal` here
-//     only for the published numbers and must match it);
+// source referenced to the driver ground, behind a resistor, then a SW that opens when the output is
+// off. The differences this behavior models:
+//   - bipolar outputs: the conducting path is two saturated BJTs. The datasheet's typical total
+//     drop (source + sink VCE(sat)) is 1.35 + 1.2 = 2.55 V at 1 A and 2.0 + 1.7 = 3.7 V at 2 A
+//     (1.8 V is the minimum at 1 A; the maximum is 3.2 V at 1 A and 4.9 V at 2 A). It is fitted as
+//     an offset plus a slope per path: `vce0` 1.4 V + `rTotal` 1.15 Ω. The slope lives in the
+//     netlist (half of it behind each source, the closed SW's 0.05 Ω included) and must match
+//     `rTotal`; the offset is subtracted from the driving source's value, so even a lightly loaded
+//     motor loses about 1.5 V. In brake the path is modelled by the resistance only;
 //   - truth table: EN low = all four transistors off (coast through the flyback diodes),
 //     IN1 = IN2 with EN high = fast stop (brake), there is no standby pin;
 //   - PWM on EN: the off phase is a coast, not a brake. With this motor's L/R (≈ 0.1 ms) against
 //     the ~1 ms PWM period the current dies out early in each off phase and the terminals float at
-//     the back-EMF, so the average across the motor is d·Vs + (1 − d)·E rather than d·Vs, and the
-//     on-phase current is I_avg/d (loss R·I²/d). `coastPwm: false` gives the plain d·Vs average;
+//     the back-EMF, so the average across the motor is d·V_on + (1 − d)·E rather than d·V_on
+//     (V_on = Vs − vce0), and the on-phase current is I_avg/d. The winding's rise time
+//     τ = L/(R_motor + rTotal) (≈ 0.1 ms) is not short against the on time d/pwmHz (0.2 ms at 20 %
+//     and 980 Hz), so d is replaced by an effective duty d·k, k = 1 − (τ/t_on)(1 − e^(−t_on/τ)):
+//     the mean of the rising current over the on time as a fraction of its final value. It ignores
+//     the current that keeps flowing during the fast decay, so low-duty speed errs low rather than
+//     high. `coastPwm: false` gives the plain d·V_on average;
 //   - no internal flyback diodes: when the module's diodes are missing, an EN-PWM drive with
 //     current flowing kicks the output transistors at every PWM off edge. The averaged model has no
-//     edges, so on such a tick the behavior opens the outputs once (one real off edge) and the
-//     transient engine resolves the kick: the SW `vBreak` clamp, `sim.edgeSubsteps` and the SW's
-//     `maxV` rating. A full turn-off (EN low, a coast) needs nothing extra. Lessons using a
-//     no-diode failure must set `sim.edgeSubsteps` (≈ 12) or the kick is not seen;
+//     edges, so the behavior opens the outputs for one tick (one real off edge) and the transient
+//     engine resolves the kick: the SW `vBreak` clamp, `sim.edgeSubsteps` and the SW's `maxV`
+//     rating. This happens once per drive command (a new mode or duty), so it doesn't depend on the
+//     frame rate. A full turn-off (EN low, a coast) needs nothing extra. Lessons using a no-diode
+//     failure must set `sim.edgeSubsteps` (≈ 12) or the kick is not seen;
 //   - a failed (shorted) output transistor, i.e. the SW replaced by a burn: the channel is dead and
-//     any drive command shorts Vs to ground through the shorted transistor and its partner;
+//     any drive command shorts Vs to ground through the shorted transistor and its partner,
+//     (Vs − vce0)/rTotal;
+//   - quiescent Vs current by state (datasheet typical): `iqHigh` 50 mA with a bridge enabled and
+//     an input high, `iqLow` 13 mA enabled with the inputs low, `iqOff` 4 mA (the maximum) with EN low;
 //   - heat: P = Σ bridge loss + Vs·Iq into a first-order junction model, Rθ = rthJC + rthCS + rthSA
 //     with the heatsink fitted (the element `sink` exists: the grounded tab's bond to the heatsink)
-//     or rthJA without; overtemperature shutdown with hysteresis opens all outputs.
+//     or rthJA without; overtemperature shutdown with hysteresis opens all outputs. The datasheet
+//     lists the protection without a threshold: 150 °C (the Tj maximum) and 20 °C of hysteresis
+//     are approximate.
 //
 // Params (defaults in brackets):
 //   nodes    in1 ['d7'], in2 ['d8'], ena ['d5']; channel B in3 ['in3'], in4 ['in4'], enb ['']
@@ -34,14 +49,17 @@
 //            ['d_a_hi,d_a_lo,d_b_hi,d_b_lo']; channel B out3 ['hc'], out4 ['hd'], en3 ['en_c'],
 //            en4 ['en_d'], motorB ['m2'], diodesB ['d_c_hi,d_c_lo,d_d_hi,d_d_lo'] (channel B runs only
 //            when out3 and out4 exist); supply ['i_vs']: I source Vs → gnd for the draw; sink ['hs_tab']
-//   numbers  rTotal [1.85 Ω], iq [0.013 A], rthJC [3], rthCS [1], rthSA [15], rthJA [35 °C/W],
-//            tauTh [4 s: time-compressed, a real module on its heatsink takes minutes], tsd [150 °C],
-//            tsdHyst [20 °C], gear [1: rpm_out = motor rpm / gear], coastPwm [true],
-//            iKick [0.05 A: on-phase current below which a missing-diode PWM edge is not emulated]
-// Publishes: mode (L298_MODE), duty, motor_A, rpm_out, drop_V (on-state bridge drop, R·I/d), and
-// with channel B mode_b, duty_b, motor_b_A, rpm_out_b, drop_b_V; plus vs_V, bridge_W (both channels
-// + quiescent), tj, tsd_active, heatsink (0/1), efficiency (%, motor power / supply power),
-// kick_uJ (½·L·I_on² of the last emulated PWM off edge without diodes) and dead (0/1).
+//   numbers  vce0 [1.4 V], rTotal [1.15 Ω], iqHigh [0.05 A], iqLow [0.013 A], iqOff [0.004 A],
+//            pwmHz [980: the EN-PWM rise-time correction, 0 = none], rthJC [3], rthCS [1],
+//            rthSA [15], rthJA [35 °C/W], tauTh [4 s: time-compressed, a real module on its heatsink
+//            takes minutes], tsd [150 °C], tsdHyst [20 °C], gear [1: rpm_out = motor rpm / gear],
+//            coastPwm [true], iKick [0.05 A: on-phase current below which a missing-diode PWM edge
+//            is not emulated]
+// Publishes: mode (L298_MODE), duty, motor_A, rpm_out, drop_V (on-state drop vce0 + rTotal·I_on,
+// I_on = I_avg / effective duty; 0 when nothing conducts), and with channel B mode_b, duty_b,
+// motor_b_A, rpm_out_b, drop_b_V; plus vs_V, bridge_W (both channels + quiescent), tj, tsd_active,
+// heatsink (0/1), efficiency (%, motor power / supply power), kick_uJ (½·L·I_on² of the last
+// emulated PWM off edge without diodes) and dead (0/1).
 
 import type { Behavior, BehaviorContext, Element, Netlist, Solution } from '../types'
 import { MODE } from './tb6612'
@@ -60,17 +78,32 @@ export function decodeL298(en: boolean, in1: boolean, in2: boolean): L298Mode {
 }
 
 /**
- * Average source value of the driving half under EN-PWM whose off phase coasts: d·Vs while on, the
- * back-EMF `e` (as seen from this half) while the outputs float, clamped to the rails by the diodes.
+ * Average source value of the driving half under EN-PWM whose off phase coasts: `von` (Vs less the
+ * BJT offset) while on, the back-EMF `e` (as seen from this half) while the outputs float, clamped
+ * to the rails [0, vs] by the diodes. A motor already at or above `von` draws nothing: the source
+ * follows its back-EMF.
  */
-export function coastPwmSource(d: number, vs: number, e: number): number {
-  const v = d * vs + (1 - d) * e
+export function coastPwmSource(d: number, von: number, e: number, vs = von): number {
+  const v = e >= von ? e : d * von + (1 - d) * e
   return v < 0 ? 0 : v > vs ? vs : v
 }
 
-/** bridge I²R loss with EN-PWM coast: the current flows only in the on phase, I_on = I_avg / d */
-export function coastPwmLoss(iAvg: number, d: number, r: number): number {
-  return d > 0 ? (r * iAvg * iAvg) / d : 0
+/**
+ * Bridge loss with EN-PWM coast at (effective) duty `d`: the current flows only in the on phase,
+ * I_on = I_avg / d, through `vce0` plus `r`: P = vce0·|I_avg| + r·I_avg² / d.
+ */
+export function coastPwmLoss(iAvg: number, d: number, r: number, vce0 = 0): number {
+  return d > 0 ? vce0 * Math.abs(iAvg) + (r * iAvg * iAvg) / d : 0
+}
+
+/**
+ * Rise-time factor for an on time `tOn` against the winding's τ: the mean of 1 − e^(−t/τ) over the
+ * on time. 1 for a long pulse, ≈ 0.58 for 204 µs against 97 µs.
+ */
+export function riseFactor(tOn: number, tau: number): number {
+  if (!(tau > 0) || !(tOn > 0)) return 1
+  const x = tOn / tau
+  return 1 - (1 - Math.exp(-x)) / x
 }
 
 interface Channel {
@@ -94,12 +127,18 @@ interface Channel {
   dead: boolean
   ke: number
   lMotor: number
+  rMotor: number
   // per-tick scratch
   mode: L298Mode
   d: number
+  /** duty after the rise-time correction */
+  dEff: number
   e: number
   /** this tick emulates one PWM off edge (no flyback diodes) */
   edge: boolean
+  /** the drive command (mode, duty) whose off edge was already emulated: once per command */
+  kickMode: number
+  kickDuty: number
 }
 
 interface State {
@@ -184,10 +223,14 @@ function channel(b: boolean, nodes: [string, string, string], ids: [string, stri
     dead: false,
     ke: 0,
     lMotor: 0,
+    rMotor: 0,
     mode: L298_MODE.COAST,
     d: 0,
+    dEff: 0,
     e: 0,
     edge: false,
+    kickMode: -1,
+    kickDuty: -1,
   }
 }
 
@@ -228,6 +271,7 @@ function channels(ctx: BehaviorContext, st: State, info: NetInfo, net: Netlist):
     const m = info.els.get(ch.motor)
     ch.ke = m?.type === 'MOTOR' ? m.ke : 0
     ch.lMotor = m?.type === 'MOTOR' ? (m.l ?? 0) : 0
+    ch.rMotor = m?.type === 'MOTOR' ? m.r : 0
   }
   return st.chs
 }
@@ -284,21 +328,31 @@ export const behavior: Behavior = {
     const vs = Math.max(0, ctx.v(str(ctx, 'vs', 'vs'), gnd))
     const vih = num(ctx, 'vih', 2.3)
     const vil = num(ctx, 'vil', 1.5)
-    const r = num(ctx, 'rTotal', 1.85)
-    const iq = vs > 0.5 ? num(ctx, 'iq', 0.013) : 0
+    const r = num(ctx, 'rTotal', 1.15)
+    const vce0 = num(ctx, 'vce0', 1.4)
+    const pwmHz = num(ctx, 'pwmHz', 980)
     const gear = num(ctx, 'gear', 1) || 1
     const coast = bool(ctx, 'coastPwm', true)
 
     // 1. decode; loss and Vs draw from the latest solution
-    let loss = vs * iq
-    let draw = iq
+    let loss = 0
+    let draw = 0
+    let anyEn = false
+    let anyHigh = false
     for (const ch of chs) {
       const en = enDuty(ctx, st, info, ch.en, gnd, vih, vil)
       const in1 = level(ctx, st, ch.in1, gnd, vih, vil)
       const in2 = level(ctx, st, ch.in2, gnd, vih, vil)
+      if (en > 0) {
+        anyEn = true
+        if (in1 || in2) anyHigh = true
+      }
       const logic = decodeL298(en > 0, in1, in2)
       const driving = logic === L298_MODE.CW || logic === L298_MODE.CCW
       ch.d = driving ? en : 0
+      // effective duty: the winding's current rises with τ = L/R during each on time
+      ch.dEff = ch.d
+      if (coast && ch.d > 0 && ch.d < 1 && pwmHz > 0) ch.dEff = ch.d * riseFactor(ch.d / pwmHz, ch.lMotor / (ch.rMotor + r))
       ch.mode = ch.dead ? L298_MODE.DEAD : logic
       const rpm = info.els.has(ch.motor) ? extraOf(s, ch.motor, ch.kRpmExtra) : 0
       ch.e = ch.ke * rpm * TWO_PI_60
@@ -308,9 +362,9 @@ export const behavior: Behavior = {
       } else if (ch.dead) {
         // a shorted transistor plus its conducting partner: Vs straight to ground
         if (logic !== L298_MODE.COAST && r > 0) {
-          const iShoot = vs / r
+          const iShoot = Math.max(0, vs - vce0) / r
           draw += iShoot
-          loss += iShoot * iShoot * r
+          loss += vs * iShoot
         }
       } else if (logic === L298_MODE.BRAKE) {
         const i = curOf(s, ch.out1)
@@ -318,21 +372,27 @@ export const behavior: Behavior = {
         drop = r * Math.abs(i)
       } else if (driving) {
         const iOut = -curOf(s, logic === L298_MODE.CW ? ch.out1 : ch.out2) // into the motor
-        const d = ch.d
-        loss += coast ? coastPwmLoss(iOut, d, r) : r * iOut * iOut
+        const d = coast ? ch.dEff : 1
+        loss += coastPwmLoss(iOut, d, r, vce0)
         if (iOut > 0) draw += iOut
-        const iOn = coast && d > 0 ? Math.abs(iOut) / d : Math.abs(iOut)
-        drop = r * iOn
+        const iOn = d > 0 ? Math.abs(iOut) / d : 0
+        if (iOn > 1e-3) drop = vce0 + r * iOn
         // no flyback diodes: every PWM off edge drives L·di/dt into the open transistors. The
-        // averaged sources have no edges, so this tick opens the outputs as one real off edge
-        // and the transient engine (vBreak clamp, edgeSubsteps, maxV) resolves the kick.
-        if (!ch.hasDiodes && d < 1 && iOn > num(ctx, 'iKick', 0.05)) {
+        // averaged sources have no edges, so once per drive command a tick opens the outputs as a
+        // real off edge and the transient engine (vBreak clamp, edgeSubsteps, maxV) resolves it.
+        if (!ch.hasDiodes && ch.d < 1 && iOn > num(ctx, 'iKick', 0.05) && (ch.kickMode !== logic || ch.kickDuty !== ch.d)) {
           ch.edge = true
+          ch.kickMode = logic
+          ch.kickDuty = ch.d
           st.kick = 0.5 * ch.lMotor * iOn * iOn * 1e6
         }
       }
       ctx.publish(ch.kDrop, snap(drop, 1e-4))
     }
+    // quiescent supply current (datasheet typical, by state)
+    const iq = vs > 0.5 ? (anyEn ? (anyHigh ? num(ctx, 'iqHigh', 0.05) : num(ctx, 'iqLow', 0.013)) : num(ctx, 'iqOff', 0.004)) : 0
+    loss += vs * iq
+    draw += iq
 
     // 2. junction temperature, first order toward Tamb + P·Rθ; shutdown with hysteresis
     const sink = str(ctx, 'sink', 'hs_tab')
@@ -346,6 +406,7 @@ export const behavior: Behavior = {
     else if (st.tsd && st.tj < tsdOn - num(ctx, 'tsdHyst', 20)) st.tsd = false
 
     // 3. set the half-bridges (sources rounded to 5 mV so a slow sag doesn't rebuild every frame)
+    const von = Math.max(0, vs - vce0)
     let anyDead = 0
     for (const ch of chs) {
       if (ch.dead) anyDead = 1
@@ -354,7 +415,7 @@ export const behavior: Behavior = {
       const fwd = out === L298_MODE.CW
       const rev = out === L298_MODE.CCW
       let v = 0
-      if (fwd || rev) v = quant(coast ? coastPwmSource(ch.d, vs, fwd ? ch.e : -ch.e) : ch.d * vs, 5e-3)
+      if (fwd || rev) v = quant(coast ? coastPwmSource(ch.dEff, von, fwd ? ch.e : -ch.e, vs) : ch.d * von, 5e-3)
       const on = fwd || rev || out === L298_MODE.BRAKE
       setHalf(ctx, info, ch.out1, ch.en1, fwd ? v : 0, on)
       setHalf(ctx, info, ch.out2, ch.en2, rev ? v : 0, on)

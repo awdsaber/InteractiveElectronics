@@ -63,37 +63,38 @@ describe('T5 l298n lesson', () => {
     b.dispose()
   })
 
-  it('100 % forward on 7.4 V, no load: ≈ 7.1 V on the motor, ≈ 0.15–0.17 A', async () => {
+  it('100 % forward on 7.4 V, no load: ≈ 5.8 V on the motor (the 1.4 V offset still applies), ≈ 0.15 A', async () => {
     const b = build({ code: FWD(255) })
     const s = await run(b, 2.5)
-    near(s.values[V_MOTOR], 7.4 - 0.15 * (1.85 + 0.15))
-    // the curriculum's 0.15 A is the 6 V no-load figure; at 7.4 V the friction (b·ω) is a little higher
-    near(s.values[I_MOTOR], 0.17)
+    near(s.values[V_MOTOR], 7.4 - 0.15 * 0.15 - (1.4 + 0.15 * 1.15))
+    near(s.values[DROP], 1.4 + 0.15 * 1.15)
+    // GM-48 no-load
+    near(s.values[I_MOTOR], 0.15)
     near(s.values[VS], 7.4)
     expect(s.published['l298n.mode']).toBe(M.CW)
-    // GM-48 on 7.1 V: ≈ 11 300 rpm at the motor, ≈ 235 rpm at the 48:1 output
-    near(s.values[RPM], 235)
-    near(s.extra['m1.rpm'], 235 * 48)
+    // GM-48 on ≈ 5.8 V: ≈ 9 200 rpm at the motor, ≈ 190 rpm at the 48:1 output
+    near(s.values[RPM], 190)
+    near(s.extra['m1.rpm'], 190 * 48)
     b.dispose()
   })
 
-  it('a 1 A load on 7.4 V: motor ≈ 5.4 V, drop ≈ 1.85 V, bridge heat ≈ 1.85 W, efficiency ≈ 75 %', async () => {
+  it('a 1 A load on 7.4 V: motor ≈ 4.7 V, drop ≈ 2.55 V (typical), bridge heat ≈ 2.55 W + 7.4 V × 50 mA, efficiency ≈ 62 %', async () => {
     const b = build({ code: FWD(255) })
-    b.setTweak('m1.load', 0.0052)
+    b.setTweak('m1.load', 0.0053)
     const s = await run(b, 2)
     near(s.values[I_MOTOR], 1)
-    near(s.values[V_MOTOR], 5.4)
-    near(s.values[DROP], 1.85)
-    near(s.values[HEAT], 1.85)
-    near(s.values[EFF], 75)
+    near(s.values[V_MOTOR], 7.4 - 0.15 - 2.55)
+    near(s.values[DROP], 2.55)
+    near(s.values[HEAT], 2.55 + 7.4 * 0.05)
+    near(s.values[EFF], 62)
     expect(s.values[VS] - s.values[V_MOTOR]).toBeCloseTo(s.values[DROP], 1)
     b.dispose()
   })
 
-  it('EN-PWM coasts in the off phase: 20 % duty spins an unloaded motor far faster than 20 % of full speed', async () => {
+  it('EN-PWM coasts in the off phase: 20 % duty spins an unloaded motor well above 20 % of full speed (rise-time corrected)', async () => {
     const b = build({ code: FWD(51) })
     const s = await run(b, 3)
-    const full = 235
+    const full = 190
     expect(s.values[RPM]).toBeGreaterThan(0.4 * full)
     expect(s.values[RPM]).toBeLessThan(full)
     near(s.published['l298n.duty'], 0.2)
@@ -129,8 +130,8 @@ describe('T5 l298n lesson', () => {
       minRpm = Math.min(minRpm, x.values[RPM])
     })
     for (const m of [M.CW, M.BRAKE, M.CCW, M.COAST]) expect(modes.has(m)).toBe(true)
-    near(maxRpm, 235)
-    near(minRpm, -235)
+    near(maxRpm, 190)
+    near(minRpm, -190)
     expect(s.published['serial.duty_pct']).toBeDefined()
     expect(s.values[TJ]).toBeLessThan(60)
     expect(s.assembly.burns).toEqual([])
@@ -154,7 +155,7 @@ describe('T5 l298n lesson', () => {
     s = await run(b, 0.3)
     expect(s.published['l298n.dead']).toBe(1)
     expect(s.published['l298n.mode']).toBe(M.DEAD)
-    // shoot-through: Vs / 1.85 Ω ≈ 4 A, some 24–30 W into the package, the battery sags
+    // shoot-through: (Vs − 1.4 V) / 1.15 Ω ≈ 5 A, some 30–40 W into the package, the battery sags
     expect(s.values[HEAT]).toBeGreaterThan(20)
     expect(s.values[VS]).toBeLessThan(7.0)
     expect(Math.abs(s.values[RPM])).toBeLessThan(5)
@@ -178,7 +179,7 @@ describe('T5 l298n lesson', () => {
     b.dispose()
   }, 60_000)
 
-  it('F2 two motors at ≈ 1.5 A on 12 V without the heatsink: ≈ 8.3 W, thermal shutdown within seconds, motors pulse', async () => {
+  it('F2 two motors at ≈ 1.5 A on 12 V without the heatsink: ≈ 9.4 W, thermal shutdown within seconds, motors pulse', async () => {
     const b = build({ code: FWD(255) })
     await run(b, 0.3)
     b.dispatch('break:two-motors-bare')
@@ -187,7 +188,7 @@ describe('T5 l298n lesson', () => {
     const st = await run(b, 1.5)
     near(st.values[I_MOTOR], 1.5)
     near(st.published['l298n.motor_b_A'], 1.5)
-    near(st.values[HEAT], 8.3)
+    near(st.values[HEAT], 9.4)
     let peakTj = 0
     let trips = 0
     let firstTrip = -1
@@ -226,23 +227,23 @@ describe('T5 l298n lesson', () => {
     b.dispose()
   }, 60_000)
 
-  it('F3 single Li-ion cell (3.7 V) with a 0.5 A load: ≈ 2.7 V on the motor, ≈ 26 rpm, the bridge takes over a quarter', async () => {
+  it('F3 single Li-ion cell (3.7 V) with a 0.3 A load: ≈ 1.9 V on the motor, ≈ 26 rpm, the bridge takes about half', async () => {
     const b = build({ code: FWD(255) })
     await run(b, 0.3)
     b.dispatch('break:one-cell')
     const s = await run(b, 3)
-    near(s.values[I_MOTOR], 0.5)
-    near(s.values[V_MOTOR], 2.7)
+    near(s.values[I_MOTOR], 0.3)
+    near(s.values[V_MOTOR], 3.7 - 0.3 * 0.15 - (1.4 + 0.3 * 1.15))
     expect(s.values[RPM]).toBeGreaterThan(15)
     expect(s.values[RPM]).toBeLessThan(40)
-    expect(100 - s.values[EFF]).toBeGreaterThan(22)
+    expect(100 - s.values[EFF]).toBeGreaterThan(40)
     b.dispose()
   }, 60_000)
 
   it('the heatsink tweak changes the steady temperature: Rθsa 30 runs hotter than 2', async () => {
     const tjWith = async (rth: number) => {
       const b = build({ code: FWD(255) })
-      b.setTweak('m1.load', 0.0052)
+      b.setTweak('m1.load', 0.0053)
       b.setTweak('behavior:l298n.rthSA', rth)
       const s = await run(b, 12)
       b.dispose()
@@ -250,8 +251,8 @@ describe('T5 l298n lesson', () => {
     }
     const hot = await tjWith(30)
     const cool = await tjWith(2)
-    // ≈ 1.95 W: 25 + 1.95 × 34 ≈ 91 °C versus 25 + 1.95 × 6 ≈ 37 °C
-    near(hot, 25 + 1.95 * 34)
-    near(cool, 25 + 1.95 * 6)
+    // ≈ 2.92 W (2.55 + 7.4 × 0.05): 25 + 2.92 × 34 ≈ 124 °C versus 25 + 2.92 × 6 ≈ 43 °C
+    near(hot, 25 + 2.92 * 34)
+    near(cool, 25 + 2.92 * 6)
   }, 60_000)
 })

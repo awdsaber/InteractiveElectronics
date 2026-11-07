@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BehaviorContext, BurnEvent, Element, Netlist, PinState, Solution } from '../types'
-import { L298_MODE as M, behavior, coastPwmLoss, coastPwmSource, decodeL298 } from './l298n'
+import { L298_MODE as M, behavior, coastPwmLoss, coastPwmSource, decodeL298, riseFactor } from './l298n'
 
 // A hand-driven context, as in tb6612.test.ts: tests set node voltages, currents and pins, and
 // read back what the behavior asked the circuit to do (setParam / burn) and what it published.
@@ -131,12 +131,20 @@ describe('l298n: datasheet truth table', () => {
   })
 })
 
+
+// typical fit per path: 1.4 V + 1.15 Ω (2.55 V at 1 A, 3.7 V at 2 A)
+const V0 = 1.4
+const R = 1.15
+const IQ_HIGH = 0.05
+const IQ_LOW = 0.013
+const IQ_OFF = 0.004
+
 describe('l298n: half-bridges', () => {
-  it('forward at full EN: OUT1 = Vs, OUT2 = 0, both halves conducting', () => {
+  it('forward at full EN: OUT1 = Vs − Vce0, OUT2 = 0, both halves conducting', () => {
     const f = fake()
     drive(f, 1, 0, 1)
     f.tick()
-    expect(f.set['ha.value']).toBeCloseTo(7.4, 2)
+    expect(f.set['ha.value']).toBeCloseTo(7.4 - V0, 2)
     expect(f.set['hb.value']).toBe(0)
     expect([f.set['en_a.closed'], f.set['en_b.closed']]).toEqual([true, true])
     expect(f.pub.mode).toBe(M.CW)
@@ -159,32 +167,46 @@ describe('l298n: half-bridges', () => {
     expect([f.set['en_a.closed'], f.set['en_b.closed']]).toEqual([true, true])
   })
 
-  it('EN-PWM coasts in the off phase: the average is d·Vs + (1 − d)·back-EMF, not d·Vs', () => {
+  it('EN-PWM coasts in the off phase: the average is d·V_on + (1 − d)·back-EMF, clamped to the rails', () => {
     expect(coastPwmSource(0.5, 8, 4)).toBeCloseTo(6)
     expect(coastPwmSource(1, 8, 4)).toBeCloseTo(8)
     expect(coastPwmSource(0.2, 8, -3)).toBe(0) // clamped by the diodes to the rails
-    expect(coastPwmSource(0.2, 8, 20)).toBe(8)
+    expect(coastPwmSource(0.2, 8, 20, 9)).toBe(9)
+    // a motor already above V_on draws nothing: the source follows its EMF
+    expect(coastPwmSource(0.5, 6, 6.5, 7.4)).toBeCloseTo(6.5)
+  })
+
+  it('the rise-time factor: the mean of the rising current over the on time', () => {
+    expect(riseFactor(1, 1e-6)).toBeCloseTo(1, 4)
+    expect(riseFactor(204e-6, 97e-6)).toBeCloseTo(1 - (1 - Math.exp(-204 / 97)) / (204 / 97), 6)
+    expect(riseFactor(204e-6, 97e-6)).toBeCloseTo(0.58, 2)
+    expect(riseFactor(0, 1e-4)).toBe(1)
+  })
+
+  it('EN-PWM source uses the effective duty d·k (k from τ = L/(R_motor + rTotal) and t_on = d/980 Hz)', () => {
     const f = fake()
     drive(f, 1, 0, 0.5)
     // motor at 5000 rpm → E = 0.0054 × 5000 × 2π/60 ≈ 2.83 V
     f.extra['m1.rpm'] = 5000
     f.tick()
     const e = (0.0054 * 5000 * 2 * Math.PI) / 60
-    expect(f.set['ha.value'] as number).toBeCloseTo(0.5 * 7.4 + 0.5 * e, 1)
+    const dEff = 0.5 * riseFactor(0.5 / 980, 5e-4 / (4 + R))
+    const von = 7.4 - V0
+    expect(f.set['ha.value'] as number).toBeCloseTo(dEff * von + (1 - dEff) * e, 1)
     // reverse: OUT2 drives, and a motor spinning backwards (negative rpm) adds its EMF to OUT2
     drive(f, 0, 1, 0.5)
     f.extra['m1.rpm'] = -5000
     f.tick()
-    expect(f.set['hb.value'] as number).toBeCloseTo(0.5 * 7.4 + 0.5 * e, 1)
+    expect(f.set['hb.value'] as number).toBeCloseTo(dEff * von + (1 - dEff) * e, 1)
     expect(f.set['ha.value']).toBe(0)
   })
 
-  it('coastPwm: false gives the plain d·Vs average', () => {
+  it('coastPwm: false gives the plain d·V_on average', () => {
     const f = fake({ coastPwm: false })
     drive(f, 1, 0, 0.5)
     f.extra['m1.rpm'] = 5000
     f.tick()
-    expect(f.set['ha.value'] as number).toBeCloseTo(3.7, 2)
+    expect(f.set['ha.value'] as number).toBeCloseTo(0.5 * (7.4 - V0), 2)
   })
 
   it('reads inputs against fixed TTL thresholds (VIH 2.3 V, VIL 1.5 V): 3.3 V logic works', () => {
@@ -212,30 +234,52 @@ describe('l298n: half-bridges', () => {
 })
 
 describe('l298n: drop, heat and efficiency', () => {
-  it('1 A at full EN on 7.4 V: drop ≈ 1.85 V, bridge heat ≈ 1.85 W + Vs·13 mA, efficiency ≈ 75 %', () => {
+  it('1 A at full EN on 7.4 V: drop ≈ 2.55 V (typical), bridge heat ≈ 2.55 W + Vs·50 mA, efficiency ≈ 65 %', () => {
     const f = fake()
     drive(f, 1, 0, 1)
-    f.nodeV.out1 = 7.4 - 1.85
-    f.nodeV.out2 = 0
     flow(f, 1)
     f.tick()
-    expect(f.pub.drop_V).toBeCloseTo(1.85, 2)
-    expect(f.pub.bridge_W).toBeCloseTo(1.85 + 7.4 * 0.013, 3)
-    // supply 7.4 × (1 + 0.013) W; motor gets that minus the bridge heat
-    expect(f.pub.efficiency).toBeCloseTo((100 * (7.4 * 1.013 - 1.85 - 7.4 * 0.013)) / (7.4 * 1.013), 1)
-    expect(f.set['i_vs.value'] as number).toBeCloseTo(1.013, 3)
+    expect(f.pub.drop_V).toBeCloseTo(2.55, 2)
+    expect(f.pub.bridge_W).toBeCloseTo(2.55 + 7.4 * IQ_HIGH, 3)
+    const pIn = 7.4 * (1 + IQ_HIGH)
+    expect(f.pub.efficiency).toBeCloseTo((100 * (pIn - 2.55 - 7.4 * IQ_HIGH)) / pIn, 1)
+    expect(f.set['i_vs.value'] as number).toBeCloseTo(1 + IQ_HIGH, 3)
     expect(f.pub.motor_A).toBe(1)
   })
 
-  it('in EN-PWM the on-phase current is I/d, so the loss is R·I²/d and the on-state drop R·I/d', () => {
-    expect(coastPwmLoss(0.5, 0.5, 1.85)).toBeCloseTo(1.85 * 0.5, 6)
-    expect(coastPwmLoss(1, 0, 1.85)).toBe(0)
+  it('2 A at full EN: drop ≈ 3.7 V; a light 0.14 A load still loses ≈ 1.56 V', () => {
     const f = fake()
+    drive(f, 1, 0, 1)
+    flow(f, 2)
+    f.tick()
+    expect(f.pub.drop_V).toBeCloseTo(3.7, 2)
+    flow(f, 0.14)
+    f.tick()
+    expect(f.pub.drop_V).toBeCloseTo(V0 + 0.14 * R, 2)
+  })
+
+  it('in EN-PWM the on-phase current is I/d_eff: loss Vce0·I + R·I²/d_eff, drop Vce0 + R·I/d_eff', () => {
+    expect(coastPwmLoss(0.5, 0.5, R, V0)).toBeCloseTo(V0 * 0.5 + R * 0.5, 6)
+    expect(coastPwmLoss(1, 0, R, V0)).toBe(0)
+    const f = fake({ pwmHz: 0 }) // no rise-time correction: d_eff = d
     drive(f, 1, 0, 0.5)
     flow(f, 0.5)
     f.tick()
-    expect(f.pub.drop_V).toBeCloseTo(1.85, 2)
-    expect(f.pub.bridge_W).toBeCloseTo(1.85 * 0.5 + 7.4 * 0.013, 3)
+    expect(f.pub.drop_V).toBeCloseTo(V0 + R, 2)
+    expect(f.pub.bridge_W).toBeCloseTo(V0 * 0.5 + R * 0.5 + 7.4 * IQ_HIGH, 3)
+  })
+
+  it('quiescent Vs current by state: 50 mA enabled with an input high, 13 mA inputs low, 4 mA EN low', () => {
+    const f = fake()
+    drive(f, 0, 0, 1) // brake: enabled, inputs low
+    f.tick()
+    expect(f.set['i_vs.value'] as number).toBeCloseTo(IQ_LOW, 3)
+    drive(f, 1, 0, 0) // EN low
+    f.tick()
+    expect(f.set['i_vs.value'] as number).toBeCloseTo(IQ_OFF, 3)
+    drive(f, 1, 0, 1)
+    f.tick()
+    expect(f.set['i_vs.value'] as number).toBeCloseTo(IQ_HIGH, 3)
   })
 
   it('brake loss is I²·R; coast has no bridge loss beyond the quiescent draw', () => {
@@ -244,10 +288,10 @@ describe('l298n: drop, heat and efficiency', () => {
     flow(f, 0)
     f.current.ha = 0.8
     f.tick()
-    expect(f.pub.bridge_W).toBeCloseTo(0.64 * 1.85 + 7.4 * 0.013, 3)
+    expect(f.pub.bridge_W).toBeCloseTo(0.64 * R + 7.4 * IQ_LOW, 3)
     drive(f, 1, 0, 0)
     f.tick()
-    expect(f.pub.bridge_W).toBeCloseTo(7.4 * 0.013, 4)
+    expect(f.pub.bridge_W).toBeCloseTo(7.4 * IQ_OFF, 4)
   })
 
   it('publishes the output rpm through the 48:1 gearbox', () => {
@@ -275,7 +319,7 @@ describe('l298n: thermal', () => {
     drive(f, 1, 0, 1)
     flow(f, 1)
     until(f, () => false, 15)
-    const p = 1.85 + 7.4 * 0.013
+    const p = 2.55 + 7.4 * IQ_HIGH
     expect(f.pub.tj).toBeCloseTo(25 + p * 19, 0)
     expect(f.pub.heatsink).toBe(1)
   })
@@ -285,9 +329,10 @@ describe('l298n: thermal', () => {
     drive(f, 1, 0, 1)
     f.nodeV.in3 = 5
     f.nodeV.in4 = 0
-    flow(f, 1.2)
-    f.current.hc = -1.2
-    f.current.m2 = 1.2
+    flow(f, 1)
+    f.current.hc = -1
+    f.current.m2 = 1
+    // 2 × 2.55 W + 7.4 × 50 mA ≈ 5.5 W → 25 + 5.5 × 35 ≈ 217 °C
     const t = until(f, () => f.pub.tsd_active === 1, 20)
     expect(f.pub.heatsink).toBe(0)
     expect(f.pub.tsd_active).toBe(1)
@@ -314,13 +359,13 @@ describe('l298n: thermal', () => {
     behavior.onEvent!(f.ctx, 'power-off')
     flow(f, 0)
     f.tick()
-    expect(f.pub.tj).toBeLessThan(30)
+    expect(f.pub.tj).toBeLessThan(35)
     flow(f, 2)
     f.tick()
     behavior.reset!(f.ctx)
     flow(f, 0)
     f.tick()
-    expect(f.pub.tj).toBeLessThan(30)
+    expect(f.pub.tj).toBeLessThan(35)
   })
 })
 
@@ -332,7 +377,7 @@ describe('l298n: channel B', () => {
     f.nodeV.in4 = 5
     f.tick()
     expect(f.pub.mode_b).toBe(M.CCW)
-    expect(f.set['hd.value']).toBeCloseTo(7.4, 2)
+    expect(f.set['hd.value']).toBeCloseTo(7.4 - V0, 2)
     expect(f.set['hc.value']).toBe(0)
   })
 
@@ -346,8 +391,8 @@ describe('l298n: channel B', () => {
 })
 
 describe('l298n: flyback diodes and a dead bridge', () => {
-  it('EN-PWM with current flowing and no flyback diodes: the outputs open for one real off edge (the engine resolves the kick)', () => {
-    const f = fake({}, netlist({ diodes: false }))
+  it('EN-PWM with current flowing and no flyback diodes: the outputs open for one real off edge per drive command', () => {
+    const f = fake({ pwmHz: 0 }, netlist({ diodes: false }))
     drive(f, 1, 0, 0.4)
     flow(f, 0.3)
     f.tick()
@@ -356,10 +401,15 @@ describe('l298n: flyback diodes and a dead bridge', () => {
     expect(f.pub.kick_uJ).toBeCloseTo(0.5 * 5e-4 * 0.75 ** 2 * 1e6, 1)
     // the behavior never fails parts itself: the transient engine's maxV check does
     expect(f.burns).toEqual([])
-    // with the current gone, the next tick drives again (and the next edge kicks again)
-    flow(f, 0)
+    // latched: the same command does not kick again, however many frames follow
+    for (let k = 0; k < 5; k++) {
+      f.tick()
+      expect(f.set['en_a.closed']).toBe(true)
+    }
+    // a new duty is a new command: one more edge
+    drive(f, 1, 0, 0.6)
     f.tick()
-    expect(f.set['en_a.closed']).toBe(true)
+    expect(f.set['en_a.closed']).toBe(false)
   })
 
   it('with the diodes fitted, EN-PWM stays closed; full EN has no PWM edges', () => {
@@ -392,10 +442,10 @@ describe('l298n: flyback diodes and a dead bridge', () => {
     expect(f.pub.mode).toBe(M.DEAD)
     expect(f.pub.dead).toBe(1)
     expect(f.set['ha.value']).toBe(0)
-    expect(f.set['i_vs.value'] as number).toBeCloseTo(7.4 / 1.85 + 0.013, 2)
+    expect(f.set['i_vs.value'] as number).toBeCloseTo((7.4 - V0) / R + IQ_HIGH, 2)
     expect(f.pub.bridge_W).toBeGreaterThan(25)
     drive(f, 1, 0, 0) // EN low: everything off, no short
     f.tick()
-    expect(f.set['i_vs.value'] as number).toBeCloseTo(0.013, 3)
+    expect(f.set['i_vs.value'] as number).toBeCloseTo(IQ_OFF, 3)
   })
 })

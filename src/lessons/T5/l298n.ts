@@ -2,8 +2,8 @@
 //
 // Same averaged half-bridge model as `tb6612fng` (a V source = duty·Vs behind half the path
 // resistance, then a SW that opens for "off"), driven every tick by the `l298n` behavior. The
-// difference is the path: two saturated BJTs fitted as 0.925 Ω each (1.85 Ω total, typical
-// VCE(sat)), versus the TB6612's 0.5 Ω of MOSFETs. Channel B (OUT3/OUT4, motor m2) is always in
+// difference is the path: two saturated BJTs, fitted to the typical VCE(sat) as 1.4 V + 1.15 Ω per
+// path (2.55 V at 1 A), versus the TB6612's 0.5 Ω of MOSFETs. Channel B (OUT3/OUT4, motor m2) is always in
 // the netlist with IN3/IN4 pulled low and ENB jumpered (so it brakes, idle); failure F2 jumpers
 // IN3/IN4 to IN1/IN2 and shows the second motor. The driver ground is the battery negative
 // `bat_n`; `gnd_link` is the common-ground wire to the Uno.
@@ -12,12 +12,12 @@ import { PITCH, jumper } from '../layout'
 
 // ── bench layout (one 21 × 11.5 motor bench, as tb6612fng, so the two lessons compare) ──
 const UNO_AT: [number, number] = [6.3, 0.6] // rot 90: digital header toward the viewer
-const MOD: [number, number] = [1.0, 1.5] // the red 43 × 43 mm module
+const MOD: [number, number] = [1.2, 2.1] // the red 43 × 43 mm module
 const MOD_W = 4.3
 const TOP = 0.16 // module top surface (no standoff, 1.6 mm board)
 const BAT: [number, number] = [-3.7, 4.0] // 2S pack at the front left, rot 180: leads toward +x (the module)
 const MOT: [number, number] = [-7.0, -1.0] // same place and turn as in tb6612fng
-const MOT2: [number, number] = [3.5, -4.0] // the second motor (F2 only), behind the module
+const MOT2: [number, number] = [8.6, -5.0] // the second motor (F2 only), behind the Uno, clear of the L298
 
 const UNO_HEADER_Y = 0.16 + 0.85
 
@@ -57,10 +57,10 @@ const wire = (w: Wire, callout: [number, number, number]) => ({ ...w, params: { 
 // Schottky-class flyback diode (Vf ≈ 0.45 V at 1 A)
 const flyback = (id: string, a: string, k: string, partId: string): Element => ({ id, type: 'D', nodes: [a, k], is: 1e-6, n: 1.1, rs: 0.05, rating: { maxI: 3 }, partId })
 const pin = (n: number): Element => ({ id: `pin${n}`, type: 'PIN', nodes: [`d${n}`, '0'], pin: n, vcc: 5, partId: 'uno' })
-/** one output: source behind the fitted VCE(sat) (0.875 Ω + the closed SW's 0.05 Ω = 0.925 Ω), then the off-state switch (bipolar: avalanches near 60 V, approximate) */
+/** one output: source behind half the VCE(sat) slope (0.525 Ω + the closed SW's 0.05 Ω = 0.575 Ω; the behavior subtracts the 1.4 V offset from the driving source), then the off-state switch (bipolar: avalanches near 60 V, approximate) */
 const half = (h: string, rq: string, en: string, s: string, out: string): Element[] => [
   { id: h, type: 'V', nodes: [`${h}_i`, 'bat_n'], value: 0, partId: 'u1' },
-  { id: rq, type: 'R', nodes: [`${h}_i`, s], value: 0.875, rating: { maxI: 3 }, partId: 'u1' },
+  { id: rq, type: 'R', nodes: [`${h}_i`, s], value: 0.525, rating: { maxI: 3 }, partId: 'u1' },
   { id: en, type: 'SW', nodes: [s, out], closed: false, vBreak: 60, rating: { maxV: 50, failMode: 'short' }, partId: 'u1' },
 ]
 const GM48 = { r: 4, l: 0.5e-3, ke: 0.0054, kt: 0.0054, j: 3e-7, b: 8e-7, load: 0, rating: { maxI: 2 } }
@@ -130,7 +130,7 @@ export const lesson: LessonDef = {
   track: 'T5',
   title: 'L298N Module',
   subtitle: 'The hot classic',
-  tagline: "At 1 A the L298's bipolar output stage drops about 1.8 V (typical, up to 3.2 V worst case) and turns it into heat, nearly 4 times the TB6612's loss.",
+  tagline: "At 1 A the L298's bipolar output stage drops about 2.5 V (typical; 1.8 V best case, 3.2 V worst) and turns it into heat, about 5 times the TB6612's loss.",
 
   board: {
     name: 'MOTOR BENCH B',
@@ -164,7 +164,7 @@ export const lesson: LessonDef = {
         pos: m(0, -0.45),
         mount: 'tht',
         label: 'L298N',
-        role: 'Dual full-bridge with bipolar outputs. Vs up to 46 V, 2 A DC per bridge (3 A peak). Each conducting path is two saturated BJTs: about 1.8 V at 1 A.',
+        role: 'Dual full-bridge with bipolar outputs. Vs up to 46 V, 2 A DC per bridge (3 A peak). Each conducting path is two saturated BJTs: about 2.55 V at 1 A (typical).',
         params: { package: 'Multiwatt15', pins: 15, marking: 'L298N', sub: 'MULTIWATT15', callout: [2.2, 2.6, -1.6] },
         circuitIds: ['ha', 'hb', 'rq_a', 'rq_b', 'en_a', 'en_b', 'i_vs', 'hc', 'hd', 'rq_c', 'rq_d', 'en_c', 'en_d'],
       },
@@ -194,7 +194,7 @@ export const lesson: LessonDef = {
         kind: 'ic-smd',
         pos: m(-1.55, 1.2),
         mount: 'smd',
-        role: 'Makes 5 V for the L298 logic from Vs when the 5V-EN jumper is fitted. Keep Vs at 12 V or less with the jumper on, or it overheats.',
+        role: '78M05 linear regulator (DPAK; drawn here as a small SMD package). Makes 5 V for the L298 logic from Vs when the 5V-EN jumper is fitted. Keep Vs at 12 V or less with the jumper on, or it overheats.',
         params: { package: 'SOIC', pins: 8, marking: '78M05', callout: [-1.6, 1.0, 0.4] },
       },
       {
@@ -373,8 +373,10 @@ export const lesson: LessonDef = {
       id: 'l298n',
       params: {
         in1: 'd7', in2: 'd8', ena: 'd5', in3: 'in3', in4: 'in4', enb: '', gnd: 'bat_n', vs: 'vs', supply: 'i_vs', sink: 'hs_tab',
-        rTotal: 1.85, iq: 0.013, rthJC: 3, rthCS: 1, rthSA: 15, rthJA: 35,
-        tauTh: 4 /* time-compressed: a real module on its heatsink takes minutes */, tsd: 150, tsdHyst: 20, gear: 48,
+        vce0: 1.4, rTotal: 1.15 /* typical VCE(sat) fit per path: 2.55 V at 1 A, 3.7 V at 2 A */,
+        iqHigh: 0.05, iqLow: 0.013, iqOff: 0.004, pwmHz: 980, rthJC: 3, rthCS: 1, rthSA: 15, rthJA: 35,
+        tauTh: 4 /* time-compressed: a real module on its heatsink takes minutes */,
+        tsd: 150, tsdHyst: 20 /* approximate: the datasheet gives no threshold */, gear: 48,
       },
     },
     { id: 'mcu-supply', instance: 'mcu', params: { supplyNode: '5v', bor: 2.7, fClk: 16 } },
@@ -403,8 +405,8 @@ export const lesson: LessonDef = {
   statusLines: [
     { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: connect the battery too, then upload the sketch. Vs and the Uno\'s USB 5 V are separate supplies with one common ground.' },
     { when: { kind: 'state', is: 'RUNNING' }, text: 'RUNNING: compare MOTOR VOLTS ({1}) with BATTERY ({0}). The difference, {2}, is heat in the L298.' },
-    { when: { kind: 'above', readout: 2, value: 2 }, text: 'Over 2 V lost in the bridge ({2}): that is a quarter of a 2S pack.' },
-    { when: { kind: 'above', readout: 5, value: 130 }, text: 'L298 junction at {5}: overtemperature shutdown near 150 °C.' },
+    { when: { kind: 'above', readout: 2, value: 2.5 }, text: 'Over 2.5 V lost in the bridge ({2}): a third of a 2S pack, turned into heat.' },
+    { when: { kind: 'above', readout: 5, value: 130 }, text: 'L298 junction at {5}: overtemperature shutdown near 150 °C (approximate).' },
   ],
 
   failures: [
@@ -412,7 +414,7 @@ export const lesson: LessonDef = {
       id: 'no-flyback',
       label: 'Remove the flyback diodes',
       explain:
-        'The L298 has no internal diodes, so the datasheet requires external fast ones (trr ≤ 200 ns). Without them, the moment the outputs turn off with current flowing, the motor\'s 0.5 mH has nowhere to send its current: the voltage across the open output transistors jumps far above the 50 V absolute maximum and they fail short. With EN-PWM that happens at the first PWM off edge (here at the 20 % step); in a full coast (EN low) it happens at once. The bridge is then dead, and the next drive command shorts the battery through it: a few amps and some 30 W straight into the package. The energy per kick is tiny, ½ × 0.5 mH × (0.5 A)² ≈ 63 µJ, but it arrives at a voltage that punches through silicon.',
+        'The L298 has no internal diodes, so the datasheet requires external fast ones (trr ≤ 200 ns). Without them, the moment the outputs turn off with current flowing, the motor\'s 0.5 mH has nowhere to send its current: the voltage across the open output transistors jumps far above the 50 V absolute maximum and they fail short. With EN-PWM that happens at the first PWM off edge (here at the 20 % step); in a full coast (EN low) it happens at once. The bridge is then dead, and the next drive command shorts the battery through it: about 5 A and some 30–40 W straight into the package. The energy per kick is tiny, ½ × 0.5 mH × (0.5 A)² ≈ 63 µJ, but it arrives at a voltage that punches through silicon.',
       patches: DIODE_IDS.map(([id]) => ({ op: 'remove' as const, elementId: id })),
       parts: { hide: DIODE_PARTS },
     },
@@ -420,7 +422,7 @@ export const lesson: LessonDef = {
       id: 'two-motors-bare',
       label: 'Two motors at 1.5 A without the heatsink',
       explain:
-        'On 12 V with both channels loaded to about 1.5 A, the bridge burns about 2 × 1.5² × 1.85 ≈ 8.3 W. Without the heatsink (Rθja 35 °C/W) Tj heads for 25 + 8.3 × 35 ≈ 316 °C, so the overtemperature shutdown trips within seconds of the high-duty steps and the motors pulse on and off. Even with the heatsink (3 + 1 + 15 = 19 °C/W) it would settle near 25 + 8.3 × 19 ≈ 183 °C, still too hot. This module is only comfortable at well under 1 A per channel. The supply is 12 V because on 7.4 V the motor\'s stall current is only about 1.2 A.',
+        'On 12 V with both channels loaded to about 1.5 A, each path drops about 1.4 V + 1.5 A × 1.15 Ω ≈ 3.1 V (typical), so the bridge burns about 2 × 1.5 A × 3.1 V ≈ 9.4 W. Without the heatsink (Rθja 35 °C/W) Tj heads for 25 + 9.4 × 35 ≈ 350 °C, so the overtemperature shutdown trips within seconds of the high-duty steps and the motors pulse on and off. Even with the heatsink (3 + 1 + 15 = 19 °C/W) it would settle near 25 + 9.4 × 19 ≈ 200 °C, still too hot. This module is only comfortable at well under 1 A per channel. The supply is 12 V because on 7.4 V the motor\'s stall current is only about (7.4 − 1.4) / (4 + 1.15) ≈ 1.1 A.',
       patches: [
         { op: 'set', elementId: 'bat', key: 'value', value: 12 },
         { op: 'set', elementId: 'm1', key: 'load', value: 0.0075 },
@@ -435,17 +437,17 @@ export const lesson: LessonDef = {
       id: 'one-cell',
       label: 'Run it from a single Li-ion cell (3.7 V)',
       explain:
-        'With a 0.5 A load the motor gets about 3.7 − 0.5 × 2 ≈ 2.7 V. After the winding\'s own 0.5 A × 4 Ω, only about 0.7 V of back-EMF is left, so the output turns at roughly 26 rpm (unloaded on 7.4 V it does about 235 rpm). The bridge takes over a quarter of the battery\'s power. The drop is fixed in volts, so it takes a bigger share of a low supply; the datasheet also wants Vs ≥ VIH + 2.5 V, and the 78M05 is far below its dropout. A low-voltage robot needs a MOSFET driver (TB6612FNG, DRV8833).',
+        'With a light 0.3 A load the motor gets only about 3.7 − (1.4 + 0.3 × 1.15) ≈ 1.9 V. After the winding\'s own 0.3 A × 4 Ω, about 0.7 V of back-EMF is left, so the output turns at roughly 26 rpm (unloaded on 7.4 V it does about 190 rpm). The bridge and its quiescent current take about half of the battery\'s power, and a 0.5 A load would stall the motor outright. The drop is mostly fixed in volts, so it takes a bigger share of a low supply; the datasheet also wants Vs ≥ VIH + 2.5 V, and the 78M05 is far below its dropout. A low-voltage robot needs a MOSFET driver (TB6612FNG, DRV8833).',
       patches: [
         { op: 'set', elementId: 'bat', key: 'value', value: 3.7 },
-        { op: 'set', elementId: 'm1', key: 'load', value: 0.0026 },
+        { op: 'set', elementId: 'm1', key: 'load', value: 0.0015 },
       ],
     },
   ],
 
   meet: `The L298 is a 1980s bipolar design that is still everywhere, because the red module is cheap and tough. Each output is a pair of BJTs. A saturated BJT always has a **VCE(sat)** across it, and the motor current passes through two of them: one sourcing from Vs, one sinking to ground.
 
-From the datasheet (typical): source side **0.95 V** and sink side **0.85 V** at 1 A, a **total of 1.8 V**. The guaranteed maximum at 1 A is 3.2 V, and at 2 A it is up to 4.9 V.
+From the datasheet (typical): source side **1.35 V** and sink side **1.2 V** at 1 A, a **total of about 2.55 V**; at 2 A it is 2.0 + 1.7 = **3.7 V**. The best case at 1 A is 1.8 V (the minimum column), and the guaranteed maximum is 3.2 V at 1 A and 4.9 V at 2 A. The drop is mostly a fixed offset plus a little resistance: about **1.4 V + 1.15 Ω × I**, so even a lightly loaded motor loses 1.5 V.
 
 | EN | IN1 | IN2 | mode |
 |---|---|---|---|
@@ -454,40 +456,41 @@ From the datasheet (typical): source side **0.95 V** and sink side **0.85 V** at
 | H | IN1 = IN2 | | fast motor stop (brake) |
 | L | x | x | free-running stop (coast) |
 
-**Worked example:** a 7.4 V pack with the motor drawing 1 A. The motor sees 7.4 − 1.8 ≈ **5.6 V**, and the bridge dissipates 1.8 V × 1 A = **1.8 W**, so efficiency is about 5.6 / 7.4 ≈ **76 %**. The TB6612 at the same current loses 0.5 V and 0.5 W.
+**Worked example:** a 7.4 V pack with the motor drawing 1 A. The motor sees 7.4 − 2.55 ≈ **4.85 V**, and the bridge dissipates 2.55 V × 1 A ≈ **2.55 W**, so efficiency is about 4.85 / 7.4 ≈ **66 %**. The TB6612 at the same current loses 0.5 V and 0.5 W, about a fifth as much.
 
-**Heat:** Rθjc = 3 °C/W, Rθja = 35 °C/W without a heatsink. Two channels at 1 A give 3.6 W, so Tj ≈ 25 + 3.6 × 35 = **151 °C** bare. That is at the 150 °C limit, which is why the module has a heatsink.
+**Heat:** Rθjc = 3 °C/W, Rθja = 35 °C/W without a heatsink. Two channels at 1 A give about 5.1 W, so Tj ≈ 25 + 5.1 × 35 ≈ **204 °C** bare, far past the 150 °C maximum. With the module's heatsink (about 3 + 1 + 15 = 19 °C/W) it is 25 + 5.1 × 19 ≈ 122 °C. The chip has overtemperature protection, but the datasheet gives no threshold; the sim uses 150 °C with 20 °C of hysteresis (approximate).
 
 **Module quirks:** the L298 has no internal flyback diodes, so the module carries eight. Fit the 5V-EN jumper only when Vs ≤ 12 V, so the 78M05 does not overheat. Remove the ENA/ENB jumpers to PWM. VIH is 2.3 V minimum, so 3.3 V controllers can drive it.
 
 **PWM on EN coasts:** when EN goes low every transistor turns off, and the motor current dies away through the diodes. In the off part of each PWM cycle the motor floats at its own back-EMF, so the speed is not proportional to duty the way it is with the TB6612's drive/brake PWM: a lightly loaded motor already runs fast at 20 %.
 
-**Where it still fits:** 12–46 V supplies, where 2 V is a small fraction, and teaching kits.
+**Where it still fits:** 12–46 V supplies, where 2.5 V is a small fraction, and teaching kits.
 
-*Sim note:* each output is simulated as its average behind a resistor fitted to the typical VCE(sat) (0.925 Ω per transistor, 1.85 Ω per path). That fit is good near 1–2 A but underestimates the drop below about 0.3 A, where a real BJT's drop does not shrink to zero. In EN-PWM the averaged source is corrected for the coasting off phase (d·Vs + (1 − d)·back-EMF), and BRIDGE HEAT uses the on-phase current. Without flyback diodes the averaged model has no PWM edges, so the driver behavior fails the outputs at the first PWM off edge; a full turn-off is simulated by the engine. The junction's thermal time constant is time-compressed to 4 s (a real module on its heatsink takes minutes), so the shutdown shows within one sketch cycle. The 3D wheel turns slowed down for the eye.`,
+*Sim note:* each output is simulated as its average. The conducting path is fitted to the typical VCE(sat) as 1.4 V + 1.15 Ω (2.55 V at 1 A, 3.7 V at 2 A); brake uses the resistance only. In EN-PWM the averaged source is corrected for the coasting off phase (d·V_on + (1 − d)·back-EMF) and for the winding's rise time (τ = L/R ≈ 0.1 ms against a 0.2 ms on time at 20 %, so the effective duty is about 0.58 × d); the decay current in the off phase is ignored, so the speed at low duty reads somewhat low, within roughly ±15 % of a switched simulation. BRIDGE HEAT uses the on-phase current and a quiescent draw that depends on the inputs (4–50 mA). Without flyback diodes the averaged model has no PWM edges, so the driver behavior opens the outputs for one real off edge per drive command and the engine's transient does the rest. The junction's thermal time constant is time-compressed to 4 s (a real module on its heatsink takes minutes), so the shutdown shows within one sketch cycle. The 3D L298 is drawn as a TO-220 on its heatsink (the real Multiwatt15 has 15 staggered legs). The 3D wheel turns slowed down for the eye.`,
 
-  mechanicalAnalogy: `The TB6612 is a ball valve: wide open, the only loss is a little pipe friction (I·R). The L298 is a pressure-reducing check valve that always takes about 2 bar off the line whatever the flow, and that pressure drop times flow becomes heat in the valve body. On a 200 bar system nobody notices 2 bar. On a 7 bar system you have lost a quarter of your pressure.
+  mechanicalAnalogy: `The TB6612 is a ball valve: wide open, the only loss is a little pipe friction (I·R). The L298 is a pressure-reducing check valve that always takes about 1.5 bar off the line whatever the flow, plus a bit more as the flow rises, and that pressure drop times flow becomes heat in the valve body. On a 200 bar system nobody notices it. On a 7 bar system you have lost a third of your pressure.
 
-**Where it breaks:** a BJT's drop does rise with current (it is part resistive), and it also depends on temperature and part-to-part spread, so "2 V" is a rule of thumb, not a constant.`,
+**Where it breaks:** a BJT's drop also depends on temperature and part-to-part spread (1.8 to 3.2 V at 1 A on the datasheet), so "about 2.5 V" is a rule of thumb, not a constant.`,
 
   proTips: [
-    'Read saturation voltages from the max column for design and the typ column for expectations. On the L298 the gap (1.8 V typical versus 3.2 V max at 1 A) is the difference between a working robot and a sluggish one.',
-    'If you are stuck with an L298N, run it at a higher Vs and limit the PWM to the motor\'s rated voltage. The fixed 2 V drop then costs a smaller fraction.',
+    'Read saturation voltages from the max column for design and the typ column for expectations, and never design from the min column. On the L298 at 1 A that is 1.8 V best case, about 2.55 V typical and 3.2 V worst case: the difference between a working robot and a sluggish one.',
+    'If you are stuck with an L298N, run it at a higher Vs and limit the PWM to the motor\'s rated voltage. The mostly fixed 2–3 V drop then costs a smaller fraction.',
     'Check the flyback diodes with a meter\'s diode test: about 0.2–0.5 V one way for a Schottky, open the other. Cheap boards sometimes have missing or reversed parts.',
+    'Some clone modules fit "M7" (1N4007-class) rectifiers as the flyback diodes. Their reverse recovery is microseconds, far beyond the datasheet\'s trr ≤ 200 ns, so at every PWM edge they conduct backwards for a moment and the bridge and diodes run hot. Swap them for Schottkys (SS14, 1N5819) or ultrafast diodes (UF4007).',
   ],
 
   quiz: [
     {
-      q: 'A 7.4 V pack, the motor drawing 1 A, and a typical L298 total drop of 1.8 V. What voltage reaches the motor?',
-      options: ['1.8 V', '5.6 V', '6.9 V', '7.4 V'],
+      q: 'A 7.4 V pack, the motor drawing 1 A, and a typical L298 total drop of 2.55 V. What voltage reaches the motor?',
+      options: ['2.55 V', '4.85 V', '5.6 V', '7.4 V'],
       answer: 1,
-      why: '7.4 − 1.8 = 5.6 V.',
+      why: '7.4 − 2.55 ≈ 4.85 V. (5.6 V would need the datasheet\'s best-case 1.8 V.)',
     },
     {
-      q: 'Both channels at 1 A (1.8 W each) with no heatsink (Rθja 35 °C/W, ambient 25 °C). What is the junction temperature?',
-      options: ['63 °C', '88 °C', '151 °C', '252 °C'],
+      q: 'Both channels at 1 A (about 2.55 W each) with no heatsink (Rθja 35 °C/W, ambient 25 °C). What is the junction temperature?',
+      options: ['88 °C', '151 °C', '204 °C', '300 °C'],
       answer: 2,
-      why: 'Tj = 25 + 3.6 × 35 = 151 °C, at the limit, so a heatsink is required.',
+      why: 'Tj = 25 + 5.1 × 35 ≈ 204 °C, far past the 150 °C maximum, so the heatsink is required.',
     },
     {
       q: 'Why does the L298N module carry eight external diodes?',
@@ -502,9 +505,9 @@ From the datasheet (typical): source side **0.95 V** and sink side **0.85 V** at
     },
     {
       q: 'At 1 A from 7.4 V, roughly what is the bridge efficiency with the L298 versus a 0.5 Ω TB6612?',
-      options: ['76 % versus 93 %', '50 % versus 75 %', '93 % versus 76 %', 'Both about 99 %'],
+      options: ['66 % versus 93 %', '50 % versus 75 %', '93 % versus 66 %', 'Both about 99 %'],
       answer: 0,
-      why: 'L298: (7.4 − 1.8) / 7.4 ≈ 76 %. TB6612: (7.4 − 0.5) / 7.4 ≈ 93 %.',
+      why: 'L298: (7.4 − 2.55) / 7.4 ≈ 66 %. TB6612: (7.4 − 0.5) / 7.4 ≈ 93 %.',
     },
   ],
 }
