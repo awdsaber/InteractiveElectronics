@@ -12,7 +12,7 @@ const PREFIXES: [number, string][] = [
 ]
 
 /** units that read wrong with SI prefixes ("1.5 krpm") */
-const NO_PREFIX = new Set(['rpm', '°', '°C', 'cm', '%'])
+const NO_PREFIX = new Set(['rpm', '°', '°C', 'cm', '%', 'steps'])
 
 function fixed(m: number, digits: number): string {
   const mag = m === 0 ? 0 : Math.floor(Math.log10(Math.abs(m)))

@@ -1,6 +1,7 @@
 // Motion parts: brushed DC motor, TT gear motor with wheel, micro servo,
 // NEMA 17 stepper. Shafts spin from state.rpm (live) or params.rpm.
 
+import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import * as THREE from 'three'
 import type { Group } from 'three'
@@ -141,10 +142,35 @@ function ServoBody({ part, state }: PartProps) {
 const nemaCapGeo = () => geo('nema17-cap', () => extrudeUp(chamferRectShape(4.23, 4.23, 0.45), 0.8, 2))
 const nemaSlabGeo = () => geo('nema17-slab', () => extrudeUp(chamferRectShape(4.13, 4.13, 0.42), 0.36, 2))
 
+/**
+ * Shaft angle, rad, `since` seconds after a snapshot that said `deg` at `rpm`: snapshots arrive at
+ * ~15 Hz, so the angle runs on at the published speed in between (at most 0.1 s ahead).
+ */
+export function stepperShaftAngle(deg: number, rpm: number, since: number): number {
+  const t = Math.min(Math.max(0, since), 0.1)
+  return ((deg + rpm * 6 * t) * Math.PI) / 180
+}
+
 function StepperBody(props: PartProps) {
-  const { part } = props
+  const { part, state } = props
   const shaft = useRef<Group>(null)
-  useSpin(shaft, rpmOf(props), 'y')
+  // state.value (shaft degrees from a behavior, see Board params.angleKey) sets the angle directly;
+  // otherwise the shaft just spins at state.rpm
+  const angleMode = state.value !== undefined
+  useSpin(shaft, angleMode ? 0 : rpmOf(props), 'y')
+  const snap = useRef({ deg: 0, rpm: 0, at: 0 })
+  if (angleMode && (state.value !== snap.current.deg || (state.rpm ?? 0) !== snap.current.rpm)) {
+    snap.current.deg = state.value ?? 0
+    snap.current.rpm = state.rpm ?? 0
+    snap.current.at = performance.now()
+  }
+  useFrame(() => {
+    const o = shaft.current
+    if (!o || !angleMode) return
+    const s = snap.current
+    // positive = clockwise seen from the shaft end (+y)
+    o.rotation.y = -stepperShaftAngle(s.deg, s.rpm, (performance.now() - s.at) / 1000)
+  })
   const slabs: InkInstance[] = Array.from({ length: 6 }, (_, i) => ({ p: [0, 0.82 + i * 0.4, 0] }))
   const top = 4.0
   return (
