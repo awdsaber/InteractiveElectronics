@@ -45,12 +45,12 @@ export type Board = Sketch['board']
 
 /** An I²C target on the virtual bus (a sensor or driver behaviour). */
 export interface I2cDevice {
+  /** false: the device does not acknowledge its address right now (bus fault, wrong address jumper); default true */
+  ack?(): boolean
   /** bytes the master wrote in one transmission (beginTransmission .. endTransmission) */
   write?(bytes: number[]): void
   /** the master asks for `n` bytes (requestFrom); return up to n */
   read?(n: number): number[]
-  /** false: the device is attached but does not answer right now (NACK), e.g. a dead bus or another address */
-  ack?(): boolean
 }
 
 export interface SpiSettingsLike {
@@ -1010,10 +1010,9 @@ export class VirtualMcu {
         return 0
       },
       requestFrom: (addr: number, n: number) => {
-        const found = mcu.i2c.get(Math.trunc(addr) & 0x7f)
-        const dev = found && found.ack?.() !== false ? found : undefined
+        const dev = mcu.i2c.get(Math.trunc(addr) & 0x7f)
         const want = Math.max(0, Math.trunc(n))
-        rxBuf = dev ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
+        rxBuf = dev && dev.ack?.() !== false ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
         return rxBuf.length
       },
       available: () => rxBuf.length,
