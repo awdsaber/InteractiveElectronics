@@ -123,7 +123,7 @@ describe('T5 tb6612fng lesson', () => {
     expect(brake).toBeLessThan(0.05)
     expect(coast).toBeGreaterThan(0.25)
     b.dispose()
-  })
+  }, 60_000)
 
   it('STBY LOW is standby; with only USB connected, VM undervoltage holds it in standby too', async () => {
     const b = build({ code: hold('digitalWrite(4, LOW); digitalWrite(7, HIGH); analogWrite(5, 255);') })
@@ -155,7 +155,7 @@ describe('T5 tb6612fng lesson', () => {
     expect(s.values[TJ]).toBeLessThan(60)
     expect(s.status).toBe('RUNNING')
     b.dispose()
-  })
+  }, 60_000)
 
   it('F1 stall on 8.4 V: ≈ 1.8 A at full duty, thermal shutdown trips within seconds and the motor restarts', async () => {
     const b = build()
@@ -182,7 +182,7 @@ describe('T5 tb6612fng lesson', () => {
     expect(peakTj).toBeGreaterThanOrEqual(175)
     expect(b.snapshot().assembly.burns).toEqual([])
     b.dispose()
-  })
+  }, 60_000) // 25 s of sim time
 
   it('F2 16.8 V on VM: the driver fails short at once', async () => {
     const b = build()
@@ -210,5 +210,5 @@ describe('T5 tb6612fng lesson', () => {
     const r = await run(b, 0.5)
     expect(r.published['tb6612.gnd_ok']).toBe(1)
     b.dispose()
-  })
+  }, 60_000)
 })

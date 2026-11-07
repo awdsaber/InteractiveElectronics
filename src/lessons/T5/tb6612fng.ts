@@ -10,7 +10,9 @@ import { PITCH, jumper } from '../layout'
 const UNO_AT: [number, number] = [6.3, 0.6] // rot 90: digital header toward the viewer, USB to the right
 const HDR: [number, number] = [0.9, 2.6] // 2 × 8 header, rot 90: pins run along z
 const BAT: [number, number] = [-0.4, -2.35] // 4 × AA behind the driver, rot 90: leads toward it
-const MOT: [number, number] = [-5.2, 2.0] // TT gear motor at the front, rot 0: wheel facing the viewer
+// TT gear motor at the left, rot 90: the wheel face looks toward +x (the camera) and sits behind
+// the driver, the can points to the front so its leads run along the front edge to AO1/AO2
+const MOT: [number, number] = [-7.0, -1.0]
 
 const UNO_HEADER_Y = 0.16 + 0.85
 const HDR_TOP = 0.85
@@ -31,9 +33,10 @@ function hdrPin(row: 0 | 1, i: number): [number, number, number] {
 // battery pack leads (part-local ends at (-4.1, -0.1) red and (-4.05, 0.45) black), rotated 90°
 const BAT_RED: [number, number, number] = [BAT[0] - 0.1, 0.06, BAT[1] + 4.1]
 const BAT_BLACK: [number, number, number] = [BAT[0] + 0.45, 0.06, BAT[1] + 4.05]
-// motor terminals on the can's end cap (part-local x ≈ -5.3, z = -0.95 ± 0.35)
-const MOT_T1: [number, number, number] = [MOT[0] - 5.3, 3.35, MOT[1] - 0.95 - 0.35]
-const MOT_T2: [number, number, number] = [MOT[0] - 5.3, 3.35, MOT[1] - 0.95 + 0.35]
+// motor terminals on the can's end cap (part-local x ≈ -5.3, z = -0.95 ± 0.35), rotated 90°:
+// world = (px + lz, pz - lx)
+const MOT_T1: [number, number, number] = [MOT[0] - 0.95 - 0.35, 3.35, MOT[1] + 5.3]
+const MOT_T2: [number, number, number] = [MOT[0] - 0.95 + 0.35, 3.35, MOT[1] + 5.3]
 
 type Wire = ReturnType<typeof jumper>
 const wire = (w: Wire, callout: [number, number, number]) => ({ ...w, params: { ...w.params, callout } })
@@ -151,7 +154,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'DRIVER',
         role: 'The carrier area for the IC: bridge, decoupling and the 2 × 8 pin header.',
-        params: { text: 'TB6612FNG CARRIER', size: 0.2, callout: [0.2, 0.8, 0.7] },
+        params: { text: 'TB6612FNG CARRIER', size: 0.2, callout: [0.6, 0.4, 1.4] },
       },
       {
         id: 'u1',
@@ -161,7 +164,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'TB6612FNG',
         role: 'Dual H-bridge. Each output stage is a pair of MOSFETs (with body diodes) plus logic, thermal shutdown and low-voltage lockout.',
-        params: { package: 'SSOP', pins: 24, marking: 'TB6612\nFNG', callout: [-0.9, 1.3, 0] },
+        params: { package: 'SSOP', pins: 24, marking: 'TB6612\nFNG', callout: [-1.8, 2.2, -0.6] },
         circuitIds: ['ha', 'hb', 'ron_a', 'ron_b', 'en_a', 'en_b', 'i_vm'],
       },
       {
@@ -172,7 +175,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'VM CAP',
         role: 'Local decoupling on VM, 10 µF (the value varies by carrier).',
-        params: { size: '1206', callout: [0.1, 1.1, -0.9] },
+        params: { size: '1206', callout: [-0.6, 2.6, -2.4] },
       },
       {
         id: 'c_vcc',
@@ -182,7 +185,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'VCC CAP',
         role: 'Logic supply decoupling, 100 nF.',
-        params: { size: '0603', callout: [-0.4, 0.9, 0.9] },
+        params: { size: '0603', callout: [-0.1, 1.5, 0.9] },
       },
       {
         id: 'hdr',
@@ -192,7 +195,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'PINS',
         role: 'VM, VCC, GND, AO1/2, BO1/2 on one row; PWMA/B, AIN1/2, BIN1/2, STBY on the other.',
-        params: { pins: 8, rows: 2, callout: [0.9, 1.4, -0.9] },
+        params: { pins: 8, rows: 2, callout: [2.4, 1.8, -0.8] },
       },
       {
         id: 'c_bulk',
@@ -201,7 +204,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'BULK CAP',
         role: 'Supplies the current pulses of PWM so the battery leads don\'t have to (100 µF, 16 V).',
-        params: { d: 0.63, h: 1.1, callout: [-0.7, 1.2, 0.5] },
+        params: { d: 0.63, h: 1.1, callout: [-2.6, 0.5, 1.0] },
         circuitIds: ['c_vm'],
       },
       {
@@ -219,10 +222,11 @@ export const lesson: LessonDef = {
         id: 'mot',
         kind: 'gear-motor-wheel',
         pos: [MOT[0], 0, MOT[1]],
+        rot: 90,
         mount: 'offboard',
         label: 'GEAR MOTOR',
         role: 'GM-48, the course\'s representative 6 V gear motor: 4 Ω winding, ~150 mA no-load, ~250 mA typical, 1.5 A stall at 6 V.',
-        params: { marking: '1:48', callout: [1.2, 0.5, 1.6] },
+        params: { marking: '1:48', callout: [-3.0, -1.6, 0.6] },
         circuitIds: ['m1'],
       },
       { id: 'w_pwm', kind: 'wire', ...wire(jumper(unoDigital(5), hdrPin(1, 0), 'yellow', 0.7), [0.6, 0.9, 0.4]), mount: 'offboard', role: 'Pin 5 (PWM, ~980 Hz) to PWMA.' },
@@ -230,7 +234,7 @@ export const lesson: LessonDef = {
       { id: 'w_ain1', kind: 'wire', ...wire(jumper(unoDigital(7), hdrPin(1, 2), 'blue', 0.8), [0.2, 0.8, 0]), mount: 'offboard', role: 'Pin 7 to AIN1.' },
       { id: 'w_stby', kind: 'wire', ...wire(jumper(unoDigital(4), hdrPin(1, 3), 'white', 0.6), [0, 0.7, -0.2]), mount: 'offboard', role: 'Pin 4 to STBY: HIGH wakes the driver.' },
       { id: 'w_vcc', kind: 'wire', ...wire(jumper(unoPower(4), hdrPin(0, 1), 'red', 1.1), [0, 0.8, -0.4]), mount: 'offboard', role: 'Uno 5 V to the driver\'s logic supply VCC.' },
-      { id: 'w_gnd', kind: 'wire', ...wire(jumper(unoPower(5), hdrPin(1, 7), 'black', 0.9), [1.1, 0.9, 0.5]), mount: 'offboard', label: 'COMMON GND', role: 'The common ground: Uno GND to the driver GND (and so to the battery negative).' },
+      { id: 'w_gnd', kind: 'wire', ...wire(jumper(unoPower(5), hdrPin(1, 7), 'black', 0.9), [2.4, 0.3, 1.4]), mount: 'offboard', label: 'COMMON GND', role: 'The common ground: Uno GND to the driver GND (and so to the battery negative).' },
       { id: 'w_vm', kind: 'wire', ...wire(jumper(BAT_RED, hdrPin(0, 0), 'red', 0.7), [0, 0.6, 0.3]), mount: 'offboard', role: 'Battery + to VM.' },
       { id: 'w_bgnd', kind: 'wire', ...wire(jumper(BAT_BLACK, hdrPin(0, 2), 'black', 0.6), [-0.2, 0.5, 0.2]), mount: 'offboard', role: 'Battery − to the driver GND.' },
       { id: 'w_ao1', kind: 'wire', ...wire(jumper(MOT_T1, hdrPin(0, 3), 'orange', 0.4), [0, 0.5, 0]), mount: 'offboard', role: 'AO1 to the motor\'s + terminal.' },
@@ -283,7 +287,7 @@ export const lesson: LessonDef = {
   behaviors: [
     {
       id: 'tb6612',
-      params: { in1: 7, in2: 8, pwm: 5, stby: 4, gnd: 'bat_n', vm: 'vm', vcc: '5v', supply: 'i_vm', ronTotal: 0.5, rthJA: 140, tauTh: 2, tsd: 175, gear: 48, pwmHz: 980 },
+      params: { in1: 7, in2: 8, pwm: 5, stby: 4, gnd: 'bat_n', vm: 'vm', vcc: '5v', supply: 'i_vm', ronTotal: 0.5, rthJA: 140, tauTh: 2 /* time-compressed (a real breakout is tens of seconds) */, tsd: 175, gear: 48, pwmHz: 980 },
     },
   ],
 
@@ -307,8 +311,8 @@ export const lesson: LessonDef = {
   statusLines: [
     { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: connect the battery too, then upload the sketch. Below 2.5 V on VM the driver stays in undervoltage lockout. VM and the Uno\'s 5 V are separate supplies with one common ground.' },
     { when: { kind: 'state', is: 'RUNNING' }, text: 'RUNNING: the sketch cycles CW, brake, CCW and coast; {3} at the wheel, {0} in the motor.' },
-    { when: { kind: 'above', readout: 0, value: 1.2 }, text: 'WARNING: {0} is above the 1.2 A average rating: the driver is heating.' },
-    { when: { kind: 'below', readout: 0, value: -1.2 }, text: 'WARNING: {0} is above the 1.2 A average rating: the driver is heating.' },
+    { when: { kind: 'above', readout: 0, value: 1.2 }, text: 'WARNING: the motor current ({0}) is above the 1.2 A average rating in magnitude: the driver is heating.' },
+    { when: { kind: 'below', readout: 0, value: -1.2 }, text: 'WARNING: the motor current ({0}, reversed) is above the 1.2 A average rating in magnitude: the driver is heating.' },
     { when: { kind: 'above', readout: 4, value: 150 }, text: 'WARNING: driver Tj {4} is above 150 °C: thermal shutdown is close.' },
   ],
 
@@ -317,7 +321,7 @@ export const lesson: LessonDef = {
       id: 'stall-2s',
       label: 'Stall it on a fresh 2S Li-ion pack (8.4 V)',
       explain:
-        'With the wheel locked, about 8.4 / (4 + 0.5 + 0.1) ≈ 1.8 A flows at full duty, above the 1.2 A average rating though below the 3.2 A peak. Driver loss ≈ 1.8² × 0.5 ≈ 1.6 W, so Tj heads for 25 + 1.6 × 140 ≈ 250 °C. Thermal shutdown trips within seconds, the motor stops and restarts, and the cycle repeats. The IC protects itself, but repeated cycling stresses it: limit PWM when VM is above the motor\'s rating, add current sensing, or use a bigger driver.',
+        'With the wheel locked, about 8.4 / (4 + 0.5 + 0.1) ≈ 1.8 A flows at full duty, above the 1.2 A average rating. The 3.2 A figure is a pulse rating (~10 ms), not a stall allowance. Driver loss ≈ 1.8² × 0.5 ≈ 1.6 W, so Tj heads for 25 + 1.6 × 140 ≈ 250 °C. Thermal shutdown trips within seconds, the motor stops and restarts, and the cycle repeats. The IC protects itself, but repeated cycling stresses it: limit PWM when VM is above the motor\'s rating, add current sensing, or use a bigger driver.',
       patches: [
         { op: 'set', elementId: 'bat', key: 'value', value: 8.4 },
         { op: 'set', elementId: 'bat', key: 'rInternal', value: 0.1 },
@@ -353,7 +357,7 @@ The TB6612FNG builds each switch from a MOSFET. Toshiba gives about **0.5 Ω** f
 | L | L | H | H | stop (high-Z) |
 | x | x | x | L | standby |
 
-**Ratings:** VM 2.5–13.5 V (15 V absolute), VCC 2.7–5.5 V (3.3 V logic works), **1.2 A average** and 3.2 A peak per channel, PWM up to 100 kHz.
+**Ratings:** VM 2.5–13.5 V (15 V absolute), VCC 2.7–5.5 V (3.3 V logic works), **1.2 A average** per channel (3.2 A is a pulse rating, ~10 ms), PWM up to 100 kHz.
 
 **Worked stall:** a 4 Ω motor on a 6 V AA pack (0.6 Ω) gives I = 6 / (4 + 0.5 + 0.6) = **1.18 A**, right at the rating. On an 8.4 V Li-ion pack it is 1.8 A, too much for a held stall.
 
@@ -363,7 +367,7 @@ The TB6612FNG builds each switch from a MOSFET. Toshiba gives about **0.5 Ω** f
 
 Body diodes in each MOSFET catch the motor's inductive kick, so no external flyback diodes are needed. A 100 µF bulk capacitor on VM is still a must.
 
-*Sim note:* each half-bridge is simulated as its average (duty × VM behind Ron/2), so the readouts show mean values without the PWM ripple. The 3D wheel turns with the motor, slowed down for the eye.`,
+*Sim note:* each half-bridge is simulated as its average (duty × VM behind Ron/2), so the current and voltage readouts show mean values. BRIDGE LOSS and DRIVER Tj add the PWM ripple analytically, from the duty, VM, the winding's R and L and the 980 Hz PWM. The die's thermal time constant is time-compressed to 2 s (a real breakout takes tens of seconds), so thermal shutdown shows within one sketch cycle. The 3D wheel turns with the motor, slowed down for the eye.`,
 
   mechanicalAnalogy: `An H-bridge is a 4-way, 3-position directional valve for a hydraulic motor. The diagonal pairs are the A→B and B→A spool positions. Short brake is the "motor ports connected" centre position, where the motor pumps against itself and stops fast. Coast is the "float" centre. PWM is a proportional valve dithering fast enough that the motor's inertia sees only the average flow.
 

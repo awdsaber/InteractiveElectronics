@@ -131,7 +131,7 @@ describe('tb6612: half-bridge outputs', () => {
     drive(f, 0, 1, 128 / 255)
     f.tick()
     expect(f.set['ha.value']).toBe(0)
-    expect(f.set['hb.value']).toBeCloseTo((128 / 255) * 6, 6)
+    expect(f.set['hb.value']).toBeCloseTo((128 / 255) * 6, 3) // rounded to 1 mV
     expect(f.pub.mode).toBe(MODE.CCW)
     expect(f.pub.duty).toBeCloseTo(128 / 255, 6)
   })
@@ -175,6 +175,28 @@ describe('tb6612: half-bridge outputs', () => {
     f.pin(5, 1)
     f.tick()
     expect(f.pub.mode).toBe(MODE.CW)
+  })
+
+  it('pwm: -1 means PWM tied high (full duty)', () => {
+    const f = fake({ pwm: -1 })
+    f.pin(4, 1)
+    f.pin(7, 1)
+    f.pin(8, 0)
+    f.tick()
+    expect(f.pub.mode).toBe(MODE.CW)
+    expect(f.pub.duty).toBe(1)
+    expect(f.set['ha.value']).toBeCloseTo(6, 9)
+  })
+
+  it('rounds the source value to 1 mV, so a sagging VM does not change it every frame', () => {
+    const f = fake()
+    drive(f, 1, 0, 0.5)
+    f.nodeV.vm = 6.00031
+    f.tick()
+    expect(f.set['ha.value']).toBeCloseTo(3.0, 9)
+    f.nodeV.vm = 5.99988
+    f.tick()
+    expect(f.set['ha.value']).toBeCloseTo(3.0, 9)
   })
 
   it('undervoltage lockout: VM < 2.5 V or VCC < 2.7 V puts the bridge in standby', () => {
@@ -353,7 +375,9 @@ describe('tb6612: two channels, several instances', () => {
     expect(f.pub.duty_b).toBeCloseTo(0.5, 6)
     expect(f.pub.rpm_out_b).toBeCloseTo(-100, 6)
     expect(f.set['i_vm.value']).toBeCloseTo(1 + 0.25 + 0.001, 6)
-    expect(f.pub.bridge_W).toBeGreaterThan(0.5)
+    // A: 1 A at full duty, 0.5 W. B: 0.5 A at D = 0.5 into 4 Ω with no L (square ripple):
+    // 0.5 × (0.25 + 0.25 × (6 / 4.5)²) = 0.34722 W
+    expect(f.pub.bridge_W).toBeCloseTo(0.5 + 0.5 * (0.25 + 0.25 * (6 / 4.5) ** 2), 9)
   })
 
   it('channel B is optional: without its params nothing of channel B is touched or published', () => {

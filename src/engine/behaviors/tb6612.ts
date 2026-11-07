@@ -9,13 +9,14 @@
 // the ripple only enters the I²R heating (see bridgeLoss).
 //
 // Params (defaults in brackets; channel A uses the curriculum's names):
-//   pins     in1 [7], in2 [8], pwm [5], stby [4] (-1: tied high); channel B: bin1, bin2, pwmb [-1: unused]
+//   pins     in1 [7], in2 [8], pwm [5], stby [4]; channel B: bin1, bin2, pwmb. stby, pwm and pwmb = -1
+//            mean tied high; an IN pin of -1 (or with no PIN element) reads LOW, like the internal pull-downs
 //   elements out1 ['ha'], out2 ['hb'], en1 ['en_a'], en2 ['en_b'], motor ['m1'];
 //            channel B: bout1, bout2, ben1, ben2, bmotor (channel B runs only when bout1 and bout2 exist)
 //            supply ['i_vm']: I source from VM to gnd for the bridge draw ('' for none)
 //   nodes    vm ['vm'], vcc ['5v'], gnd ['0']: the driver's ground; logic inputs are read against it
 //   numbers  ronTotal [0.5 Ω, upper + lower, typ], iq [0.001 A from VM], rthJA [140 °C/W],
-//            tauTh [2 s], tsd [175 °C], tsdHyst [20 °C], vmMin [2.5 V], vccMin [2.7 V],
+//            tauTh [2 s: time-compressed, a real breakout is tens of seconds], tsd [175 °C], tsdHyst [20 °C], vmMin [2.5 V], vccMin [2.7 V],
 //            pwmHz [980: ripple in the heating, 0 = smooth current], gear [1: rpm_out = motor rpm / gear],
 //            seed [1: the random chatter of a missing ground]
 // Publishes: mode (0 standby, 1 CW, 2 CCW, 3 brake, 4 coast), duty, motor_A, rpm_out, and with
@@ -66,6 +67,16 @@ interface Channel {
   en1: string
   en2: string
   motor: string
+  // publish keys, built once per channel
+  kMode: string
+  kDuty: string
+  kMotor: string
+  kRpm: string
+  /** the MOTOR's extra key for its rpm */
+  kRpmExtra: string
+  // per-tick scratch, so tick allocates nothing
+  mode: Mode
+  d: number
 }
 
 interface ChatterState {
@@ -81,7 +92,13 @@ interface State {
   latch: Map<number, boolean>
   rng: () => number
   chatter: ChatterState[]
+  /** channels resolved for `chNet` (rebuilt only when the netlist object changes) */
+  chs: Channel[]
+  chNet: Netlist | null
 }
+
+/** the random states a floating input set lands in (coast twice as likely) */
+const CHATTER_PICK: readonly Mode[] = [MODE.CW, MODE.CCW, MODE.BRAKE, MODE.COAST, MODE.COAST, MODE.STANDBY]
 
 const states = new WeakMap<BehaviorContext, State>()
 
@@ -109,7 +126,7 @@ const str = (ctx: BehaviorContext, k: string, d: string): string => {
 function state(ctx: BehaviorContext): State {
   let s = states.get(ctx)
   if (!s) {
-    s = { tj: T_AMB, tsd: false, latch: new Map(), rng: prng(num(ctx, 'seed', 1)), chatter: [] }
+    s = { tj: T_AMB, tsd: false, latch: new Map(), rng: prng(num(ctx, 'seed', 1)), chatter: [], chs: [], chNet: null }
     states.set(ctx, s)
   }
   return s
@@ -161,37 +178,84 @@ function netInfo(net: Netlist): NetInfo {
 const curOf = (s: Solution, id: string) => (s.currentOf ? s.currentOf(id) : (s.current[id] ?? 0))
 const extraOf = (s: Solution, id: string, key: string) => (s.extraOf ? s.extraOf(id, key) : (s.extra[key] ?? 0))
 
-function channels(ctx: BehaviorContext, info: NetInfo): Channel[] {
-  const out: Channel[] = [
-    {
-      suffix: '',
-      in1: num(ctx, 'in1', 7),
-      in2: num(ctx, 'in2', 8),
-      pwm: num(ctx, 'pwm', 5),
-      out1: str(ctx, 'out1', 'ha'),
-      out2: str(ctx, 'out2', 'hb'),
-      en1: str(ctx, 'en1', 'en_a'),
-      en2: str(ctx, 'en2', 'en_b'),
-      motor: str(ctx, 'motor', 'm1'),
-    },
-  ]
+function channel(suffix: '' | '_b', pins: [number, number, number], ids: [string, string, string, string, string]): Channel {
+  const [in1, in2, pwm] = pins
+  const [out1, out2, en1, en2, motor] = ids
+  return {
+    suffix,
+    in1,
+    in2,
+    pwm,
+    out1,
+    out2,
+    en1,
+    en2,
+    motor,
+    kMode: `mode${suffix}`,
+    kDuty: `duty${suffix}`,
+    kMotor: suffix ? 'motor_b_A' : 'motor_A',
+    kRpm: `rpm_out${suffix}`,
+    kRpmExtra: `${motor}.rpm`,
+    mode: MODE.STANDBY,
+    d: 0,
+  }
+}
+
+/** this context's channels, resolved once per netlist object (channel B needs its elements) */
+function channels(ctx: BehaviorContext, st: State, info: NetInfo, net: Netlist): Channel[] {
+  if (st.chNet === net) return st.chs
   const b1 = str(ctx, 'bout1', '')
   const b2 = str(ctx, 'bout2', '')
-  if (b1 && b2 && info.els.has(b1) && info.els.has(b2)) {
-    out.push({
-      suffix: '_b',
-      in1: num(ctx, 'bin1', -1),
-      in2: num(ctx, 'bin2', -1),
-      pwm: num(ctx, 'pwmb', -1),
-      out1: b1,
-      out2: b2,
-      en1: str(ctx, 'ben1', ''),
-      en2: str(ctx, 'ben2', ''),
-      motor: str(ctx, 'bmotor', ''),
-    })
+  const withB = !!b1 && !!b2 && info.els.has(b1) && info.els.has(b2)
+  st.chNet = net
+  // a new netlist object (every live parameter change) keeps the channels unless channel B came or went
+  if (st.chs.length === (withB ? 2 : 1)) return st.chs
+  const out = [
+    channel(
+      '',
+      [num(ctx, 'in1', 7), num(ctx, 'in2', 8), num(ctx, 'pwm', 5)],
+      [str(ctx, 'out1', 'ha'), str(ctx, 'out2', 'hb'), str(ctx, 'en1', 'en_a'), str(ctx, 'en2', 'en_b'), str(ctx, 'motor', 'm1')],
+    ),
+  ]
+  if (withB) {
+    out.push(
+      channel(
+        '_b',
+        [num(ctx, 'bin1', -1), num(ctx, 'bin2', -1), num(ctx, 'pwmb', -1)],
+        [b1, b2, str(ctx, 'ben1', ''), str(ctx, 'ben2', ''), str(ctx, 'bmotor', '')],
+      ),
+    )
   }
+  st.chs = out
   return out
 }
+
+/** logic level of an input against VIH/VIL; between them it keeps its last level */
+function level(ctx: BehaviorContext, st: State, info: NetInfo, pin: number, gnd: string, vih: number, vil: number): boolean {
+  const p = info.pinNode.get(pin)
+  if (pin < 0 || !p) return false // TB6612 inputs have internal pull-downs
+  const v = ctx.v(p.node, gnd)
+  const prev = st.latch.get(pin) ?? false
+  const now = v >= vih ? true : v <= vil ? false : prev
+  st.latch.set(pin, now)
+  return now
+}
+
+/** duty seen on a PWM input; pin -1 means tied high */
+function dutyOf(ctx: BehaviorContext, st: State, info: NetInfo, pin: number, gnd: string, vih: number, vil: number): number {
+  if (pin < 0) return 1
+  const p = info.pinNode.get(pin)
+  const ps = ctx.pins[pin]
+  if (p && ps && (ps.mode === 'OUTPUT' || ps.mode === 'OUTPUT_OPEN_DRAIN')) {
+    // a PWM pin is an averaged voltage; trust its duty when the input really sees it
+    const v = ctx.v(p.node, gnd)
+    if (Math.abs(v - ps.level * p.vcc) < 0.2 * p.vcc) return Math.min(1, Math.max(0, ps.level))
+  }
+  return level(ctx, st, info, pin, gnd, vih, vil) ? 1 : 0
+}
+
+/** quantise live element values so a slowly sagging VM doesn't rebuild the netlist every frame */
+const quant = (x: number, step: number) => Math.round(x / step) * step
 
 function setHalf(ctx: BehaviorContext, info: NetInfo, src: string, en: string, value: number, closed: boolean): void {
   if (info.els.has(src)) ctx.setParam(src, 'value', value)
@@ -201,7 +265,7 @@ function setHalf(ctx: BehaviorContext, info: NetInfo, src: string, en: string, v
 /** both halves of every channel high-Z, and no supply draw */
 function allOpen(ctx: BehaviorContext): void {
   const info = netInfo(ctx.netlist)
-  for (const ch of channels(ctx, info)) {
+  for (const ch of channels(ctx, state(ctx), info, ctx.netlist)) {
     setHalf(ctx, info, ch.out1, ch.en1, 0, false)
     setHalf(ctx, info, ch.out2, ch.en2, 0, false)
   }
@@ -230,58 +294,47 @@ export const behavior: Behavior = {
     const tsdOn = num(ctx, 'tsd', 175)
     const tsdOff = tsdOn - num(ctx, 'tsdHyst', 20)
 
-    // the logic inputs need the driver's ground tied to the controller's ground ('0')
+    // The inputs need the driver's ground tied to the controller's ground ('0'). This is a
+    // heuristic, not a solver feature, and it is fragile: the DC-path test is a union-find over
+    // the netlist graph (so a 1 GΩ input pin or any high-value resistor counts as a connection),
+    // and the voltage test |V(gnd)| <= 1 V relies on a floating island drifting away from 0 V,
+    // which a symmetric island held only by gmin might not do. Re-check both if the netlist
+    // around the driver ground changes.
     const gndOk = gnd === '0' || (info.root(gnd) === info.root('0') && Math.abs(ctx.v(gnd)) <= 1)
     const vm = ctx.v(vmNode, gnd)
     const vcc = ctx.v(vccNode, gnd)
     const vih = 0.7 * vcc
     const vil = 0.3 * vcc
-    const level = (pin: number): boolean => {
-      const p = info.pinNode.get(pin)
-      if (pin < 0 || !p) return false // TB6612 inputs have internal pull-downs
-      const v = ctx.v(p.node, gnd)
-      const prev = st.latch.get(pin) ?? false
-      const now = v >= vih ? true : v <= vil ? false : prev
-      st.latch.set(pin, now)
-      return now
-    }
-    const duty = (pin: number): number => {
-      const p = info.pinNode.get(pin)
-      const ps = ctx.pins[pin]
-      if (p && ps && (ps.mode === 'OUTPUT' || ps.mode === 'OUTPUT_OPEN_DRAIN')) {
-        // a PWM pin is an averaged voltage; trust its duty when the input really sees it
-        const v = ctx.v(p.node, gnd)
-        if (Math.abs(v - ps.level * p.vcc) < 0.2 * p.vcc) return Math.min(1, Math.max(0, ps.level))
-      }
-      return level(pin) ? 1 : 0
-    }
 
     const stbyPin = num(ctx, 'stby', 4)
     // with no ground reference VCC can't be measured either: the logic is erratic, not locked out
     const uvlo = vm < num(ctx, 'vmMin', 2.5) || (gndOk && vcc < num(ctx, 'vccMin', 2.7))
-    const stby = stbyPin < 0 ? true : level(stbyPin)
-    const chs = channels(ctx, info)
+    const stby = stbyPin < 0 ? true : level(ctx, st, info, stbyPin, gnd, vih, vil)
+    const chs = channels(ctx, st, info, ctx.netlist)
 
     // 1. decode each channel; its heat and VM draw come from the latest solution
     let loss = 0
     let draw = 0
-    const decoded = chs.map((ch, k) => {
+    for (let k = 0; k < chs.length; k++) {
+      const ch = chs[k]
       let mode: Mode
       let d: number
       if (!gndOk) {
         // undefined inputs: the outputs chatter at random
-        const c = (st.chatter[k] ??= { until: -1, mode: MODE.COAST, duty: 0 })
+        let c = st.chatter[k]
+        if (!c) c = st.chatter[k] = { until: -1, mode: MODE.COAST, duty: 0 }
         if (ctx.t >= c.until) {
-          const pick = [MODE.CW, MODE.CCW, MODE.BRAKE, MODE.COAST, MODE.COAST, MODE.STANDBY] as const
-          c.mode = pick[Math.floor(st.rng() * pick.length)]
+          c.mode = CHATTER_PICK[Math.floor(st.rng() * CHATTER_PICK.length)]
           c.duty = st.rng()
           c.until = ctx.t + 0.02 + st.rng() * 0.18
         }
         mode = uvlo ? MODE.STANDBY : c.mode
         d = c.duty
       } else {
-        mode = uvlo ? MODE.STANDBY : decode(level(ch.in1), level(ch.in2), stby)
-        d = mode === MODE.CW || mode === MODE.CCW ? duty(ch.pwm) : 0
+        const in1 = level(ctx, st, info, ch.in1, gnd, vih, vil)
+        const in2 = level(ctx, st, info, ch.in2, gnd, vih, vil)
+        mode = uvlo ? MODE.STANDBY : decode(in1, in2, stby)
+        d = mode === MODE.CW || mode === MODE.CCW ? dutyOf(ctx, st, info, ch.pwm, gnd, vih, vil) : 0
       }
       const motor = info.els.get(ch.motor)
       // in thermal shutdown the outputs are open: no loss, no draw
@@ -294,8 +347,9 @@ export const behavior: Behavior = {
         const lM = motor?.type === 'MOTOR' ? (motor.l ?? 0) : 0
         loss += bridgeLoss(iOut, d, Math.max(0, vm), ron, rM, lM, motor ? pwmHz : 0)
       }
-      return { mode, d, motor: !!motor }
-    })
+      ch.mode = mode
+      ch.d = d
+    }
 
     // 2. die temperature: first order toward Tamb + P·RthJA; thermal shutdown with hysteresis
     const tau = num(ctx, 'tauTh', 2)
@@ -304,23 +358,24 @@ export const behavior: Behavior = {
     if (!st.tsd && st.tj >= tsdOn) st.tsd = true
     else if (st.tsd && st.tj < tsdOff) st.tsd = false
 
-    // 3. set the half-bridges
-    chs.forEach((ch, k) => {
-      const { mode, d, motor } = decoded[k]
-      const out: Mode = st.tsd && mode !== MODE.STANDBY ? MODE.COAST : mode
-      const v = d * Math.max(0, vm)
-      const on = out === MODE.CW || out === MODE.CCW || out === MODE.BRAKE
+    // 3. set the half-bridges (source values rounded to 1 mV)
+    for (const ch of chs) {
+      const out: Mode = st.tsd && ch.mode !== MODE.STANDBY ? MODE.COAST : ch.mode
+      const driving = out === MODE.CW || out === MODE.CCW
+      const v = quant(ch.d * Math.max(0, vm), 1e-3)
+      const on = driving || out === MODE.BRAKE
       setHalf(ctx, info, ch.out1, ch.en1, out === MODE.CW ? v : 0, on)
       setHalf(ctx, info, ch.out2, ch.en2, out === MODE.CCW ? v : 0, on)
-      ctx.publish(`mode${ch.suffix}`, out)
-      ctx.publish(`duty${ch.suffix}`, out === MODE.CW || out === MODE.CCW ? d : 0)
-      ctx.publish(ch.suffix ? 'motor_b_A' : 'motor_A', motor ? curOf(s, ch.motor) : 0)
-      ctx.publish(`rpm_out${ch.suffix}`, motor ? extraOf(s, ch.motor, `${ch.motor}.rpm`) / gear : 0)
-    })
+      const motor = info.els.has(ch.motor)
+      ctx.publish(ch.kMode, out)
+      ctx.publish(ch.kDuty, driving ? ch.d : 0)
+      ctx.publish(ch.kMotor, motor ? curOf(s, ch.motor) : 0)
+      ctx.publish(ch.kRpm, motor ? extraOf(s, ch.motor, ch.kRpmExtra) / gear : 0)
+    }
 
-    // 4. the VM draw: the driving halves' share of the motor current, plus the quiescent current
+    // 4. the VM draw (rounded to 10 µA): the driving halves' share of the motor current, plus Iq
     const supply = str(ctx, 'supply', 'i_vm')
-    if (supply && info.els.has(supply)) ctx.setParam(supply, 'value', vm > 0.1 ? draw + num(ctx, 'iq', 0.001) : 0)
+    if (supply && info.els.has(supply)) ctx.setParam(supply, 'value', vm > 0.1 ? quant(draw + num(ctx, 'iq', 0.001), 1e-5) : 0)
 
     ctx.publish('vm_V', vm)
     ctx.publish('tj', st.tj)
