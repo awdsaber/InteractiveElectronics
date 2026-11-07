@@ -162,7 +162,7 @@ export const lessonSchema = z.object({
   quiz: z.array(z.object({ q: z.string().min(1), options: z.array(z.string()).min(2), answer: z.number().int(), why: z.string() })),
   behaviors: z.array(behaviorRef).optional(),
   transient: z.boolean().optional(),
-  sim: z.object({ dt: num.positive().optional(), method: z.enum(['be', 'trap']).optional(), stepsPerFrame: z.number().int().positive().optional() }).optional(),
+  sim: z.object({ dt: num.positive().optional(), method: z.enum(['be', 'trap']).optional(), stepsPerFrame: z.number().int().positive().optional(), edgeSubsteps: z.number().int().min(2).max(20).optional() }).optional(),
 })
 
 /**

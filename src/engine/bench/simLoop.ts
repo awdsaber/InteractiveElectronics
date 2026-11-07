@@ -286,7 +286,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
-        sim = createTransient(netlist, dt, { method: lesson.sim?.method })
+        sim = createTransient(netlist, dt, { method: lesson.sim?.method, edgeSubsteps: lesson.sim?.edgeSubsteps })
         for (const [p, st] of Object.entries(simPins)) sim.setPin(Number(p), st)
       } else sim.setNetlist(netlist)
       if (structural) stale = true
@@ -697,9 +697,14 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     const rdt = Math.min(MAX_FRAME, Math.max(0, realDt))
     const simDt = rdt * speed
     const t0 = t
+    const subBurns: BurnEvent[] = []
     if (dynamic && sim) {
       const n = lesson.sim?.stepsPerFrame ?? Math.min(Math.ceil(30 * Math.max(1, speed)), Math.ceil(simDt / dt - 1e-9))
-      for (let k = 0; k < n; k++) sim.step()
+      for (let k = 0; k < n; k++) {
+        sim.step()
+        // a split switching step: µs events (an inductive kick) only exist inside it
+        for (const sub of sim.substeps) subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true }))
+      }
       t = sim.t
       stale = false
       reconfigured.clear()
@@ -744,7 +749,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
 
     // ratings: once per frame, on the latest good solution
     const sol = solution()
-    const burns = sol ? checkRatings(netlist, sol, t, ratings) : []
+    const burns = [...subBurns, ...(sol ? checkRatings(netlist, sol, t, ratings) : [])]
     burns.push(...pendingBurns.splice(0))
     if (burns.length) {
       const notes: Note[] = []

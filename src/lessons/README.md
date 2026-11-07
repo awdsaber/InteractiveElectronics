@@ -51,3 +51,10 @@ The template above is a skeleton. `T2/led-resistor.ts` is the complete reference
 - `between(a, b)` places a 2-lead part. A resistor at rot 0 spans 4 holes; an LED spans 1, with the cathode at −x.
 - `UNO.digital(at, pin | 'GND')` gives a header socket on an Uno module placed at `at` (rot 0, USB toward the viewer).
 - `jumper(a, b, color, lift?)` gives a wire's `pos` and `params`. Its callout sits at the top of the arch.
+
+## Fast switching transients (`sim.edgeSubsteps`)
+The bench steps at `sim.dt` (default 1 ms) and checks ratings once per frame, so an event lasting microseconds, such as an inductor's kick into a transistor's `vBreak` avalanche clamp when a flyback diode is missing, is neither resolved nor seen. Set `sim: { edgeSubsteps: 10 }` to split the first step after each external switching event (pin change, tweak, failure, power) into 10 backward-Euler substeps growing ×2 (the first is dt/1023 ≈ 1 µs), with the instant ratings (`maxV`) checked on every substep.
+
+- **Use it** only when a failure depends on a sub-millisecond spike: a coil or motor `l` switched by a part with `vBreak` and `maxV` (see `T2/transistor-switch.ts`, failure `no-flyback`). The spike energy is ½·L·I².
+- **Cost:** n solves instead of one on each switching step, typically a handful per second, so it's cheap for sketches that toggle pins every few hundred ms. It costs more for sketches that change pins every few ms (bit-banging), because every change splits a step. `analogWrite` PWM is a duty level, not an edge per period, so it doesn't trigger this. Square-wave source edges and internal device mode flips are not split.
+- It is opt-in per lesson and never enabled automatically. Lessons without it behave exactly as before.
