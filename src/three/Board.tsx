@@ -13,6 +13,7 @@ import { Callout } from './Callout'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
+import { rgbGlow } from './rgbGlow'
 
 const DROP_H = 3
 const DROP_MS = 250
@@ -44,6 +45,10 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   let glow = 0
   if (LED_KINDS.has(p.kind) && cid) glow = Math.min(1.5, Math.max(0, (snap.current[cid] ?? 0) / 0.02))
   else if ((p.kind === 'module' || p.kind === 'oled' || p.kind === 'wifi-module') && snap.assembly.powered[lesson.powerElementId]) glow = 1
+  // addressable RGB LEDs glow in the colour their behavior publishes. The colour rides in the
+  // render state, not params, so it stays out of the bake key and never rebakes the part.
+  const rgb = rgbGlow(p, snap.published)
+  if (rgb) glow = rgb.glow
   const s: PartRenderState = {
     visible: placed,
     soldered: !breadboard && snap.assembly.soldered && (p.mount === 'tht' || p.mount === 'smd'),
@@ -53,6 +58,9 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     // labels are drawn by the Board (always mounted, see Callout `hidden`)
     showLabel: false,
   }
+  if (rgb?.color) s.glowColor = rgb.color
+  // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id
+  if (p.kind === 'button' && typeof p.params?.pressedWhen === 'string') s.value = snap.assembly.failures.includes(p.params.pressedWhen) ? 1 : 0
   if (cid && MOTOR_KINDS.has(p.kind)) s.rpm = snap.extra[`${cid}.rpm`] ?? 0
   if (p.kind === 'servo') {
     const pin = lesson.circuit.elements.find((e) => p.circuitIds?.includes(e.id) && e.type === 'PIN')

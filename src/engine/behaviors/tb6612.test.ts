@@ -72,7 +72,7 @@ function fake(params: Record<string, number | string | boolean> = {}, net: Netli
     setMotorLoad: () => {},
     burn: () => {},
     events: { push: () => {} },
-    mcu: { hold() {}, release() {}, reset() {}, injectEdge() {}, serialIn() {}, attachI2c() {}, attachSpi() {}, timeMicros: 0, running: true },
+    mcu: { hold() {}, release() {}, reset() {}, injectEdge() {}, serialIn() {}, serialOut() {}, attachI2c() {}, attachSpi() {}, timeMicros: 0, running: true },
   }
   const f: Fake = {
     ctx,

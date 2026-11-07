@@ -73,8 +73,16 @@ export const LED_LOOK: Record<LedColor, LedLook> = {
   white: { lens: '#eef1f2', glow: '#fff8e8' },
 }
 
+/** a '#rrggbb' colour mixed toward white by t (0..1) */
+function tint(hex: string, t: number): string {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return '#' + c.map((v) => Math.round(v + (255 - v) * t).toString(16).padStart(2, '0')).join('')
+}
+
+/** A named LED colour, or any '#rrggbb' (an RGB LED showing that colour: milky lens, tinted). */
 export function ledLook(color: unknown): LedLook {
   if (typeof color === 'string' && color in LED_LOOK) return LED_LOOK[color as LedColor]
+  if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) return { lens: tint(color.toLowerCase(), 0.45), glow: color.toLowerCase() }
   return LED_LOOK.red
 }
 

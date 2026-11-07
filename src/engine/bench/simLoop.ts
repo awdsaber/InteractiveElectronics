@@ -235,6 +235,11 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const simPins: Record<number, PinState> = {}
   const serial: string[] = []
   let sketchError: string | null = null
+  /** append a Serial monitor line, keeping the last SERIAL_KEEP */
+  const pushSerial = (line: string) => {
+    serial.push(line)
+    if (serial.length > SERIAL_KEEP) serial.shift()
+  }
   const pendingI2c: [number, unknown][] = []
   const pendingSpi: [number, unknown][] = []
 
@@ -344,8 +349,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         return el && nodeV(el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
       },
       serial(line) {
-        serial.push(line)
-        if (serial.length > SERIAL_KEEP) serial.shift()
+        // a held MCU is frozen: whatever setup() reached before the hold landed prints nothing
+        if (held) return
+        pushSerial(line)
       },
       warn(message) {
         if (disposed) return
@@ -353,8 +359,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
           sketchError = message
           act({ type: 'stopped' })
         } else {
-          serial.push(`[mcu] ${message}`)
-          if (serial.length > SERIAL_KEEP) serial.shift()
+          pushSerial(`[mcu] ${message}`)
         }
       },
     })
@@ -455,6 +460,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         },
         serialIn(text) {
           mcu?.serialIn(text)
+        },
+        serialOut(line) {
+          pushSerial(line)
         },
         attachI2c(address, device) {
           if (mcu) mcu.attachI2c(address, device as never)
