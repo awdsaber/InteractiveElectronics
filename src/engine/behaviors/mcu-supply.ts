@@ -100,8 +100,10 @@ export const behavior: Behavior = {
 
   onEvent(ctx, ev) {
     // power-off stops the sketch: the next power-up checks the rail afresh. An upload during a
-    // brown-out is not a new brown-out: the chip stays held (tick re-asserts it) and is not recounted.
+    // brown-out is not a new brown-out: the chip is held again at once (before the next frame could
+    // run it) and is not recounted.
     if (ev === 'power-off') state(ctx).low = false
+    if (ev === 'upload' && state(ctx).low) ctx.mcu.hold('brown-out')
   },
 
   reset(ctx) {

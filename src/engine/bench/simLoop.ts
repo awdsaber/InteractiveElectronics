@@ -413,6 +413,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     held = false
     m.start()
     mcuStart = t
+    // a fresh run restarts the MCU clock: a pin change logged at the old run's time would skew h
+    pinsChangedAt = null
+    peekCache = null
     return true
   }
 
