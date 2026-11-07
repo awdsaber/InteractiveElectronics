@@ -66,6 +66,12 @@ export interface Transient {
   setNetlist(n: Netlist): void
   /** the netlist currently being simulated */
   readonly netlist: Netlist
+  /**
+   * the circuit `h` seconds after the last step with the current pins and parameters: one
+   * backward-Euler step from the present C/L state that is NOT committed (time, state and lastGood
+   * stay put). For reads between steps, e.g. a digitalRead right after a pin changed.
+   */
+  peek(h: number): Solution
 }
 
 /** carry an unknown vector across a recompile: nodes by name, branches by element id */
@@ -241,6 +247,22 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     setNetlist(n) {
       current = { ...n, elements: n.elements.slice() }
       recompile()
+    },
+    peek(h) {
+      const lim = new Float64Array(compiled.lim)
+      const limSave = new Float64Array(compiled.limSave)
+      const saved = { dt: sc.dt, t: sc.t, trap: sc.trap }
+      sc.dt = Math.max(h, 1e-9)
+      sc.t = t + sc.dt
+      sc.trap = false
+      const r = solveCompiled(compiled, sc, new Float64Array(x))
+      const sol = buildSolution(compiled, r, sc)
+      sc.dt = saved.dt
+      sc.t = saved.t
+      sc.trap = saved.trap
+      compiled.lim.set(lim)
+      compiled.limSave.set(limSave)
+      return sol
     },
   }
 }

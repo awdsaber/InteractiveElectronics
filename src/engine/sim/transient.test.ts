@@ -4,6 +4,30 @@ import { solveDC } from './solve'
 import { createTransient } from './transient'
 
 describe('createTransient', () => {
+  it('peek(h) looks h ahead from the present C state without committing anything', () => {
+    const n: Netlist = {
+      elements: [
+        { id: 'V1', type: 'V', nodes: ['in', '0'], value: 5 },
+        { id: 'R1', type: 'R', nodes: ['in', 'c'], value: 1000 },
+        { id: 'C1', type: 'C', nodes: ['c', '0'], value: 1e-3 },
+      ],
+    }
+    const tr = createTransient(n, 1e-3)
+    tr.step()
+    const t0 = tr.t
+    const v0 = tr.lastGood!.nodeV.c
+    const early = tr.peek(1e-6).nodeV.c
+    const late = tr.peek(1).nodeV.c // one coarse BE step of τ: 5·(1 − 1/2) from 0 V
+    expect(early - v0).toBeLessThan(0.001)
+    expect(late).toBeGreaterThan(2)
+    expect(tr.t).toBe(t0)
+    expect(tr.lastGood!.nodeV.c).toBe(v0)
+    const next = tr.step().nodeV.c
+    const ref = createTransient(n, 1e-3)
+    ref.step()
+    expect(next).toBeCloseTo(ref.step().nodeV.c, 12)
+  })
+
   it('RC: 1 kΩ, 1 mF, 5 V step gives 63% ± 2% at t = τ', () => {
     const n: Netlist = {
       elements: [
