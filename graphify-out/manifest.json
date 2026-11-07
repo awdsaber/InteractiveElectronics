@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794023886.5556002,
-    "seen": 1794023916.796517,
-    "ast_hash": "6312e2105f66ed1c0b61bda1aaf5e381",
+    "mtime": 1794024109.383263,
+    "seen": 1794024121.074094,
+    "ast_hash": "1ad5a45b3f908e35767f254b1d73f498",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -744,9 +744,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T5/l298n.md": {
-    "mtime": 1794001108.322689,
-    "seen": 1794010374.609711,
-    "ast_hash": "78f0790a08d34781700cf37698c19636",
+    "mtime": 1794024091.6535475,
+    "seen": 1794024121.074094,
+    "ast_hash": "c541a69319d1f36e169caf06e6095671",
     "semantic_hash": ""
   },
   "docs/curriculum/T5/pca9685-servo.md": {
@@ -1299,6 +1299,30 @@
     "mtime": 1794023886.5672424,
     "seen": 1794023916.7955184,
     "ast_hash": "2bca8953b4cd80f62960212f9a874b08",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/l298n.test.ts": {
+    "mtime": 1794024091.6555529,
+    "seen": 1794024121.0730937,
+    "ast_hash": "483e44e2c1cc28144d1b77f2dbc8cc48",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/l298n.ts": {
+    "mtime": 1794024091.6555529,
+    "seen": 1794024121.074094,
+    "ast_hash": "b3e3077730de9a02eef698ea3725ab4d",
+    "semantic_hash": ""
+  },
+  "src/lessons/T5/l298n.test.ts": {
+    "mtime": 1794024091.6565542,
+    "seen": 1794024121.074094,
+    "ast_hash": "093b081807acdd1c131c7933430c8992",
+    "semantic_hash": ""
+  },
+  "src/lessons/T5/l298n.ts": {
+    "mtime": 1794024091.6565542,
+    "seen": 1794024121.074094,
+    "ast_hash": "f09bebc504bc6c7a64ce3bb53a680be3",
     "semantic_hash": ""
   },
   "package-lock.json": {
