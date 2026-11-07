@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BurnEvent, Lesson, PartPlacement } from '../types'
 import {
   type AssemblyState,
+  describeParts,
   initialAssembly,
   isPowered,
   needsSolder,
@@ -114,7 +115,7 @@ describe('assembly reducer', () => {
     expect(s.soldered).toBe(false)
     expect(notes.at(-1)).toMatch(/^Solder needs: /)
     expect(notes.at(-1)).toMatch(/SMD parts/)
-    expect(notes.at(-1)).toMatch(/J1/)
+    expect(notes.at(-1)).toMatch(/2 resistors, module/) // J1 and W1 (resistor kind in this fixture), M1
     expect(notes.at(-1)).not.toMatch(/R1/)
   })
 
@@ -157,7 +158,22 @@ describe('assembly reducer', () => {
   it('power still needs every part placed on a breadboard', () => {
     const { s, notes } = run(bbLesson, ['strip', 'place:UNO', 'power'])
     expect(isPowered(bbLesson, s)).toBe(false)
-    expect(notes.at(-1)).toMatch(/^Power needs: .*BB.*R1.*D1/)
+    expect(notes.at(-1)).toBe('Power needs: 3 resistors')
+  })
+
+  it('describeParts names parts by label, or counts them by kind, never by raw id', () => {
+    const ps: PartPlacement[] = [
+      part('j1', 'tht', { kind: 'usb-b', label: 'USB' }),
+      part('h1', 'tht', { kind: 'header-female', label: 'DIGITAL' }),
+      part('h2', 'tht', { kind: 'header-female' }),
+      part('w1', 'offboard', { kind: 'wire', label: 'PIN 9' }),
+      part('w2', 'offboard', { kind: 'wire' }),
+      part('w3', 'offboard', { kind: 'wire' }),
+      part('c1', 'tht', { kind: 'capacitor-electrolytic' }),
+      part('pot', 'offboard', { kind: 'potentiometer', label: 'POT' }),
+    ]
+    expect(describeParts(ps)).toBe('USB, 2 headers, 3 wires, electrolytic capacitor, POT')
+    expect(describeParts([])).toBe('')
   })
 
   it('upload needs power and a sketch, and gives RUNNING', () => {

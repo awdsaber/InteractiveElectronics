@@ -66,6 +66,21 @@ test('led-resistor: assemble, power, upload, blink, break', async ({ page }) => 
   expect(errors).toEqual([])
 })
 
+test('led-resistor: the first labelled part (UNO) shows its callout', async ({ page }) => {
+  const consoleErrors: string[] = []
+  page.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors.push(m.text())
+  })
+  await page.goto('#/lesson/led-resistor')
+  await expect(page.locator('canvas')).toBeVisible()
+  await expect(panel(page)).toContainText('READY')
+  const callout = (text: string) => page.locator('.callout-layer .callout', { hasText: new RegExp(`^${text}$`) })
+  await expect(callout('UNO')).toBeVisible()
+  for (const t of ['BREADBOARD', 'LIMIT', 'LED', 'PIN13', 'GND']) await expect(callout(t)).toBeVisible()
+  // the old per-tag drei <Html> roots raced their own unmount on first render
+  expect(consoleErrors.filter((e) => /synchronously unmount a root/.test(e))).toEqual([])
+})
+
 test('tweak slider, quiz completion and progress survive a reload', async ({ page }) => {
   await page.goto('#/lesson/led-resistor')
   await page.getByRole('button', { name: 'Plug USB' }).click()
@@ -80,9 +95,10 @@ test('tweak slider, quiz completion and progress survive a reload', async ({ pag
     await page.getByRole('button', { name: /Next question|Finish/ }).click()
   }
   await expect(page.locator('.quiz-done')).toContainText('Clean sheet')
-  await expect(page.locator('.lesson-check').first()).toHaveText('✓')
+  const ledCheck = () => page.locator('.lesson-link', { hasText: 'LED and Resistor' }).first().locator('.lesson-check')
+  await expect(ledCheck()).toHaveText('✓')
   await page.reload()
-  await expect(page.locator('.lesson-check').first()).toHaveText('✓')
+  await expect(ledCheck()).toHaveText('✓')
 })
 
 test('mobile drawer: focus moves in and Escape closes it', async ({ page }) => {

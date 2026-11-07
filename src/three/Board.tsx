@@ -9,7 +9,7 @@ import type { BenchSnapshot } from '../engine/bench/simLoop'
 import type { Lesson, PartPlacement } from '../engine/types'
 import { PALETTES, type Settings } from '../ui/types'
 import { BenchBase } from './BenchBase'
-import { Callout } from './Callout'
+import { Callout, type CalloutTone } from './Callout'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
@@ -130,17 +130,35 @@ function PartSlot({ part, state, layer, exploded, anim, labels }: SlotProps) {
   return (
     <group ref={ref}>
       <Comp part={part} state={state} />
-      {part.label && <PartLabel part={part} hidden={!labels || !state.visible} burnt={state.burnt} />}
+      <PartLabel part={part} state={state} labels={labels} />
     </group>
   )
 }
 
-function PartLabel({ part, hidden, burnt }: { part: PartPlacement; hidden: boolean; burnt: boolean }) {
+export interface PartCalloutSpec {
+  text: string
+  tone: CalloutTone
+  hidden: boolean
+}
+
+/**
+ * The callout a part gets on the board (pure): every part with a `label` has one, whatever
+ * its position in the list, and it stays registered (just hidden) while labels are off or
+ * the part is not placed.
+ */
+export function partCallout(part: PartPlacement, state: PartRenderState, labels: boolean): PartCalloutSpec | null {
+  if (!part.label) return null
+  return { text: part.label, tone: state.burnt ? 'warn' : 'ink', hidden: !labels || !state.visible }
+}
+
+function PartLabel({ part, state, labels }: { part: PartPlacement; state: PartRenderState; labels: boolean }) {
   const anchor = useMemo<[number, number, number]>(() => {
     const [x, y, z] = partPosition(part)
     return [x, y + partHeight(partRegistry[part.kind], part), z]
   }, [part])
-  return <Callout text={part.label!} anchor={anchor} offset={calloutOffset(part)} tone={burnt ? 'warn' : 'ink'} hidden={hidden} />
+  const c = partCallout(part, state, labels)
+  if (!c) return null
+  return <Callout text={c.text} anchor={anchor} offset={calloutOffset(part)} tone={c.tone} hidden={c.hidden} />
 }
 
 export interface BoardProps {
@@ -175,10 +193,10 @@ export function Board({ lesson, snap, settings }: BoardProps) {
     prev.current = new Set(placed)
   }, [placedKey, board.parts])
 
-  const [w, d] = board.size
+  const [w, d] = board.frame?.size ?? board.size
   return (
     <group>
-      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} />}
+      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={board.frame?.center} />}
       {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
       {pcb && <Pcb spec={board} color={color} />}
       {board.parts.map((p) => (

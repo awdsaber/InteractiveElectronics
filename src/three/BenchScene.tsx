@@ -7,6 +7,7 @@ import type { BenchSnapshot } from '../engine/bench/simLoop'
 import type { Lesson } from '../engine/types'
 import type { Settings } from '../ui/types'
 import { Board } from './Board'
+import { CalloutHost } from './Callout'
 import { IsoCamera } from './IsoCamera'
 import { InkLights } from './ink'
 import { WobbleClock, setWobble } from './wobble'
@@ -29,11 +30,12 @@ export function fitZoom(w: number, d: number, width: number, height: number, ove
 
 function Camera({ lesson }: { lesson: Lesson }) {
   const size = useThree((s) => s.size)
-  const [w, d] = lesson.board.size
+  const [w, d] = lesson.board.frame?.size ?? lesson.board.size
+  const [cx, cz] = lesson.board.frame?.center ?? [0, 0]
   const overlays = size.width > 600 && window.innerWidth > 760
   const zoom = fitZoom(w, d, size.width, size.height, overlays)
   // a little off-centre so the board sits between the action column and the status panel
-  return <IsoCamera zoom={zoom} target={[overlays ? -0.4 : 0, 0.4, 0]} minZoom={zoom * 0.7} maxZoom={zoom * 3} resetKey={`${lesson.id}:${size.width}x${size.height}`} distance={80} />
+  return <IsoCamera zoom={zoom} target={[cx + (overlays ? -0.4 : 0), 0.4, cz]} minZoom={zoom * 0.7} maxZoom={zoom * 3} resetKey={`${lesson.id}:${size.width}x${size.height}`} distance={80} />
 }
 
 /** wobble boils at 8 fps (the clock is stepped), so idle demand-mode frames at 8 fps are enough */
@@ -53,6 +55,7 @@ export default function BenchScene({ lesson, snap, settings }: BenchSceneProps) 
   const smoking = Object.values(snap.partBurnt).some(Boolean)
   const live = snap.assembly.running || smoking
   return (
+    <CalloutHost>
     <Canvas
       flat
       dpr={[1, 2]}
@@ -68,5 +71,6 @@ export default function BenchScene({ lesson, snap, settings }: BenchSceneProps) 
       <Camera lesson={lesson} />
       <Board lesson={lesson} snap={snap} settings={settings} />
     </Canvas>
+    </CalloutHost>
   )
 }

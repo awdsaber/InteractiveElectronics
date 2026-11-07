@@ -45,6 +45,7 @@ import {
   benchStatus,
   buildParts,
   describeBurn,
+  describeParts,
   initialAssembly,
   isPowered,
   mcuPowered,
@@ -297,6 +298,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       if (structural) stale = true
     }
     dcDirty = true
+    peekCache = null
   }
 
   function solution(): Solution | null {
@@ -309,10 +311,33 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
 
   // ── pins ──
+  /**
+   * transient: MCU time (µs) of the first pin change since the last step, or null. The step's
+   * solution predates that change, so a read after it (digitalRead right after pinMode(INPUT_PULLUP),
+   * or an input cross-wired to an output that just switched) is taken from a short transient
+   * re-solve over the MCU time elapsed since the change, from the circuit's current C/L state.
+   */
+  let pinsChangedAt: number | null = null
+  let peekCache: { h: number; sol: Solution } | null = null
+  const mcuMicros = () => mcu?.timeMicros ?? 0
   function applyPin(pin: number, st: PinState): void {
+    const prev = simPins[pin]
+    if (dynamic && (!prev || prev.mode !== st.mode || prev.level !== st.level)) {
+      pinsChangedAt ??= mcuMicros()
+      peekCache = null
+    }
     simPins[pin] = { ...st }
     if (sim) sim.setPin(pin, st)
     dcDirty = true
+  }
+  /** a node voltage for an MCU read: re-solved when a pin changed since the last transient step */
+  function readV(node: string, ref = '0'): number {
+    if (pinsChangedAt === null || !sim || stale) return nodeV(node, ref === '0' ? undefined : ref)
+    const h = Math.max(1e-6, (mcuMicros() - pinsChangedAt) * 1e-6)
+    if (!peekCache || peekCache.h !== h) peekCache = { h, sol: sim.peek(h) }
+    const s = peekCache.sol
+    if (!s.ok) return nodeV(node, ref === '0' ? undefined : ref)
+    return (s.nodeV[node] ?? 0) - (s.nodeV[ref] ?? 0)
   }
   const mcuLive = () => !!mcu && asm.running && !held
   function floatPins(): void {
@@ -343,18 +368,20 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       },
       readAnalog(pin) {
         for (const [name, node] of Object.entries(sk.analogPins ?? {})) {
-          if (analogPinNumber(name, sk.board) === pin) return Math.max(0, nodeV(node))
+          if (analogPinNumber(name, sk.board) === pin) return Math.max(0, readV(node))
         }
         return 0
       },
       readDigital(pin) {
         const el = netlist.elements.find((e) => e.type === 'PIN' && e.pin === pin)
-        return el && nodeV(el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
+        return el && readV(el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
       },
       serial(line) {
         // a held MCU is frozen: whatever setup() reached before the hold landed prints nothing
         if (held) return
         pushSerial(line)
+        if (disposed) return
+        for (const inst of instances) inst.def.onSerial?.(inst.ctx, line)
       },
       warn(message) {
         if (disposed) return
@@ -389,6 +416,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     held = false
     m.start()
     mcuStart = t
+    // a fresh run restarts the MCU clock: a pin change logged at the old run's time would skew h
+    pinsChangedAt = null
+    peekCache = null
     return true
   }
 
@@ -546,7 +576,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     else if (src.kind === 'voltage') v = (s.nodeV[src.node] ?? 0) - (src.ref ? (s.nodeV[src.ref] ?? 0) : 0)
     else if (src.kind === 'power') v = s.power[src.elementId] ?? 0
     else if (src.kind === 'extra') v = s.extra[src.key] ?? 0
-    return Math.abs(v) < floor(r.unit) ? 0 : v
+    return Math.abs(v) < (r.floor ?? floor(r.unit)) ? 0 : v
   }
 
   function lineMatches(l: StatusLine, values: number[], status: BenchStatus): boolean {
@@ -589,9 +619,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       case 'BARE PCB':
         return bb ? 'BARE PCB: an empty bench. Place the parts to build the circuit.' : 'BARE PCB: pads and traces only. Pick & place the SMD parts, then hand-place the rest.'
       case 'ASSEMBLING': {
-        const rest = remainingParts(lesson, asm).map((p) => p.id.toUpperCase())
+        const rest = describeParts(remainingParts(lesson, asm))
         const smd = buildParts(lesson).some((p) => p.mount === 'smd' && !asm.placed.has(p.id))
-        const todo = [...(smd ? ['SMD parts'] : []), ...rest]
+        const todo = [...(smd ? ['SMD parts'] : []), ...(rest ? [rest] : [])]
         return todo.length
           ? `ASSEMBLING: ${asm.placed.size}/${buildParts(lesson).length} parts placed; still to place ${todo.join(', ')}.`
           : 'ASSEMBLING: every part is placed. Solder the joints next.'
@@ -701,6 +731,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       }
       t = sim.t
       stale = false
+      pinsChangedAt = null
+      peekCache = null
     } else {
       t += simDt
     }
@@ -762,6 +794,11 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
 
   rebuild()
   for (const inst of instances) inst.def.init?.(inst.ctx)
+  if (liveDirty) {
+    // params a behavior set in init apply from the start, not from the first powered frame
+    liveDirty = false
+    rebuild(false)
+  }
 
   return {
     lesson,

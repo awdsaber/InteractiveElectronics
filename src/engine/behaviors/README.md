@@ -14,6 +14,7 @@ export const behavior: Behavior = {
   tick(ctx, dt) {},             // every animation frame while powered; dt = sim seconds covered
   onEvent(ctx, ev) {},          // 'power-on' | 'power-off' | 'upload' | 'repair' | 'strip' | 'break'
   onPin(ctx, pin, state, tMicros) {}, // every sketch pin change, MCU time in µs (see a4988.ts)
+  onSerial(ctx, line) {},       // each complete line the sketch prints with Serial
   reset(ctx) {},                // after repair and strip: forget internal state and latched faults
   dispose(ctx) {},              // lesson switch: release timers, devices, listeners
 }
@@ -45,6 +46,14 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `mcu.serialOut(line)` | A line on the serial monitor from outside the sketch (the ESP32 ROM bootloader). A held MCU prints nothing of its own. |
 | `mcu.attachI2c(addr, dev)` / `mcu.attachSpi(cs, dev)` | Bus devices (`I2cDevice` / `SpiDevice` in `src/engine/mcu`). Safe to call before upload. |
 | `mcu.timeMicros`, `mcu.running` | MCU clock and state. |
+
+## Shared behaviors
+
+| id | Params | Publishes |
+|---|---|---|
+| `mcu-supply` | `supplyNode` ('5v'), `bor` (2.7 V), `hyst` (0.05 V), `fClk` (16 MHz) | `vcc`, `warn` (rail below the clock's speed grade), `held` (brown-out reset), `resets`, `fmax` (MHz). Holds the MCU below `bor`, restarts the sketch above `bor + hyst`. |
+| `serial-plotter` | — | every `name:value` on a Serial line (Arduino Serial Plotter format), as `<instance>.<name>`; bare numbers as `v1`, `v2`… |
+| `pot-knob` | `pot` (a POT element id), `turn` (0–100 %) | `turn`. Sets the POT's wiper, so a tweak `behavior:<instance>.turn` with unit '%' reads "50 %". |
 
 ## Rules
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).

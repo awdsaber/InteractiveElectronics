@@ -372,6 +372,91 @@ describe('createBench: behaviors', () => {
     expect(b.snapshot().serial).toContain('7')
   })
 
+  it('hands each complete Serial line to onSerial (not the [mcu] warnings)', async () => {
+    const lines: string[] = []
+    const tap: Behavior = { id: 'tap', onSerial: (ctx, line) => void (lines.push(line), ctx.publish('n', lines.length)) }
+    const b = createBench(
+      { ...l, behaviors: ['tap'], sketch: { ...l.sketch!, code: 'void setup() { Serial.begin(9600); Serial.print("a:"); Serial.println(1); Serial.println("b:2"); }\nvoid loop() { delay(100); }\n' } },
+      { registry: { tap } },
+    )
+    b.dispatch('power')
+    b.upload()
+    for (let i = 0; i < 5; i++) await b.frame(FRAME)
+    expect(lines).toEqual(['a:1', 'b:2'])
+    expect(b.snapshot().published['tap.n']).toBe(2)
+  })
+
+  /** a transient bench with pin 2 as an input, plus extra elements (pin 3, an RC, a cross-wire) */
+  const pinBench = (extra: Lesson['circuit']['elements'], code: string): Lesson => ({
+    ...dcLesson,
+    transient: true,
+    circuit: {
+      elements: [
+        { id: 'B1', type: 'V', nodes: ['v', '0'], value: 5 },
+        { id: 'C1', type: 'C', nodes: ['v', '0'], value: 1e-6 },
+        { id: 'R1', type: 'R', nodes: ['v', '0'], value: 1000 },
+        { id: 'P2', type: 'PIN', nodes: ['d2', '0'], pin: 2, vcc: 5 },
+        { id: 'P3', type: 'PIN', nodes: ['d3', '0'], pin: 3, vcc: 5 },
+        ...extra,
+      ],
+    },
+    readouts: [],
+    tweaks: [],
+    statusLines: [],
+    failures: [],
+    sketch: { title: 'Pins', code, pins: { 2: 'P2', 3: 'P3' }, vcc: 5, board: 'uno' },
+  })
+  const serialOf = async (l: Lesson, frames = 3) => {
+    const b = createBench(l)
+    b.dispatch('power')
+    await b.frame(FRAME)
+    b.upload()
+    for (let i = 0; i < frames; i++) await b.frame(FRAME)
+    const out = b.snapshot().serial
+    b.dispose()
+    return out
+  }
+
+  it('digitalRead right after pinMode(INPUT_PULLUP) sees the pull-up, even in a transient circuit', async () => {
+    const l = pinBench([], 'void setup() { Serial.begin(9600); pinMode(2, INPUT_PULLUP); Serial.println(digitalRead(2)); }\nvoid loop() { delay(100); }\n')
+    expect(await serialOf(l)).toEqual(['1'])
+  })
+
+  it('a pull-up into an RC does not read settled at once (the re-solve keeps capacitor state)', async () => {
+    // 35 kΩ pull-up into 1 µF: tau = 35 ms. Right away the pin still reads LOW; 150 ms later, HIGH.
+    const l = pinBench(
+      [{ id: 'C2', type: 'C', nodes: ['d2', '0'], value: 1e-6 }],
+      'void setup() { Serial.begin(9600); pinMode(2, INPUT_PULLUP); Serial.println(digitalRead(2)); delay(150); Serial.println(digitalRead(2)); }\nvoid loop() { delay(100); }\n',
+    )
+    expect(await serialOf(l, 15)).toEqual(['0', '1'])
+  })
+
+  it('a read follows a change on ANOTHER pin within the same MCU advance (cross-wired pins)', async () => {
+    const l = pinBench(
+      [{ id: 'RX', type: 'R', nodes: ['d3', 'd2'], value: 1000 }],
+      'void setup() { Serial.begin(9600); pinMode(2, INPUT); pinMode(3, OUTPUT); delay(50);\n  digitalWrite(3, HIGH); Serial.println(digitalRead(2));\n  digitalWrite(3, LOW); Serial.println(digitalRead(2));\n  digitalWrite(3, HIGH); Serial.println(digitalRead(2)); }\nvoid loop() { delay(100); }\n',
+    )
+    expect(await serialOf(l, 8)).toEqual(['1', '0', '1'])
+  })
+
+  it('a readout floor clamps tiny values to 0', async () => {
+    const l: Lesson = {
+      ...dcLesson,
+      readouts: [
+        { label: 'I', source: { kind: 'current', elementId: 'R1' }, unit: 'A', floor: 0.01 },
+        { label: 'I raw', source: { kind: 'current', elementId: 'R1' }, unit: 'A' },
+      ],
+      statusLines: [],
+    }
+    const b = createBench(l)
+    b.dispatch('power')
+    await b.frame(FRAME)
+    const s = b.snapshot()
+    expect(s.values[1]).toBeCloseTo(0.003, 4) // 9 V / 3 kΩ
+    expect(s.values[0]).toBe(0)
+    b.dispose()
+  })
+
   it('ctx.burn fails a part like a rating would', async () => {
     const burner: Behavior = { id: 'burner', tick: (ctx) => ctx.t > 0.05 && ctx.burn('R1', 'overpower') }
     const b = createBench({ ...dcLesson, behaviors: ['burner'] }, { registry: { burner } })
