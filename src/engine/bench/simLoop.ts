@@ -292,6 +292,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       if (structural) stale = true
     }
     dcDirty = true
+    freshSol = null
   }
 
   function solution(): Solution | null {
@@ -304,10 +305,25 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
 
   // ── pins ──
+  /**
+   * transient: pins whose mode changed since the last step. The step's solution still shows the old
+   * mode, so a digitalRead right after pinMode(INPUT_PULLUP) would see a floating pin as LOW.
+   */
+  const reconfigured = new Set<number>()
+  let freshSol: Solution | null = null
   function applyPin(pin: number, st: PinState): void {
+    if (dynamic && simPins[pin]?.mode !== st.mode) reconfigured.add(pin)
     simPins[pin] = { ...st }
     if (sim) sim.setPin(pin, st)
     dcDirty = true
+    freshSol = null
+  }
+  /** a node voltage for reading `pin`: from an operating point with the current pin modes when it was just reconfigured */
+  function pinReadV(pin: number, node: string, ref: string): number {
+    if (!reconfigured.has(pin)) return nodeV(node, ref)
+    freshSol ??= solveDC(netlist, { pins: simPins })
+    if (!freshSol.ok) return nodeV(node, ref)
+    return (freshSol.nodeV[node] ?? 0) - (freshSol.nodeV[ref] ?? 0)
   }
   const mcuLive = () => !!mcu && asm.running && !held
   function floatPins(): void {
@@ -341,7 +357,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       },
       readDigital(pin) {
         const el = netlist.elements.find((e) => e.type === 'PIN' && e.pin === pin)
-        return el && nodeV(el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
+        return el && pinReadV(pin, el.nodes[0], el.nodes[1]) > sk.vcc / 2 ? 1 : 0
       },
       serial(line) {
         serial.push(line)
@@ -686,6 +702,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       for (let k = 0; k < n; k++) sim.step()
       t = sim.t
       stale = false
+      reconfigured.clear()
+      freshSol = null
     } else {
       t += simDt
     }

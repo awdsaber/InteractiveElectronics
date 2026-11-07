@@ -386,6 +386,40 @@ describe('createBench: behaviors', () => {
     expect(b.snapshot().published['tap.n']).toBe(2)
   })
 
+  it('digitalRead right after pinMode(INPUT_PULLUP) sees the pull-up, even in a transient circuit', async () => {
+    const pull: Lesson = {
+      ...dcLesson,
+      transient: true,
+      circuit: {
+        elements: [
+          { id: 'B1', type: 'V', nodes: ['v', '0'], value: 5 },
+          { id: 'C1', type: 'C', nodes: ['v', '0'], value: 1e-6 },
+          { id: 'P2', type: 'PIN', nodes: ['d2', '0'], pin: 2, vcc: 5 },
+          { id: 'SW', type: 'SW', nodes: ['d2', '0'], closed: false },
+          { id: 'R1', type: 'R', nodes: ['v', '0'], value: 1000 },
+        ],
+      },
+      readouts: [],
+      tweaks: [],
+      statusLines: [],
+      failures: [],
+      sketch: {
+        title: 'Pull',
+        code: 'void setup() { Serial.begin(9600); pinMode(2, INPUT_PULLUP); Serial.println(digitalRead(2)); }\nvoid loop() { delay(100); }\n',
+        pins: { 2: 'P2' },
+        vcc: 5,
+        board: 'uno',
+      },
+    }
+    const b = createBench(pull)
+    b.dispatch('power')
+    await b.frame(FRAME)
+    b.upload()
+    for (let i = 0; i < 3; i++) await b.frame(FRAME)
+    expect(b.snapshot().serial).toEqual(['1'])
+    b.dispose()
+  })
+
   it('ctx.burn fails a part like a rating would', async () => {
     const burner: Behavior = { id: 'burner', tick: (ctx) => ctx.t > 0.05 && ctx.burn('R1', 'overpower') }
     const b = createBench({ ...dcLesson, behaviors: ['burner'] }, { registry: { burner } })
