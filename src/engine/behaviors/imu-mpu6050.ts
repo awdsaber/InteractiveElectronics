@@ -563,11 +563,15 @@ export const behavior: Behavior = {
       resetRegs(s)
       restartReference(ctx, s)
     } else if (ev === 'upload') restartReference(ctx, s)
-    else if (ev === 'break') {
-      // rewiring a live board is treated as a re-plug when it cuts the chip off the bus, so the
-      // sketch's setup() runs its testConnection() check again (a gyro-only change keeps running)
-      if (!busHealthy(ctx) || chipAddress(ctx) !== num(ctx.params.addr, 0x68)) ctx.mcu.reset()
-    } else if (ev === 'repair') ctx.mcu.reset() // press RESET after fixing the wiring
+    else if (ev === 'break' || ev === 'repair') {
+      // the wiring changed: see the new bus at once (the restarted setup() may probe it before
+      // the next tick)
+      s.busOk = ctx.powered && busHealthy(ctx)
+      s.chipAddr = chipAddress(ctx)
+      // rewiring a live board is a re-plug when it cuts the chip off the bus, so setup() runs its
+      // testConnection() check again (a gyro-only change keeps running); repair presses RESET
+      if (ev === 'repair' || !s.busOk || s.chipAddr !== num(ctx.params.addr, 0x68)) ctx.mcu.reset()
+    }
   },
   reset(ctx) {
     const s = state(ctx)
