@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defaultLessonId } from '../../lessons'
 import { DEFAULT_SETTINGS, asCode, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
 
 afterEach(() => {
@@ -77,6 +78,8 @@ describe('store persistence', () => {
 
 describe('store actions', () => {
   it('drives the bench and records progress', () => {
+    expect(useStore.getState().lesson.id).toBe(defaultLessonId)
+    useStore.getState().selectLesson('led-resistor')
     const s = useStore.getState()
     expect(s.lesson.id).toBe('led-resistor')
     s.act('strip')
