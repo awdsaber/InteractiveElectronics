@@ -34,7 +34,7 @@ Board: `HEAT-03`, size 12 × 8, base `mat`.
 | `V_PSU` | V | `psu+`, `0` | 5.0 V, rInternal 0.01 Ω | — | bench supply |
 | `SW_OUT` | SW | `psu+`, `out` | closed: false | — | **power element** |
 | `P_I` | PROBE | `out`, `r_top` | — | — | ammeter |
-| `R1` | R | `r_top`, `0` | 220 Ω | maxP 0.25 W, maxV 250 V | rated 0.25 W at 70 °C ambient, derated linearly to 0 W at 155 °C |
+| `R1` | R | `r_top`, `0` | 220 Ω | maxP 0.25 W, maxV 250 V, rth 340 °C/W, tauTh 5 s (compressed from ≈ 20 s), tMax 155 °C | rated 0.25 W at 70 °C ambient, derated linearly to 0 W at 155 °C |
 
 Expected: I = 22.7 mA, P = 0.114 W (45% of rating).
 
@@ -44,7 +44,7 @@ Expected: I = 22.7 mA, P = 0.114 W (45% of rating).
 |---|---|---|
 | CURRENT | `{kind:'current', elementId:'P_I'}` | A |
 | POWER | `{kind:'power', elementId:'R1'}` | W |
-| BODY TEMP | `{kind:'behavior', key:'R1.temp'}` | °C |
+| BODY TEMP | `{kind:'extra', key:'R1.tj'}` | °C |
 
 ## Tweaks
 
@@ -59,16 +59,16 @@ Halving R at constant V doubles the power. Doubling V at constant R quadruples i
 
 ### F1: 47 Ω on 5 V
 - **Patch:** `{op:'set', elementId:'R1', key:'value', value:47}`
-- **Sim shows:** POWER 0.53 W; R1 burns (open) after 300 ms and the current drops to 0.
+- **Sim shows:** POWER 0.53 W; R1's temperature climbs past 155 °C after about 6 s (not the 300 ms over-power timer) and R1 burns open; the current drops to 0.
 - **Why:** P = V²/R = 25/47 = 0.53 W, 213% of the rating. A real part discolours and smells within seconds to minutes, then may go open.
 
 ### F2: Same resistor, supply turned up to 12 V
 - **Patch:** `{op:'set', elementId:'V_PSU', key:'value', value:12}`
-- **Sim shows:** CURRENT 54.5 mA, POWER 0.65 W, R1 burnt.
+- **Sim shows:** CURRENT 54.5 mA, POWER 0.65 W, R1 burnt after about 4 s (steady state would be 25 + 0.65 × 340 ≈ 245 °C).
 - **Why:** the voltage went up 2.4×, so power went up 2.4² = 5.8×. Heating follows the square.
 
 ### F3: Fit a 2 W resistor instead
-- **Patches:** `{op:'set', elementId:'R1', key:'value', value:47}`, `{op:'set', elementId:'R1', key:'rating.maxP', value:2}`
+- **Patches:** `{op:'set', elementId:'R1', key:'value', value:47}`, then `rating.maxP` 2, `rating.rth` 70, `rating.tauTh` 8 (nested `set` keys are already supported by `applyPatches`)
 - **Sim shows:** POWER 0.53 W again, but R1 survives.
 - **Why:** a larger body has a lower thermal resistance to air, so the same watts make a smaller temperature rise. Its rating reflects that.
 
@@ -130,6 +130,6 @@ Design rule: run resistors at **50% or less** of their rating, and less again in
 
 ## SIM NOTE
 
-- Behavior `thermal-rc`: per-element first-order thermal model, T = T_amb + P·θ with time constant τ_th (≈ 340 °C/W and τ_th ≈ 20 s for a 1/4 W axial body; a 2 W body ≈ 70 °C/W). Publishes `R1.temp`. Ideally the burn decision uses temperature, not the fixed 300 ms over-power timer.
-- `FailurePatch` `set` with a nested key (`rating.maxP`) needs support in `applyPatches`.
+- No behavior is needed: the engine's thermal rating (`rth`, `tauTh`, `tMax`) is the first-order model, T = T_amb + P·θ (T_amb 25 °C), publishes `R1.tj`, and burns the part when it passes `tMax` (replacing the 300 ms over-power timer). Use ≈ 340 °C/W for a 1/4 W axial body and ≈ 70 °C/W for a 2 W one. τ_th is compressed to 5 s (a real body takes ≈ 20 s or more) so the burn lands within about 6 s.
+- Nested `set` keys (`rating.maxP`) are supported by `applyPatches`.
 - `θ` for the 2 W body is an illustrative engine value; tune it against a datasheet derating curve when implementing.
