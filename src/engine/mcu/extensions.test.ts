@@ -898,6 +898,32 @@ describe('Wire and SPI delegate to bus devices', () => {
     expect(writes).toEqual([[0x75]])
   })
 
+  it('a device whose ack() returns false NACKs its address: no write, no read', async () => {
+    const writes: number[][] = []
+    let present = false
+    const { mcu, lines } = harness()
+    mcu.attachI2c(0x41, { ack: () => present, write: (b) => void writes.push(b), read: () => [7] })
+    mcu.load(`
+      #include <Wire.h>
+      void setup() {
+        Wire.begin();
+        Wire.beginTransmission(0x41);
+        Wire.write(1);
+        Serial.println(Wire.endTransmission());
+        Serial.println(Wire.requestFrom(0x41, 1));
+      }
+      void loop() { delay(10); }`)
+    mcu.start()
+    await mcu.advance(1)
+    expect(lines).toEqual(['2', '0'])
+    expect(writes).toEqual([])
+    present = true
+    mcu.start()
+    await mcu.advance(1)
+    expect(lines.slice(2)).toEqual(['0', '1'])
+    expect(writes).toEqual([[1]])
+  })
+
   it('SPI.transfer goes to the device whose CS pin is low', async () => {
     const sel: boolean[] = []
     const seen: Array<[number, number]> = []

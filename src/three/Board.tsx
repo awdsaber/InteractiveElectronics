@@ -69,7 +69,11 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     if (typeof ak === 'string') s.value = snap.published[ak] ?? 0
     if (typeof rk === 'string') s.rpm = snap.published[rk] ?? 0
   }
-  if (p.kind === 'servo') {
+  // a servo on a driver chip (PCA9685) follows the horn angle its behavior publishes
+  if (p.kind === 'servo' && typeof p.params?.angleKey === 'string') {
+    const a = snap.published[p.params.angleKey]
+    s.value = a ?? (typeof p.params.angle === 'number' ? p.params.angle : 90)
+  } else if (p.kind === 'servo') {
     const pin = lesson.circuit.elements.find((e) => p.circuitIds?.includes(e.id) && e.type === 'PIN')
     if (pin && pin.type === 'PIN') s.value = snap.pins[pin.pin]?.servoDeg ?? 90
   }

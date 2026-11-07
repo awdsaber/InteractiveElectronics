@@ -1,6 +1,7 @@
 import CodeMirror from '@uiw/react-codemirror'
 import { cpp } from '@codemirror/lang-cpp'
 import type { Sketch } from '../engine/types'
+import { sketchBaud } from './sketchBaud'
 
 export interface TryItYourselfProps {
   sketch: Pick<Sketch, 'title'>
@@ -43,7 +44,7 @@ export function TryItYourself({ sketch, code, onCodeChange, onUpload, uploadDisa
         </p>
       )}
       <div className="serial" aria-label="Serial monitor">
-        <div className="serial-head">Serial monitor · 9600 baud</div>
+        <div className="serial-head">Serial monitor · {sketchBaud(code) ?? 9600} baud</div>
         <pre>{serialLines.length ? serialLines.join('\n') : '— no output yet —'}</pre>
       </div>
     </section>

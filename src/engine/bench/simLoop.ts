@@ -196,6 +196,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   // ── behaviors ──
   const instances: { def: Behavior; r: ResolvedBehavior; ctx: BehaviorContext }[] = []
   const published: Record<string, number> = {}
+  /** `published` as it was when this frame's behavior pass began: ctx.read() lags exactly one tick in any order */
+  const readView: Record<string, number> = {}
   const events: BehaviorEvent[] = []
   const live: Record<string, number | boolean> = {} // `${id}\u0000${key}` → value set by behaviors
   let liveDirty = false
@@ -289,6 +291,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
    * behavior setParam) keep the transient state and its last solution.
    */
   function rebuild(structural = true): void {
+    behaviorOverrides()
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
@@ -449,6 +452,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       publish(key, value) {
         published[`${r.instance}.${key}`] = value
       },
+      read: (key) => readView[key],
       setParam(elementId, key, value) {
         const k = `${elementId}\u0000${key}`
         if (live[k] === value) return
@@ -518,6 +522,20 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     instances.push({ def, r, ctx })
   }
   const pendingBurns: BurnEvent[] = []
+
+  /** active failures' `set` patches on `behavior:<instance>` override that instance's params */
+  function behaviorOverrides(): void {
+    for (const inst of instances) {
+      const id = `behavior:${inst.r.instance}`
+      let over: Record<string, number | string | boolean> | null = null
+      for (const fid of asm.failures) {
+        for (const p of lesson.failures.find((f) => f.id === fid)?.patches ?? []) {
+          if (p.op === 'set' && p.elementId === id) (over ??= {})[p.key] = p.value
+        }
+      }
+      inst.ctx.params = over ? { ...inst.r.params, ...over } : inst.r.params
+    }
+  }
 
   // ── actions ──
   function lifecycle(ev: BehaviorLifecycleEvent): void {
@@ -760,6 +778,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     // behaviors
     const s = solution()
     const pw = mcuPowered(lesson, asm)
+    for (const k in readView) if (!(k in published)) delete readView[k]
+    for (const k in published) readView[k] = published[k]
     for (const inst of instances) {
       const c = inst.ctx
       c.t = t
@@ -826,6 +846,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       if (m) {
         const inst = instances.find((i) => i.r.instance === m[1])
         if (inst) inst.r.params[m[2]] = value
+        behaviorOverrides()
       } else rebuild(false)
       emit()
     },

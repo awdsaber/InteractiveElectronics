@@ -45,6 +45,8 @@ export type Board = Sketch['board']
 
 /** An I²C target on the virtual bus (a sensor or driver behaviour). */
 export interface I2cDevice {
+  /** false: the device does not acknowledge its address right now (bus fault, wrong address jumper); default true */
+  ack?(): boolean
   /** bytes the master wrote in one transmission (beginTransmission .. endTransmission) */
   write?(bytes: number[]): void
   /** the master asks for `n` bytes (requestFrom); return up to n */
@@ -1003,14 +1005,14 @@ export class VirtualMcu {
         const dev = mcu.i2c.get(txAddr)
         const bytes = txBuf
         txBuf = []
-        if (!dev) return 2 // NACK on the address
+        if (!dev || dev.ack?.() === false) return 2 // NACK on the address
         dev.write?.(bytes)
         return 0
       },
       requestFrom: (addr: number, n: number) => {
         const dev = mcu.i2c.get(Math.trunc(addr) & 0x7f)
         const want = Math.max(0, Math.trunc(n))
-        rxBuf = dev ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
+        rxBuf = dev && dev.ack?.() !== false ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
         return rxBuf.length
       },
       available: () => rxBuf.length,

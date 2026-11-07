@@ -234,7 +234,10 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
   for (const f of lesson.failures) {
     f.patches.forEach((p, i) => {
       const where = `failures.${f.id}.patches.${i}`
-      if (p.op === 'remove' || p.op === 'set') {
+      if (p.op === 'set' && p.elementId.startsWith('behavior:')) {
+        // overrides that behavior instance's param while the failure is active
+        if (!instances.has(p.elementId.slice(9))) errs.push(`${where}: no behavior instance "${p.elementId.slice(9)}"`)
+      } else if (p.op === 'remove' || p.op === 'set') {
         if (!element(p.elementId)) errs.push(`${where}: no element "${p.elementId}"`)
         else if (p.op === 'set') keyOk(p.elementId, p.key, where)
       }

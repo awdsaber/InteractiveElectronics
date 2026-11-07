@@ -10,7 +10,7 @@ import { PITCH, jumper } from '../layout'
 // ── bench layout (one 15 × 9 stepper bench PCB; everything stands on it, y = 0) ──
 const UNO_AT: [number, number] = [4.4, 0.4] // rot 90: digital header toward the viewer, USB to the right
 const HDR: [number, number] = [-0.3, 1.9] // the carrier's 2 × 8 pins, rot 90: pins run along z
-const MOT: [number, number] = [-5.7, -2.9] // NEMA 17 in the back-left corner, connector toward the viewer
+const MOT: [number, number] = [-5.8, -1.7] // NEMA 17 in the back-left corner, connector toward the viewer
 const JACK: [number, number] = [-6.3, 3.5]
 
 const UNO_HEADER_Y = 0.16 + 0.85
@@ -136,7 +136,7 @@ export const lesson: LessonDef = {
 
   board: {
     name: 'STEPPER BENCH',
-    size: [16, 10.5],
+    size: [17, 12],
     base: 'mat',
     traces: [
       // carrier area: header to the IC, decorative
@@ -184,7 +184,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'R_SENSE',
         role: 'Current sense for coil A: 0.068 Ω on current Pololu boards, often 0.1 Ω ("R100") on clones. The chopper compares its voltage with Vref/8.',
-        params: { size: '1206', marking: 'R068', callout: [-1.4, 1.2, -0.2] },
+        params: { size: '1206', marking: 'R068', callout: [1.0, 2.2, -1.8] },
       },
       {
         id: 'rs2',
