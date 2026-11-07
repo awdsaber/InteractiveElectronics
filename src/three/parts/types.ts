@@ -20,6 +20,8 @@ export interface PartRenderState {
   value?: number
   /** live text for displays (multimeter reading) */
   reading?: string
+  /** live LED colour '#rrggbb' (addressable RGB LEDs); not in the bake key, so it never rebakes */
+  glowColor?: string
 }
 
 export const DEFAULT_PART_STATE: PartRenderState = {

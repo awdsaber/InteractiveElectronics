@@ -11,10 +11,7 @@
 // 45 mA with the radio off, and with the radio on a 300 mA, 2 ms burst every 100 ms on a base
 // chosen so the average is 100 mA (approximate; see the datasheet's current table). Frames are
 // longer than a burst, so the element carries the exact average over each frame.
-// With params.sigElement set it also toggles that V element between 0 and params.sigV (5 V),
-// params.sigHz times a second (1: high for a second, low for a second), the bench's "5 V logic"
-// test signal. A toggle each second, not a 1 Hz square wave, so the sketch's once-a-second
-// report sees both levels instead of sampling the same phase every time.
+// (A 5 V test signal for the bench is the separate `square-wave` behavior.)
 //
 // Publishes wifi_state (0 off, 1 connecting, 2 connected), rssi (dBm, 0 when not connected)
 // and module_mA.
@@ -139,13 +136,9 @@ export const behavior: Behavior = {
     const i = ctx.powered ? frameAverageCurrent(ctx.t - dt, ctx.t, w > 0) : 0
     const mod = str(ctx.params.moduleElement, 'i_module')
     if (ctx.netlist.elements.some((e) => e.id === mod)) ctx.setParam(mod, 'value', i)
-    const sig = str(ctx.params.sigElement, '')
-    if (sig && ctx.netlist.elements.some((e) => e.id === sig)) {
-      const n = Math.floor(ctx.t * num(ctx.params.sigHz, 1))
-      ctx.setParam(sig, 'value', n % 2 === 0 ? num(ctx.params.sigV, 5) : 0)
-    }
     ctx.publish('wifi_state', w)
-    ctx.publish('rssi', w === 2 ? rssiAt(ctx.t) : 0)
+    // MCU time, like WiFi.RSSI(), so the readout and the sketch's report agree
+    ctx.publish('rssi', w === 2 ? rssiAt(ctx.mcu.timeMicros / 1e6) : 0)
     ctx.publish('module_mA', i * 1000)
   },
 

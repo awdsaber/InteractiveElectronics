@@ -38,7 +38,7 @@ function ledFlangeGeo() {
 }
 
 function LedBody({ part, state }: PartProps) {
-  const look = ledLook(part.params?.color ?? part.color)
+  const look = ledLook(state.glowColor ?? part.params?.color ?? part.color)
   const base = 0.14
   const g = state.burnt ? 0 : state.glow
   return (
@@ -58,7 +58,7 @@ function LedBody({ part, state }: PartProps) {
 }
 
 function LedSmdBody({ part, state }: PartProps) {
-  const look = ledLook(part.params?.color ?? part.color)
+  const look = ledLook(state.glowColor ?? part.params?.color ?? part.color)
   const g = state.burnt ? 0 : state.glow
   return (
     <group>

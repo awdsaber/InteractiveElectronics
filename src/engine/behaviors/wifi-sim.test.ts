@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { benchOf, powerAndRun, runFor, runUntil } from './fixtures/esp32Bench'
-import { behavior as wifi, frameAverageCurrent } from './wifi-sim'
+import type { BehaviorContext } from '../types'
+import { behavior as wifi, frameAverageCurrent, rssiAt } from './wifi-sim'
 
 const reg = { 'wifi-sim': wifi }
-const SIG = [{ id: 'wifi-sim', params: { sigElement: 'v_sig' } }]
 
 const CONNECT = `#include <WiFi.h>
 void setup() {
@@ -96,14 +96,32 @@ describe('wifi-sim behavior', () => {
     expect(frameAverageCurrent(1.2, 1.25, false)).toBe(0.045)
   })
 
-  it('toggles the 5 V test signal once a second (sigHz toggles/s) when given sigElement', async () => {
-    const b = benchOf(`void setup() {} void loop() { delay(10); }`, reg, SIG)
+  it('the rssi readout and WiFi.RSSI() follow the same (MCU) clock', () => {
+    const pub: Record<string, number> = {}
+    const mcu = { timeMicros: 0, running: true }
+    // sim time and MCU time deliberately apart (the MCU starts at upload)
+    const ctx = {
+      t: 7.3,
+      params: {},
+      powered: true,
+      netlist: { elements: [] },
+      mcu,
+      publish: (k: string, v: number) => (pub[k] = v),
+      setParam: () => {},
+    } as unknown as BehaviorContext
+    const lib = wifi.libraries!(ctx) as { WiFi: { begin(s: string, p: string): void; RSSI(): number } }
+    lib.WiFi.begin('atelier-bench', 'breadboard')
+    mcu.timeMicros = 2.4e6
+    wifi.tick!(ctx, 1 / 60)
+    expect(pub.rssi).toBe(lib.WiFi.RSSI())
+    expect(pub.rssi).toBe(rssiAt(2.4))
+    expect(rssiAt(2.4)).not.toBe(rssiAt(7.3)) // so the sim clock would have read differently
+  })
+
+  it('leaves the 5 V test signal alone (that is square-wave now)', async () => {
+    const b = benchOf(`void setup() {} void loop() { delay(10); }`, reg)
     powerAndRun(b)
-    let s = await runFor(b, 0.5)
-    expect(s.elementValues['v_sig.value']).toBe(5)
-    s = await runFor(b, 1.0)
-    expect(s.elementValues['v_sig.value']).toBe(0)
-    s = await runFor(b, 1.0)
+    const s = await runFor(b, 1.5)
     expect(s.elementValues['v_sig.value']).toBe(5)
   })
 

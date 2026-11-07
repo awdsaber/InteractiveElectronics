@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { PartPlacement } from '../engine/types'
+import { createBench } from '../engine/bench/simLoop'
+import { getLesson } from '../lessons'
+import { liveParams, partState } from './Board'
 import { ledLook } from './palette'
+import { partRegistry } from './parts'
+import { bakeKeyOf } from './parts/frame'
 import { rgbGlow } from './rgbGlow'
 
 const led: PartPlacement = { id: 'led_rgb', kind: 'led-smd', pos: [0, 0], mount: 'smd', role: 'rgb', params: { color: 'white', rgbFrom: 'ws2812' } }
@@ -24,6 +29,33 @@ describe('rgbGlow', () => {
     expect(dim.glow).toBeGreaterThan(0.4)
     expect(full.glow).toBe(1)
     expect(full.glow).toBeGreaterThan(dim.glow)
+  })
+
+  it('the Board carries the colour in the render state, so colour changes never rebake the LED', () => {
+    const lesson = getLesson('esp32-s3')!
+    const p = lesson.board.parts.find((x) => x.id === 'led_rgb')!
+    const b = createBench(lesson)
+    const base = b.snapshot()
+    const snap = (r: number, g: number, bl: number) => ({ ...base, published: { 'ws2812.rgb_r': r, 'ws2812.rgb_g': g, 'ws2812.rgb_b': bl } })
+    const a = partState(lesson, p, snap(40, 20, 0))
+    const c = partState(lesson, p, snap(0, 10, 50))
+    expect(a.glowColor).toBe('#ff8800')
+    expect(c.glowColor).toBe('#0033ff')
+    expect(liveParams(p, snap(40, 20, 0))).toBe(p)
+    const comp = partRegistry['led-smd']
+    expect(bakeKeyOf(comp, p, a)).toBe(bakeKeyOf(comp, p, c))
+    expect(partState(lesson, p, snap(0, 0, 0)).glowColor).toBeUndefined()
+    b.dispose()
+  })
+
+  it('a button with params.pressedWhen shows pressed while that failure is active', () => {
+    const lesson = getLesson('esp32-s3')!
+    const p = lesson.board.parts.find((x) => x.id === 'sw_boot')!
+    const b = createBench(lesson)
+    expect(partState(lesson, p, b.snapshot()).value ?? 0).toBe(0)
+    b.dispatch('break:boot-held')
+    expect(partState(lesson, p, b.snapshot()).value).toBe(1)
+    b.dispose()
   })
 
   it('ledLook accepts a hex colour for the lens and glow', () => {

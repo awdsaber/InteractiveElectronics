@@ -14,16 +14,20 @@
 
 import type { Behavior, BehaviorContext } from '../types'
 
+type Rgb = readonly [number, number, number]
+
 interface State {
-  rgb: [number, number, number]
+  rgb: Rgb
 }
+
+const BLACK: Rgb = Object.freeze([0, 0, 0] as const)
 
 const states = new WeakMap<BehaviorContext, State>()
 
 function state(ctx: BehaviorContext): State {
   let s = states.get(ctx)
   if (!s) {
-    s = { rgb: [0, 0, 0] }
+    s = { rgb: BLACK }
     states.set(ctx, s)
   }
   return s
@@ -56,7 +60,7 @@ export const behavior: Behavior = {
   tick(ctx) {
     const s = state(ctx)
     const lit = ctx.powered && ctx.mcu.running
-    const [r, g, b] = lit ? s.rgb : [0, 0, 0]
+    const [r, g, b] = lit ? s.rgb : BLACK
     const mA = ((r + g + b) / 765) * num(ctx.params.maxMa, 36)
     ctx.publish('rgb_r', r)
     ctx.publish('rgb_g', g)
@@ -67,10 +71,10 @@ export const behavior: Behavior = {
   },
 
   onEvent(ctx, ev) {
-    if (ev === 'upload' || ev === 'power-on' || ev === 'power-off') state(ctx).rgb = [0, 0, 0]
+    if (ev === 'upload' || ev === 'power-on' || ev === 'power-off') state(ctx).rgb = BLACK
   },
 
   reset(ctx) {
-    state(ctx).rgb = [0, 0, 0]
+    state(ctx).rgb = BLACK
   },
 }

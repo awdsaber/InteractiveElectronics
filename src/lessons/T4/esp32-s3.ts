@@ -169,9 +169,11 @@ export const lesson: LessonDef = {
     size: [10.8, 9.6],
     base: 'breadboard-only',
     parts: [
-      // first on purpose: the bench currently drops the first part's callout, and this rail hop has none
+      // first on purpose: the bench currently drops the first labelled part's callout (its drei Html root is
+      // unmounted in a render race), so it lands on this failure-only jumper rather than the breadboard or DevKit
+      W('j_nor', 'JUMPER', 'A bare jumper where the 150 Ω resistor should be.', [0.6, 1.4, -1.2], true),
       W('w_potg', '', 'Pot end to GND.', [0, 0.4, 0]),
-      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', label: 'BREADBOARD', role: 'Holds the pot, the divider and the PWM LED.', params: { callout: [-1.0, 0.6, -2.6] } },
+      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', label: 'BREADBOARD', role: 'Holds the pot, the divider and the PWM LED.', params: { callout: [-3.0, 0.4, -1.2] } },
       {
         id: 'devkit',
         kind: 'module',
@@ -222,7 +224,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'USB-UART',
         role: 'Converts USB to UART0 (GPIO43/44). The chip varies by revision (CP2102N-class on early boards). Read the marking.',
-        params: { package: 'QFN', pins: 24, marking: 'UART', callout: [0.6, 0.2, 2.6] },
+        params: { package: 'QFN', pins: 24, marking: 'UART', callout: [1.2, 0.2, 2.6] },
       },
       {
         id: 'u3',
@@ -232,7 +234,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: '3V3 LDO',
         role: '5 V to 3.3 V for the module and the 3V3 pins. The part number varies by revision; check the schematic for your board.',
-        params: { package: 'SOIC', pins: 4, marking: 'LDO', callout: [1.4, 0.2, 2.4] },
+        params: { package: 'SOIC', pins: 4, marking: 'LDO', callout: [2.2, 0.2, 2.2] },
         circuitIds: ['ldo'],
       },
       {
@@ -243,7 +245,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'RGB',
         role: 'Addressable RGB LED (WS2812-compatible) on GPIO48 on v1.0 boards, GPIO38 on v1.1 boards.',
-        params: { size: '1206', color: 'white', rgbFrom: 'ws2812', callout: [-0.6, 0.2, 2.4] },
+        params: { size: '1206', color: 'white', rgbFrom: 'ws2812', callout: [0.2, 0.2, 3.4] },
         circuitIds: ['pin_rgb', 'i_rgb'],
       },
       {
@@ -254,7 +256,7 @@ export const lesson: LessonDef = {
         mount: 'smd',
         label: 'BOOT',
         role: 'Holds GPIO0 low at reset to enter the ROM bootloader.',
-        params: { callout: [-1.9, 0.9, -0.2] },
+        params: { callout: [-1.9, 0.9, -0.2], pressedWhen: 'boot-held' },
         color: '#e9e4d8',
       },
       {
@@ -345,8 +347,8 @@ export const lesson: LessonDef = {
         pos: [SIG[0], BENCH_Y, SIG[1]],
         mount: 'offboard',
         label: '5V SIGNAL',
-        role: 'A 5 V logic output (an Uno pin, say), toggling between 0 and 5 V once a second.',
-        params: { w: 2.2, d: 1.2, pins: 0, chip: 'soic', chipLabel: '5V', title: '5 V LOGIC', color: '#2b59c3', callout: [0.4, 0.2, 1.9] },
+        role: 'A 5 V logic output (an Uno pin, say), a 0/5 V square wave at 0.5 Hz (1 s high, 1 s low).',
+        params: { w: 2.2, d: 1.2, pins: 0, chip: 'soic', chipLabel: '5V', title: '5 V LOGIC', color: '#2b59c3', callout: [1.2, 0.1, 2.4] },
         circuitIds: ['v_sig'],
       },
       W('w_3v3', '3V3', '3V3 pin to the + rail.', [0.9, 0.5, 0.3]),
@@ -360,7 +362,6 @@ export const lesson: LessonDef = {
       W('w_sig', '5V OUT', 'The 5 V signal into the top of the divider.', [-0.9, 0.6, 0.2]),
       W('w_sigg', '', 'Common ground with the 5 V device.', [0, 0.4, 0]),
       W('j_direct', 'DIRECT', 'A bare wire: the 5 V signal straight into GPIO4.', [0.2, 1.4, -1.2], true),
-      W('j_nor', 'JUMPER', 'A bare jumper where the 150 Ω resistor should be.', [0.6, 1.4, -1.2], true),
     ],
   },
 
@@ -379,8 +380,8 @@ export const lesson: LessonDef = {
       { id: 'r_led', type: 'R', nodes: ['g5', 'led_a'], value: 150, rating: { maxP: 0.25 }, partId: 'r_led' },
       { id: 'led_ext', type: 'LED', nodes: ['led_a', '0'], color: 'red', rating: { maxI: 0.03 }, partId: 'led_ext' },
       // 10 kΩ pot: end A at GND, wiper on GPIO1, end B at 3.3 V
-      { id: 'pot', type: 'POT', nodes: ['0', 'g1', '3v3'], value: 10_000, pos: 0.5, partId: 'pot' },
-      // stand-in for a 5 V device: toggled 0/5 V at 1 Hz by wifi-sim
+      { id: 'pot', type: 'POT', nodes: ['0', 'g1', '3v3'], value: 10_000, pos: 0.85, partId: 'pot' },
+      // stand-in for a 5 V device: a 0/5 V square wave at 0.5 Hz (1 s high, 1 s low) from square-wave
       { id: 'v_sig', type: 'V', nodes: ['s5', '0'], value: 5.0, partId: 'sig5' },
       { id: 'r_dtop', type: 'R', nodes: ['s5', 'g4'], value: 10_000, partId: 'r_dtop' },
       { id: 'r_dbot', type: 'R', nodes: ['g4', '0'], value: 20_000, partId: 'r_dbot' },
@@ -459,7 +460,7 @@ export const lesson: LessonDef = {
 
   meet: `The DevKitC-1 is a breakout for the **ESP32-S3-WROOM-1** module. Inside the metal can are the S3 chip, a 40 MHz crystal and SPI flash, with the antenna as copper on the module's PCB. The dev board adds a USB-UART bridge, a second USB-C wired to the S3's native USB, a 3.3 V LDO, BOOT and RST buttons, and an RGB LED.
 
-**Compared with the Uno:** two 32-bit cores at up to 240 MHz instead of one 8-bit core at 16 MHz (15 times the clock, and much more work per clock), and 512 KB of SRAM against 2 KB. The ADC is 12-bit (0–4095), and there is WiFi plus BLE 5.
+**Compared with the Uno:** two 32-bit cores at up to 240 MHz instead of one 8-bit core at 16 MHz (15 times the clock, and much more work per clock), and 512 KB of SRAM against 2 KB. The ADC is 12-bit (0–4095), and there is WiFi plus BLE 5. The ESP32 ADC is less linear than its 12 bits suggest: at the default 11 dB attenuation it reaches full scale at about 3.1 V, not 3.3 V, and it bends near both ends. Use \`analogReadMilliVolts()\`, which applies the factory calibration, when you need volts. The bench models an ideal 0–3.3 V ADC.
 
 **The catch is 3.3 V.** A 5 V signal must be divided first. Choose 10 kΩ and 20 kΩ: 5 × 20/(10 + 20) = **3.33 V**, and the load on the source is only 5 V/30 kΩ = 0.17 mA.
 
@@ -508,7 +509,9 @@ export const lesson: LessonDef = {
 
   behaviors: [
     { id: 'ws2812', instance: 'ws2812', params: { pinElement: 'pin_rgb', currentElement: 'i_rgb' } },
-    { id: 'wifi-sim', instance: 'wifi', params: { ssid: 'atelier-bench', moduleElement: 'i_module', sigElement: 'v_sig' } },
+    { id: 'wifi-sim', instance: 'wifi', params: { ssid: 'atelier-bench', moduleElement: 'i_module' } },
+    // 0.5 Hz: 1 s high, 1 s low, so the sketch's once-a-second report sees both levels
+    { id: 'square-wave', instance: 'sig', params: { element: 'v_sig', hz: 0.5, v: 5, duty: 0.5 } },
     { id: 'esp32-boot', instance: 'boot', params: { strapNode: 'g0', railNode: '3v3' } },
   ],
   transient: true,

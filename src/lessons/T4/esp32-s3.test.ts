@@ -75,7 +75,7 @@ describe('esp32-s3 lesson', () => {
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBeGreaterThanOrEqual(-58)
     expect(Number(m![1])).toBeLessThanOrEqual(-52)
-    within(Number(m![2]), 2048) // pot at mid-travel: 1.65 V of 3.3 V on a 12-bit ADC
+    within(Number(m![2]), 3481) // pot at 85 %: 2.805 V of 3.3 V on a 12-bit ADC
     expect(s.statusLine.text).toBe('RUNNING: loop() on core 1, WiFi on core 0, RGB cycling.')
     // the divided signal reads as a clean digital level, both ways, over a few reports
     s = await runFor(b, 4.5)
@@ -84,11 +84,11 @@ describe('esp32-s3 lesson', () => {
     b.dispose()
   })
 
-  it('readouts: 3.3 V rail, 3.33 V on GPIO4, 1.65 V pot, about 100 mA module current and -55 dBm', async () => {
+  it('readouts: 3.3 V rail, 3.33 V on GPIO4, 2.8 V pot (85 %), about 100 mA module current and -55 dBm', async () => {
     const b = build()
     let s = await runUntil(b, connected, 4)
     within(s.values[RAIL], 3.3)
-    within(s.values[POT], 1.65)
+    within(s.values[POT], 2.805)
     s = await runUntil(b, sigHigh, 2)
     await b.frame(FRAME)
     s = b.snapshot()
@@ -169,7 +169,7 @@ describe('esp32-s3 lesson', () => {
     within(s.current['d_esd'], 0.008, 0.2) // (5 − 4.2)/100
     expect(s.partVisible['j_direct']).toBe(true)
     expect(s.partVisible['r_dtop']).toBe(false)
-    // the clamp burns once it has carried more than 5 mA for 300 ms (inside one 500 ms high half)
+    // the clamp burns once it has carried more than 5 mA for 300 ms (inside one 1 s high half of the 0.5 Hz signal)
     s = await runUntil(b, (x) => x.status === 'FAULT', 2)
     expect(s.assembly.burns.map((x) => x.elementId)).toEqual(['d_esd'])
     expect(s.statusLine.text).toMatch(/^FAULT: d_esd .*burnt.*GPIO4 is dead/)
