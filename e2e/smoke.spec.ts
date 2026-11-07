@@ -95,9 +95,10 @@ test('tweak slider, quiz completion and progress survive a reload', async ({ pag
     await page.getByRole('button', { name: /Next question|Finish/ }).click()
   }
   await expect(page.locator('.quiz-done')).toContainText('Clean sheet')
-  await expect(page.locator('.lesson-check').first()).toHaveText('✓')
+  const ledCheck = () => page.locator('.lesson-link', { hasText: 'LED and Resistor' }).first().locator('.lesson-check')
+  await expect(ledCheck()).toHaveText('✓')
   await page.reload()
-  await expect(page.locator('.lesson-check').first()).toHaveText('✓')
+  await expect(ledCheck()).toHaveText('✓')
 })
 
 test('mobile drawer: focus moves in and Escape closes it', async ({ page }) => {

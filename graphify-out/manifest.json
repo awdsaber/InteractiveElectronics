@@ -120,15 +120,15 @@
     "semantic_hash": ""
   },
   "src/three/Callout.tsx": {
-    "mtime": 1794007463.3939111,
-    "seen": 1794010374.609711,
-    "ast_hash": "692d1daa6507fdc4cbb81bfcdefabc4c",
+    "mtime": 1794011002.2962904,
+    "seen": 1794011165.2051692,
+    "ast_hash": "73cdc7c82f7fe3334ac28f809e6140c7",
     "semantic_hash": ""
   },
   "src/three/Gallery.tsx": {
-    "mtime": 1794003642.2028587,
-    "seen": 1794010374.609711,
-    "ast_hash": "0bc533cea5d22784bdad36be7984aba9",
+    "mtime": 1794011002.2972908,
+    "seen": 1794011165.2051692,
+    "ast_hash": "e9d175c8ea4debec4fbb1418602890fc",
     "semantic_hash": ""
   },
   "src/three/IsoCamera.tsx": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "src/three/index.ts": {
-    "mtime": 1794003642.2113726,
-    "seen": 1794010374.609711,
-    "ast_hash": "a78e48bc32cc0e5b46230c5945529d70",
+    "mtime": 1794011002.2992904,
+    "seen": 1794011165.2051692,
+    "ast_hash": "166d1b456c7c108deef354e4c274c5ac",
     "semantic_hash": ""
   },
   "src/three/ink.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794010690.4576912,
-    "seen": 1794010720.4371798,
-    "ast_hash": "e1f6962c552c9ff78e5244b25ea19597",
+    "mtime": 1794011010.9891853,
+    "seen": 1794011165.2051692,
+    "ast_hash": "cd378fc63767c507ce9088cc9ad47d3f",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -894,15 +894,15 @@
     "semantic_hash": ""
   },
   "e2e/smoke.spec.ts": {
-    "mtime": 1794007463.3546436,
-    "seen": 1794010374.609711,
-    "ast_hash": "44d766a796e4aa1d7e3a073cc4635b0c",
+    "mtime": 1794011133.2153554,
+    "seen": 1794011165.2051692,
+    "ast_hash": "1b2c86c23c14c4c972977d8a2f52c201",
     "semantic_hash": ""
   },
   "playwright.config.ts": {
-    "mtime": 1794007463.3689005,
-    "seen": 1794010374.609711,
-    "ast_hash": "451662bfe221b75b9247c70e3aef2563",
+    "mtime": 1794011047.913056,
+    "seen": 1794011165.2051692,
+    "ast_hash": "a67c80fcd9c6fc10e249fa803d3f1ae0",
     "semantic_hash": ""
   },
   "src/engine/behaviors/index.ts": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794010700.758287,
-    "seen": 1794010720.4361825,
-    "ast_hash": "6bba6ef981bcc602b40a20709f4fe1c2",
+    "mtime": 1794010854.2240257,
+    "seen": 1794011165.2051692,
+    "ast_hash": "bf48edc0b29b53fb58c926d74abf5dc1",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -978,15 +978,15 @@
     "semantic_hash": ""
   },
   "src/three/BenchScene.tsx": {
-    "mtime": 1794010690.472201,
-    "seen": 1794010720.4361825,
-    "ast_hash": "4b4d258862b6962da91f1d0334c525d7",
+    "mtime": 1794011002.2952907,
+    "seen": 1794011165.2051692,
+    "ast_hash": "4f6640de9fee895cb64ad8992e074246",
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794010690.473204,
-    "seen": 1794010720.4361825,
-    "ast_hash": "2474fac4a154cdbd03e544573899b2c6",
+    "mtime": 1794011002.2952907,
+    "seen": 1794011165.2051692,
+    "ast_hash": "cabd2d55e43ad3845a365a8377288bdd",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
@@ -1140,15 +1140,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/mcu-supply.test.ts": {
-    "mtime": 1794010690.4596913,
-    "seen": 1794010720.4361825,
-    "ast_hash": "b32aeb55d81a3ee9562c19d8024e566a",
+    "mtime": 1794010854.2230258,
+    "seen": 1794011165.2051692,
+    "ast_hash": "22a0d1dea69a38e4faecb46f1b171409",
     "semantic_hash": ""
   },
   "src/engine/behaviors/mcu-supply.ts": {
-    "mtime": 1794010690.4596913,
-    "seen": 1794010720.4361825,
-    "ast_hash": "419016eb02a7ec5b3c9176d98ce17be3",
+    "mtime": 1794010854.2230258,
+    "seen": 1794011165.2051692,
+    "ast_hash": "f7bd8f9017dc606b219b4cf94df25c21",
     "semantic_hash": ""
   },
   "src/engine/behaviors/pot-knob.test.ts": {
@@ -1185,6 +1185,18 @@
     "mtime": 1794010690.471202,
     "seen": 1794010720.4361825,
     "ast_hash": "ad616f0e8907f7b432c9da21f1ced82b",
+    "semantic_hash": ""
+  },
+  "src/three/calloutLayer.test.ts": {
+    "mtime": 1794011002.2972908,
+    "seen": 1794011165.2051692,
+    "ast_hash": "c686ac82461bbf1d87762279e4c7149f",
+    "semantic_hash": ""
+  },
+  "src/three/calloutLayer.ts": {
+    "mtime": 1794011002.2982905,
+    "seen": 1794011165.2051692,
+    "ast_hash": "5c24e17c069296bdfa341e1f27e5bdf1",
     "semantic_hash": ""
   },
   "package-lock.json": {
