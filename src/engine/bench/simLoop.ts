@@ -325,7 +325,12 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const mcuMicros = () => mcu?.timeMicros ?? 0
   function applyPin(pin: number, st: PinState): void {
     const prev = simPins[pin]
-    const changed = !prev || prev.mode !== st.mode || prev.level !== st.level
+    const changed =
+      !prev ||
+      prev.mode !== st.mode ||
+      prev.level !== st.level ||
+      prev.toneHz !== st.toneHz ||
+      prev.servoDeg !== st.servoDeg
     if (dynamic && changed) {
       pinsChangedAt ??= mcuMicros()
       peekCache = null
@@ -334,8 +339,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     simPins[pin] = next
     if (sim) sim.setPin(pin, st)
     dcDirty = true
-    // every change the circuit sees (sketch writes, floats on hold / stop / upload, release), MCU-timed
-    if (changed) for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, next, mcuMicros())
+    // every change the circuit sees (sketch writes, floats on hold / stop / upload, release), MCU-timed.
+    // Each behavior gets its own copy so none can mutate the bench's pin state.
+    if (changed) for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, { ...next }, mcuMicros())
   }
   /** a node voltage for an MCU read: re-solved when a pin changed since the last transient step */
   function readV(node: string, ref = '0'): number {
