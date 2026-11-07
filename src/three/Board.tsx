@@ -62,7 +62,11 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id
   if (p.kind === 'button' && typeof p.params?.pressedWhen === 'string') s.value = snap.assembly.failures.includes(p.params.pressedWhen) ? 1 : 0
   if (cid && MOTOR_KINDS.has(p.kind)) s.rpm = snap.extra[`${cid}.rpm`] ?? 0
-  if (p.kind === 'servo') {
+  // a servo on a driver chip (PCA9685) follows the horn angle its behavior publishes
+  if (p.kind === 'servo' && typeof p.params?.angleKey === 'string') {
+    const a = snap.published[p.params.angleKey]
+    s.value = a ?? (typeof p.params.angle === 'number' ? p.params.angle : 90)
+  } else if (p.kind === 'servo') {
     const pin = lesson.circuit.elements.find((e) => p.circuitIds?.includes(e.id) && e.type === 'PIN')
     if (pin && pin.type === 'PIN') s.value = snap.pins[pin.pin]?.servoDeg ?? 90
   }
