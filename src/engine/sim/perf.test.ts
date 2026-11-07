@@ -8,8 +8,12 @@ const ON_CI = !!(globalThis as { process?: { env?: Record<string, string | undef
 
 // Regression guard, not a benchmark: budgets are ~10x the measured cost so CI noise
 // doesn't flake. Target in the browser is < 2 ms per frame (30 steps) for this chain.
-function chain(nonlinear: boolean): Element[] {
-  const els: Element[] = [{ id: 'V1', type: 'V', nodes: ['n0', '0'], value: 5 }]
+function chain(nonlinear: boolean, pwm = false): Element[] {
+  const els: Element[] = [
+    pwm
+      ? { id: 'P9', type: 'PIN', nodes: ['n0', '0'], pin: 9, vcc: 5, rOut: 1e-3 }
+      : { id: 'V1', type: 'V', nodes: ['n0', '0'], value: 5 },
+  ]
   for (let k = 0; k < 60; k++) {
     els.push({ id: `R${k}`, type: 'R', nodes: [`n${k}`, `n${k + 1}`], value: 100 })
     if (k % 3 === 0) els.push({ id: `C${k}`, type: 'C', nodes: [`n${k + 1}`, '0'], value: 1e-6 })
@@ -19,8 +23,9 @@ function chain(nonlinear: boolean): Element[] {
   return els
 }
 
-function msPerFrame(nonlinear: boolean): number {
-  const sim = createTransient({ elements: chain(nonlinear) }, 1e-4)
+function msPerFrame(nonlinear: boolean, pwm = false): number {
+  const sim = createTransient({ elements: chain(nonlinear, pwm) }, 1e-4)
+  if (pwm) sim.setPin(9, { mode: 'OUTPUT', level: 0.5 })
   for (let i = 0; i < 600; i++) sim.step() // warm up the JIT
   let best = Infinity
   for (let rep = 0; rep < 5; rep++) {
@@ -69,5 +74,11 @@ describe.skipIf(ON_CI)('transient performance (60-stage chain, 30 steps per fram
   })
   it('LED chain stays well under budget', () => {
     expect(msPerFrame(true)).toBeLessThan(8)
+  })
+  it('LED chain on a 50 % PWM pin (two switch states per step) costs at most about 2x', () => {
+    expect(msPerFrame(true, true)).toBeLessThan(16)
+  })
+  it('linear RC chain on a PWM pin keeps the single averaged solve', () => {
+    expect(msPerFrame(false, true)).toBeLessThan(5)
   })
 })

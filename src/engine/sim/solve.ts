@@ -14,6 +14,7 @@ import {
   stampDevice,
 } from './devices'
 import { addA, clearSystem, luFactor, luSolve, residualOk, restoreMatrix } from './mna'
+import { blendSolutions, pwmPlan } from './pwm'
 
 export const MAX_ITER = 100
 export const RELTOL = 1e-6
@@ -319,7 +320,20 @@ export function initialGuess(c: Compiled, netlist: Netlist): Float64Array {
  */
 export function solveDC(netlist: Netlist, opts: SolveOptions = {}): Solution {
   const c = compile(netlist)
-  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {}, t: 0 }
-  const r = solveCompiled(c, sc, initialGuess(c, netlist), opts.maxIter ?? MAX_ITER)
+  const pins = opts.pins ?? {}
+  const x0 = initialGuess(c, netlist)
+  const plan = pwmPlan(c, pins)
+  if (plan) {
+    // duty-weighted PWM (pwm.ts): one operating point per switch state, blended
+    const parts = plan.phases.map((ph) => {
+      const sc: SolveContext = { mode: 'dc', dt: 0, pins: ph.pins, t: 0 }
+      c.lim.fill(Number.NaN)
+      c.linValid = false
+      return { weight: ph.weight, solution: buildSolution(c, solveCompiled(c, sc, x0, opts.maxIter ?? MAX_ITER), sc) }
+    })
+    return blendSolutions(parts)
+  }
+  const sc: SolveContext = { mode: 'dc', dt: 0, pins, t: 0 }
+  const r = solveCompiled(c, sc, x0, opts.maxIter ?? MAX_ITER)
   return buildSolution(c, r, sc)
 }

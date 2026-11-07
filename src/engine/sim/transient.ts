@@ -4,6 +4,8 @@
 // Trapezoidal steps fall back to one backward-Euler step after any discontinuity (start,
 // parameter / pin / netlist / dt change, square-wave edge, a device mode flip in the previous
 // step: V current limit, REG mode, LOGIC edge) so they don't ring numerically.
+// A step with a PIN in PWM and a nonlinear netlist (or a vccNode PWM pin) is solved once per
+// switch state and blended by duty (state-space averaging, see pwm.ts).
 
 import type { Element, Netlist, PinState, Solution } from '../types'
 import {
@@ -20,6 +22,7 @@ import {
   waveValue,
 } from './devices'
 import { setElementKey } from './failures'
+import { type PwmPlan, blendSolutions, pwmPlan } from './pwm'
 import { type SolveContext, buildSolution, initialGuess, solveCompiled } from './solve'
 
 export interface TransientOptions {
@@ -69,7 +72,8 @@ export interface Transient {
   /**
    * the circuit `h` seconds after the last step with the current pins and parameters: one
    * backward-Euler step from the present C/L state that is NOT committed (time, state and lastGood
-   * stay put). For reads between steps, e.g. a digitalRead right after a pin changed.
+   * stay put). For reads between steps, e.g. a digitalRead right after a pin changed. PWM pins are
+   * split into their switch states as in step().
    */
   peek(h: number): Solution
 }
@@ -114,6 +118,92 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   const pins: Record<number, PinState> = {}
   const sc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
 
+  // ── duty-weighted PWM ──
+  let plan: PwmPlan | null = null
+  /** pins or the device split changed: recompute the PWM plan before the next solve */
+  let planDirty = true
+  /** per switch state: its last solution (Newton warm start) and limiter memory, plus scratch */
+  interface PhaseMem {
+    x: Float64Array
+    lim: Float64Array
+    xn: Float64Array
+    limn: Float64Array
+  }
+  let mem: PhaseMem[] = []
+  let memKey = ''
+  let xBlend = new Float64Array(0)
+  const psc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
+
+  /**
+   * Solve the step described by sc from the committed state. Returns the solution and, when it
+   * converged, the unknown vector to commit (a work buffer: copy it before the next solve) and
+   * whether a device switched mode. With `commit` the per-state PWM memory is updated.
+   */
+  function solveNow(commit: boolean): { sol: Solution; x: Float64Array | null; modes: boolean } {
+    if (planDirty) {
+      plan = pwmPlan(compiled, pins)
+      planDirty = false
+    }
+    const pl = plan
+    if (!pl) {
+      const r = solveCompiled(compiled, sc, x)
+      const sol = buildSolution(compiled, r, sc)
+      return { sol, x: r.ok ? r.x : null, modes: r.ok && modesChanged(compiled) }
+    }
+    const c = compiled
+    if (memKey !== pl.key || mem.length !== pl.phases.length || (mem[0] && mem[0].x.length !== c.size)) {
+      mem = pl.phases.map(() => ({
+        x: new Float64Array(x),
+        lim: new Float64Array(c.lim),
+        xn: new Float64Array(c.size),
+        limn: new Float64Array(c.lim.length),
+      }))
+      memKey = pl.key
+    }
+    if (xBlend.length !== c.size) xBlend = new Float64Array(c.size)
+    xBlend.fill(0)
+    psc.dt = sc.dt
+    psc.t = sc.t
+    psc.trap = sc.trap
+    const parts = []
+    let modes = false
+    let failed: Solution | null = null
+    let heavy = 0
+    for (let k = 0; k < pl.phases.length; k++) {
+      const ph = pl.phases[k]
+      const m = mem[k]
+      c.lim.set(m.lim)
+      if (pl.aVaries) c.linValid = false // the cached linear matrix holds the other state's pin stamp
+      psc.pins = ph.pins
+      const r = solveCompiled(c, psc, m.x)
+      const sol = buildSolution(c, r, psc)
+      if (!r.ok) {
+        failed = sol
+        break
+      }
+      modes ||= modesChanged(c)
+      m.xn.set(r.x)
+      m.limn.set(c.lim)
+      const w = ph.weight
+      for (let i = 0; i < c.size; i++) xBlend[i] += w * r.x[i]
+      parts.push({ weight: w, solution: sol })
+      if (w > pl.phases[heavy].weight) heavy = k
+    }
+    if (pl.aVaries) c.linValid = false
+    if (failed) {
+      c.lim.set(mem[heavy].lim)
+      return { sol: failed, x: null, modes: false }
+    }
+    if (commit)
+      for (const m of mem) {
+        m.x.set(m.xn)
+        m.lim.set(m.limn)
+      }
+    // later averaged solves and peeks start from the state the circuit spends longest in
+    c.lim.set(mem[heavy].limn)
+    return { sol: blendSolutions(parts), x: xBlend, modes }
+  }
+
   const findSquares = () => {
     squares = []
     for (const el of current.elements) if (el.type === 'V' && el.wave?.kind === 'square') squares.push(el)
@@ -127,6 +217,8 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     compiled = next
     restart = true
     edge = true
+    planDirty = true
+    memKey = ''
     findSquares()
   }
 
@@ -149,9 +241,9 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       sc.dt = h
       sc.t = tk
       sc.trap = false
-      const r = solveCompiled(compiled, sc, x)
-      sol = buildSolution(compiled, r, sc)
-      if (r.ok) {
+      const r = solveNow(true)
+      sol = r.sol
+      if (r.x) {
         x.set(r.x)
         captureState(compiled, x, h, false)
         lastGood = sol
@@ -206,14 +298,14 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       sc.t = tNext
       sc.trap = trap
       lastTrap = trap
-      const r = solveCompiled(compiled, sc, x)
-      const sol = buildSolution(compiled, r, sc)
-      if (r.ok) {
+      const r = solveNow(true)
+      const sol = r.sol
+      if (r.x) {
         x.set(r.x)
         captureState(compiled, x, dt, trap)
         lastGood = sol
         // a device switched mode inside this step: take the next one with backward Euler
-        restart = modesChanged(compiled)
+        restart = r.modes
       }
       t = tNext
       return sol
@@ -233,6 +325,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
         compiled.byId.set(id, nd)
         partition(compiled)
         restart = edge = true
+        planDirty = true
         findSquares()
       } else recompile()
     },
@@ -242,6 +335,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       if (!prev || prev.mode !== state.mode || prev.level !== state.level) {
         compiled.linValid = false
         restart = edge = true
+        planDirty = true
       }
     },
     setNetlist(n) {
@@ -255,8 +349,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       sc.dt = Math.max(h, 1e-9)
       sc.t = t + sc.dt
       sc.trap = false
-      const r = solveCompiled(compiled, sc, new Float64Array(x))
-      const sol = buildSolution(compiled, r, sc)
+      const sol = solveNow(false).sol
       sc.dt = saved.dt
       sc.t = saved.t
       sc.trap = saved.trap

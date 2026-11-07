@@ -167,6 +167,17 @@ export interface Solution {
   voltageOf?(node: NodeId): number
   /** set extra[key] (e.g. `${id}.tj`) without materialising the map before it is read */
   publish?(key: string, value: number): void
+  /**
+   * Set on a duty-weighted PWM step (sim/pwm.ts): the per-state solutions this one blends, HIGH
+   * (all PWM pins on) first, with weights summing to 1. Ratings read peaks and RMS from them.
+   */
+  phases?: readonly PwmPhaseSolution[]
+}
+
+export interface PwmPhaseSolution {
+  /** fraction of the PWM period spent in this state */
+  weight: number
+  solution: Solution
 }
 
 /** OUTPUT_OPEN_DRAIN: LOW pulls down through rOut, HIGH releases the pin (high impedance) */
