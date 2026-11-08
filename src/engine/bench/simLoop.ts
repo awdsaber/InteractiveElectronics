@@ -683,7 +683,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     const values = lesson.readouts.map((r) => readValue(r, s))
     const pinWarn = s ? pinWarnings(netlist, s).length > 0 : false
     const tone: ReadoutView['tone'] = status === 'FAULT' || pinWarn ? 'warn' : 'normal'
-    const readouts = lesson.readouts.map((r, i) => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone }))
+    const readouts = lesson.readouts.map((r, i) => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone: tone === 'normal' && lesson.readouts[i].warnAbove !== undefined && values[i] > lesson.readouts[i].warnAbove! ? ('warn' as const) : tone }))
     // a dead GPIO pin doesn't char the whole board module: the status line reports it instead
     const charring = asm.burns.filter((b) => !isThermal(b))
     const partBurnt: Record<string, boolean> = {}

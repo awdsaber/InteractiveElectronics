@@ -328,6 +328,8 @@ export interface Readout {
   digits?: number
   /** |value| below this reads 0 (default: 1 µV for V, 1 nA / 1 nW for A / W) */
   floor?: number
+  /** the readout shows in the warn tone while its value is above this */
+  warnAbove?: number
 }
 
 export type ReadoutUnit =

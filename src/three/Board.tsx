@@ -49,6 +49,10 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   // render state, not params, so it stays out of the bake key and never rebakes the part.
   const rgb = rgbGlow(p, snap.published)
   if (rgb) glow = rgb.glow
+  // a resistor with a thermal rating (rth/tMax) publishes `<id>.tj`: its body glows orange from
+  // 70 °C (barely warm) to full at 155 °C (the 1/4 W carbon-film limit)
+  const tj = p.kind === 'resistor' && cid ? snap.extra[`${cid}.tj`] : undefined
+  if (tj !== undefined) glow = Math.min(1, Math.max(0, (tj - 42) / 98))
   const s: PartRenderState = {
     visible: placed,
     soldered: !breadboard && snap.assembly.soldered && (p.mount === 'tht' || p.mount === 'smd'),
@@ -59,6 +63,7 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     showLabel: false,
   }
   if (rgb?.color) s.glowColor = rgb.color
+  else if (tj !== undefined) s.glowColor = '#ff6a1f'
   // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id
   if (p.kind === 'button' && typeof p.params?.pressedWhen === 'string') s.value = snap.assembly.failures.includes(p.params.pressedWhen) ? 1 : 0
   if (cid && MOTOR_KINDS.has(p.kind)) s.rpm = snap.extra[`${cid}.rpm`] ?? 0
