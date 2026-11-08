@@ -46,6 +46,13 @@ describe('formatSI', () => {
     expect(formatSI(42, '%', 3)).toBe('42.0 %')
   })
 
+  it('a bare number (unit "") is a ratio or a count: no prefix (ζ 0.101, not "101 m")', () => {
+    expect(formatSI(0.1007, '', 3)).toBe('0.101')
+    expect(formatSI(4.963, '', 3)).toBe('4.96')
+    expect(formatSI(0.5, '', 1)).toBe('0.5')
+    expect(formatSI(2.4, '', 3)).toBe('2.40')
+  })
+
   it('SI units with prefixes: seconds, hertz, coulombs', () => {
     expect(formatSI(0.0025, 's', 3)).toBe('2.50 ms')
     expect(formatSI(1590, 'Hz', 3)).toBe('1.59 kHz')

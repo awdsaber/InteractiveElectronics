@@ -56,6 +56,8 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `serial-plotter` | — | every `name:value` on a Serial line (Arduino Serial Plotter format), as `<instance>.<name>`; bare numbers as `v1`, `v2`… |
 | `coulomb-counter` | `element` ('P_I') | `coulombs` (signed net charge past the element since power-on, I·dt, so reversed current counts down), `electronsPerSec` (signed I/e; 0 below 0.1 µA), `electronsE15` (same, ×10¹⁵: the readout formatter can't print 7.5e16). Restarts at power-off, repair, strip and reset. |
 | `pot-knob` | `pot` (a POT element id), `turn` (0–100 %) | `turn`. Sets the POT's wiper, so a tweak `behavior:<instance>.turn` with unit '%' reads "50 %". |
+| `source-select` | `switches` (comma-separated SW ids), `mode` (index, default 0) | `mode`. Closes only the SW at index `mode`: a generator's waveform button driven by an enum tweak `behavior:<instance>.mode`. |
+| `series-rlc` | `l`, `c` (element ids), `r` (comma-separated R ids in the loop), `rExtra` (Ω, default 0), `sine` (a V with a `wave`) | `f0`, `z0`, `zeta`, `q`, `fd` (0 when ζ ≥ 1), `gain` (steady-state gain V_C/V_in at the sine frequency), `rTotal`, from the live netlist; NaN once L or C has failed. |
 
 ## Rules
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).
