@@ -1,4 +1,4 @@
-# Resistor Codes and Dividers
+﻿# Resistor Codes and Dividers
 
 *From bands to volts*
 
@@ -124,9 +124,9 @@ V_out = V_in · R2 / (R1 + R2) = 9 × 4.7 / 14.7 = **2.88 V**, with I = 9/14.7k 
    - 2.5 kΩ
    - **Answer:** 2. *Why:* R1 ∥ R2 = 10k·10k/20k = 5 kΩ.
 
-4. **You need about 3.3 V from 5 V with R1 = 1.8 kΩ on top. Which standard R2 is closest?**
+4. **You need about 3.3 V from 5 V with R1 = 1.8 kΩ on top. Which of these standard R2 values is closest?**
    - 1.0 kΩ
    - 3.3 kΩ
    - 2.2 kΩ
    - 6.8 kΩ
-   - **Answer:** 1. *Why:* R2 = 3.3 × 1.8/(5 − 3.3) = 3.49 kΩ. 3.3 kΩ gives 5 × 3.3/5.1 = 3.24 V.
+   - **Answer:** 1. *Why:* R2 = 3.3 × 1.8/(5 − 3.3) = 3.49 kΩ. 3.3 kΩ gives 5 × 3.3/5.1 = 3.24 V (E24 also has 3.6 kΩ, which gives 3.33 V).
