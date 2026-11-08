@@ -67,6 +67,7 @@ const part = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
   circuitIds: z.array(z.string()).optional(),
   hidden: z.boolean().optional(),
+  facts: z.array(z.string().min(1)).optional(),
 })
 
 const voltageSource = z.object({ kind: z.literal('voltage'), node, ref: node.optional() })

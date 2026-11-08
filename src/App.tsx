@@ -4,6 +4,7 @@ import { getBench, useStore } from './engine/bench/store'
 import { lessons, pinned, tracks } from './lessons'
 import { Instruments } from './ui/Instruments'
 import { Layout } from './ui/Layout'
+import { PartInspector } from './ui/PartInspector'
 import { sfx } from './audio/sound'
 
 const BenchScene = lazy(() => import('./three/BenchScene'))
@@ -15,6 +16,7 @@ export default function App() {
   const { lesson, snap, settings } = s
   const failures = useMemo(() => lesson.failures.map((f) => ({ id: f.id, label: f.label })), [lesson])
   const code = s.code[lesson.id] ?? lesson.sketch?.code ?? ''
+  const inspected = s.selectedPart ? lesson.board.parts.find((p) => p.id === s.selectedPart) : undefined
 
   return (
     <Layout
@@ -66,10 +68,28 @@ export default function App() {
       onQuizAnswer={(ok) => sfx(ok ? 'place' : 'pop', ok ? 0.5 : 0.2)}
       toasts={s.toasts}
       onDismissToast={s.dismissToast}
+      inspector={
+        inspected ? (
+          <PartInspector
+            key={lesson.id}
+            lesson={lesson}
+            part={inspected}
+            snap={snap}
+            onClose={() => s.selectPart(null)}
+            onZoom={() => s.zoomToPart(inspected.id)}
+            onResetView={s.resetView}
+          />
+        ) : null
+      }
     >
       <Suspense fallback={<div className="bench-loading">Setting out the bench…</div>}>
-        <BenchScene lesson={lesson} snap={snap} settings={settings} />
+        <BenchScene lesson={lesson} snap={snap} settings={settings} selected={s.selectedPart} onSelect={s.selectPart} view={s.view} />
       </Suspense>
+      {s.view.partId && (
+        <button type="button" className="pill view-reset" onClick={s.resetView}>
+          Reset view
+        </button>
+      )}
     </Layout>
   )
 }

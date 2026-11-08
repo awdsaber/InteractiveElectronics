@@ -306,6 +306,8 @@ export interface PartPlacement {
   circuitIds?: string[]
   /** not part of the build: only on the bench while a failure `parts.show`s it (e.g. a jumper in place of R1) */
   hidden?: boolean
+  /** short datasheet facts shown in the part inspector, e.g. "Vf 2.0 V at 20 mA (typ.)" */
+  facts?: string[]
 }
 
 export interface BoardSpec {

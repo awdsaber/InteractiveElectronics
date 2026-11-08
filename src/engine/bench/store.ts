@@ -30,6 +30,17 @@ export interface AppState {
   /** the instrument panel (scope / strip chart) is open */
   instrumentsOpen: boolean
   toasts: ToastMessage[]
+  /** the part the inspector card shows (a board part id), or null */
+  selectedPart: string | null
+  /**
+   * the camera request: frame `partId` (zoom to part) or the whole board (null). `seq` changes on
+   * every request, so asking for the same part twice re-frames it.
+   */
+  view: CameraView
+  /** select a part of the current lesson (unknown ids are ignored), or null to close the inspector */
+  selectPart(id: string | null): void
+  zoomToPart(id: string): void
+  resetView(): void
   setSpeed(x: number): void
   setInstrumentsOpen(open: boolean): void
   resetPeaks(): void
@@ -42,6 +53,11 @@ export interface AppState {
   completeQuiz(score: number, total: number): void
   toast(text: string, tone?: ToastMessage['tone']): void
   dismissToast(id: number): void
+}
+
+export interface CameraView {
+  partId: string | null
+  seq: number
 }
 
 const KEY = 'circuit-atelier'
@@ -202,6 +218,22 @@ export const useStore = create<AppState>()((set, get) => {
     speed: lesson.sim?.speed ?? 1,
     instrumentsOpen: !!lesson.instruments?.open,
     toasts: [],
+    selectedPart: null,
+    view: { partId: null, seq: 0 },
+
+    selectPart(id) {
+      if (id !== null && !get().lesson.board.parts.some((p) => p.id === id)) return
+      if (id !== get().selectedPart) set({ selectedPart: id })
+    },
+
+    zoomToPart(id) {
+      if (!get().lesson.board.parts.some((p) => p.id === id)) return
+      set({ view: { partId: id, seq: get().view.seq + 1 } })
+    },
+
+    resetView() {
+      set({ view: { partId: null, seq: get().view.seq + 1 } })
+    },
 
     setSpeed(x) {
       bench.setSpeed(x)
@@ -231,6 +263,9 @@ export const useStore = create<AppState>()((set, get) => {
         speed: l.sim?.speed ?? 1,
         instrumentsOpen: !!l.instruments?.open || get().instrumentsOpen,
         toasts: [],
+        // a new board: the inspector closes and the camera frames the whole board again
+        selectedPart: null,
+        view: { partId: null, seq: get().view.seq + 1 },
       })
     },
 

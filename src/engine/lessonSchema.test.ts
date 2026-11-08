@@ -86,3 +86,13 @@ describe('lessonSchema: X4 fields', () => {
     expect(v({ instruments: { scope: { channels: [{ source: { kind: 'voltage', node } }], timePerDiv: 0 } } })[0]).toMatch(/timePerDiv/)
   })
 })
+
+describe('lessonSchema: part facts (part inspector)', () => {
+  const withFacts = (facts: unknown) => ({ board: { ...base.board, parts: base.board.parts.map((p, i) => (i === 0 ? { ...p, facts } : p)) } }) as Partial<Lesson>
+  it('facts are optional, non-empty strings', () => {
+    expect(v(withFacts(['Vf 2.0 V at 20 mA', 'IF max 30 mA']))).toEqual([])
+    expect(v(withFacts(undefined))).toEqual([])
+    expect(v(withFacts([3]))[0]).toMatch(/^board\.parts\.0\.facts\.0/)
+    expect(v(withFacts(['']))[0]).toMatch(/^board\.parts\.0\.facts\.0/)
+  })
+})

@@ -96,3 +96,34 @@ describe('store actions', () => {
     expect(useStore.getState().progress.quiz['led-resistor']).toEqual({ score: 3, total: 4 })
   })
 })
+
+describe('part inspector selection', () => {
+  it('selects a part of the lesson, ignores unknown ids, clears on close and on lesson change', () => {
+    useStore.getState().selectLesson('resistor-codes-divider')
+    expect(useStore.getState().selectedPart).toBeNull()
+    useStore.getState().selectPart('r1')
+    expect(useStore.getState().selectedPart).toBe('r1')
+    useStore.getState().selectPart('no-such-part')
+    expect(useStore.getState().selectedPart).toBe('r1')
+    useStore.getState().selectPart(null)
+    expect(useStore.getState().selectedPart).toBeNull()
+    useStore.getState().selectPart('r2')
+    useStore.getState().selectLesson('led-resistor')
+    expect(useStore.getState().selectedPart).toBeNull()
+  })
+
+  it('zoom to part and reset view are camera requests; selecting alone never moves the camera', () => {
+    useStore.getState().selectLesson('resistor-codes-divider')
+    const v0 = useStore.getState().view
+    expect(v0.partId).toBeNull()
+    useStore.getState().selectPart('r1')
+    expect(useStore.getState().view).toBe(v0)
+    useStore.getState().zoomToPart('r1')
+    expect(useStore.getState().view).toEqual({ partId: 'r1', seq: v0.seq + 1 })
+    useStore.getState().resetView()
+    expect(useStore.getState().view).toEqual({ partId: null, seq: v0.seq + 2 })
+    useStore.getState().zoomToPart('r1')
+    useStore.getState().selectLesson('led-resistor')
+    expect(useStore.getState().view.partId).toBeNull()
+  })
+})
