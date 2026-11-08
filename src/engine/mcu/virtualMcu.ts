@@ -93,6 +93,15 @@ export interface VirtualMcuOptions {
   warn?(message: string): void
   /** loop() iterations per virtual second when loop() never waits (default 20000) */
   maxLoopsPerSecond?: number
+  /** analogWrite PWM frequency, Hz, for every pin (default: the board's, see pwmHzFor) */
+  pwmFreq?: number
+}
+
+/** analogWrite frequency of a pin: Uno 490 Hz (pins 5 and 6 on timer 0: 980 Hz), ESP32-S3 1 kHz */
+export function pwmHzFor(board: Board, pin: number): number {
+  if (board === 'esp32s3') return 1000
+  if (board === 'uno' && (pin === 5 || pin === 6)) return 980
+  return 490
 }
 
 interface Timer {
@@ -823,7 +832,7 @@ export class VirtualMcu {
   private analogWrite(pin: number, value: number): void {
     const level = constrain(Math.trunc(Number(value) || 0), 0, 255) / 255
     this.latch.set(pin, level > 0 ? 1 : 0)
-    this.notify(pin, { mode: 'OUTPUT', level })
+    this.notify(pin, { mode: 'OUTPUT', level, pwmHz: this.opts.pwmFreq ?? pwmHzFor(this.board, pin) })
   }
 
   private digitalRead(pin: number): number {

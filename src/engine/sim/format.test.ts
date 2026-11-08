@@ -35,4 +35,20 @@ describe('formatSI', () => {
     expect(formatSI(1500, 'rpm')).toBe('1500 rpm')
     expect(formatSI(25, '°C')).toBe('25 °C')
   })
+
+  it('units that already carry a prefix, or are logarithmic or counted, take none', () => {
+    expect(formatSI(-3.5, 'dBm', 3)).toBe('-3.50 dBm')
+    expect(formatSI(0.002, 'dBm', 3)).toBe('0.00200 dBm')
+    expect(formatSI(1234, 'counts', 3)).toBe('1234 counts')
+    expect(formatSI(12.5, 'µs', 3)).toBe('12.5 µs')
+    expect(formatSI(1500, 'µs', 3)).toBe('1500 µs')
+    expect(formatSI(150, 'mΩ', 3)).toBe('150 mΩ')
+    expect(formatSI(42, '%', 3)).toBe('42.0 %')
+  })
+
+  it('SI units with prefixes: seconds, hertz, coulombs', () => {
+    expect(formatSI(0.0025, 's', 3)).toBe('2.50 ms')
+    expect(formatSI(1590, 'Hz', 3)).toBe('1.59 kHz')
+    expect(formatSI(4.7e-6, 'C', 2)).toBe('4.7 µC')
+  })
 })

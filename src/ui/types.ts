@@ -43,6 +43,8 @@ export interface ReadoutView {
   label: string
   value: string
   tone?: 'normal' | 'warn' | 'ok'
+  /** peak-hold readout: the value shown is the held peak */
+  peak?: boolean
 }
 
 export interface PartChoice {
