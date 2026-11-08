@@ -1,3 +1,4 @@
+import { RadioSeg } from './RadioSeg'
 import { PALETTES } from './types'
 import type { PaletteId, Settings } from './types'
 
@@ -43,13 +44,7 @@ export function Controls({ settings, onSetting, sim, instruments }: ControlsProp
       {sim && (
         <div className="ctl speed">
           <span className="ctl-label">Sim speed</span>
-          <div className="seg" role="radiogroup" aria-label="Sim speed">
-            {SPEEDS.map((x) => (
-              <button key={x} type="button" role="radio" aria-checked={sim.speed === x} onClick={() => sim.onSpeed(x)}>
-                {speedLabel(x)}
-              </button>
-            ))}
-          </div>
+          <RadioSeg label="Sim speed" options={SPEEDS.map((x) => ({ value: x, label: speedLabel(x) }))} value={sim.speed} onChange={sim.onSpeed} />
           {note && (
             <span className="speed-note" role="status">
               {note}

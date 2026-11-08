@@ -3,12 +3,13 @@
 // substeps included), never per-frame snapshots, so a µs spike is on screen exactly as simulated.
 // Lesson defaults come from `lesson.instruments`; the learner can re-probe any node or element.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Bench, ChartSignal } from '../engine/bench/simLoop'
 import { defaultFloor } from '../engine/bench/readouts'
 import { findTrigger } from '../engine/bench/sampleRing'
 import { formatSI } from '../engine/sim/format'
 import type { Lesson, Readout, ScopeChannel, ScopeSource } from '../engine/types'
+import { RadioSeg } from './RadioSeg'
 import { Sweep, columnPath, parseSource, seq125, sourceKey, withValue } from './scopeView'
 
 export interface InstrumentsProps {
@@ -377,6 +378,7 @@ function firstProbe(lesson: Lesson, nodes: string[]): ScopeSource | null {
 
 export function Instruments({ lesson, bench }: InstrumentsProps) {
   const defaults = lesson.instruments
+  const uid = useId()
   const nodes = useMemo(
     () => [...new Set(lesson.circuit.elements.flatMap((e) => e.nodes as string[]))].filter((n) => n !== '0').sort(),
     [lesson],
@@ -467,7 +469,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
       if (c.run && r.writes !== s.writes) {
         s.writes = r.writes
         const sweepSpan = DIVS_X * c.tDiv
-        const tc = c.chans[c.trig.ch]?.key !== 'off' ? findTrigger(r, c.trig.ch, { level: c.trig.level, slope: c.trig.slope, post: sweepSpan * (1 - PRE), after: s.lastTc }) : null
+        const tc = c.chans[c.trig.ch]?.key !== 'off' ? findTrigger(r, c.trig.ch, { level: c.trig.level, slope: c.trig.slope, post: sweepSpan * (1 - PRE), after: s.lastTc, lookback: Math.max(2 * sweepSpan, 0.25) }) : null
         if (tc !== null) {
           sweep.capture(r, tc - PRE * sweepSpan, tc + (1 - PRE) * sweepSpan)
           s.lastTc = tc
@@ -554,17 +556,36 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
 
   return (
     <section className="instruments" aria-label="Instruments">
-      <div className="inst-tabs" role="tablist" aria-label="Instrument">
-        <button type="button" role="tab" aria-selected={view === 'scope'} onClick={() => setView('scope')}>
-          Oscilloscope
-        </button>
-        <button type="button" role="tab" aria-selected={view === 'chart'} onClick={() => setView('chart')}>
-          Strip chart
-        </button>
+      <div
+        className="inst-tabs"
+        role="tablist"
+        aria-label="Instrument"
+        onKeyDown={(e) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+          e.preventDefault()
+          const next = e.key === 'Home' ? 'scope' : e.key === 'End' ? 'chart' : view === 'scope' ? 'chart' : 'scope'
+          setView(next)
+          document.getElementById(`${uid}-tab-${next}`)?.focus()
+        }}
+      >
+        {(['scope', 'chart'] as const).map((v) => (
+          <button
+            key={v}
+            id={`${uid}-tab-${v}`}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            aria-controls={`${uid}-panel-${v}`}
+            tabIndex={view === v ? 0 : -1}
+            onClick={() => setView(v)}
+          >
+            {v === 'scope' ? 'Oscilloscope' : 'Strip chart'}
+          </button>
+        ))}
         <span className="inst-note">sampled every sim step, edge substeps included</span>
       </div>
 
-      <div className="inst-body" hidden={view !== 'scope'}>
+      <div className="inst-body" id={`${uid}-panel-scope`} role="tabpanel" aria-labelledby={`${uid}-tab-scope`} hidden={view !== 'scope'}>
         <div className="inst-screen">
           <canvas ref={scopeCanvas} className="scope-canvas" role="img" aria-label={`Oscilloscope: ${chans.filter((c) => c.key !== 'off').map((c) => c.label ?? nameOf(c.key)).join(' and ')}`} />
           <p className="inst-stats" ref={stats} aria-live="off" />
@@ -664,20 +685,24 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
               />
               <output>{unitOf(chans[trig.ch]?.key ?? '')}</output>
             </label>
-            <div className="seg" role="radiogroup" aria-label="Trigger slope">
-              {(['rising', 'falling'] as const).map((s) => (
-                <button key={s} type="button" role="radio" aria-checked={trig.slope === s} onClick={() => setTrig({ ...trig, slope: s })}>
-                  {s === 'rising' ? '↑ rising' : '↓ falling'}
-                </button>
-              ))}
-            </div>
-            <div className="seg" role="radiogroup" aria-label="Trigger mode">
-              {(['auto', 'normal'] as const).map((m) => (
-                <button key={m} type="button" role="radio" aria-checked={trig.mode === m} onClick={() => setTrig({ ...trig, mode: m })}>
-                  {m}
-                </button>
-              ))}
-            </div>
+            <RadioSeg
+              label="Trigger slope"
+              options={[
+                { value: 'rising', label: '↑ rising' },
+                { value: 'falling', label: '↓ falling' },
+              ]}
+              value={trig.slope}
+              onChange={(slope) => setTrig({ ...trig, slope })}
+            />
+            <RadioSeg
+              label="Trigger mode"
+              options={[
+                { value: 'auto', label: 'auto' },
+                { value: 'normal', label: 'normal' },
+              ]}
+              value={trig.mode}
+              onChange={(mode) => setTrig({ ...trig, mode })}
+            />
             <button type="button" className={`run-stop${run ? '' : ' stopped'}`} aria-pressed={!run} onClick={() => setRun(!run)}>
               {run ? '■ Stop' : '▶ Run'}
             </button>
@@ -685,7 +710,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
         </div>
       </div>
 
-      <div className="inst-body" hidden={view !== 'chart'}>
+      <div className="inst-body" id={`${uid}-panel-chart`} role="tabpanel" aria-labelledby={`${uid}-tab-chart`} hidden={view !== 'chart'}>
         <div className="inst-screen">
           <canvas
             ref={chartCanvas}

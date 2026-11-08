@@ -114,6 +114,13 @@ describe('findTrigger', () => {
     expect(findTrigger(r, 0, { level: 2.5, slope: 'rising', post: 0.001, after: 0.03 })).toBeCloseTo(0.045, 4)
   })
 
+  it('lookback bounds the walk to the newest samples', () => {
+    const r = square()
+    // newest crossing with 8 ms after it is at 35 ms; data ends at 50 ms
+    expect(findTrigger(r, 0, { level: 2.5, slope: 'rising', post: 0.008, lookback: 0.02 })).toBeCloseTo(0.035, 3)
+    expect(findTrigger(r, 0, { level: 2.5, slope: 'rising', post: 0.008, lookback: 0.012 })).toBeNull()
+  })
+
   it('null when nothing crosses', () => {
     const r = new SampleRing(8, 1)
     for (let i = 0; i < 8; i++) r.push1(i, 1)

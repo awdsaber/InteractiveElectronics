@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { RadioSeg } from './RadioSeg'
 import { isOn, momentaryValues } from '../engine/bench/tweaks'
 import type { Tweak } from '../engine/types'
 import { siLabel, sliderToValue, valueToSlider } from './format'
@@ -65,13 +66,7 @@ function EnumTweak({ t, v, onTweak }: { t: Tweak; v: number; onTweak: TweaksProp
         <span>{t.label}</span>
         <output>{t.options?.find((o) => o.value === v)?.label ?? siLabel(v, t.unit)}</output>
       </span>
-      <div className="seg" role="radiogroup" aria-label={t.label}>
-        {t.options?.map((o) => (
-          <button key={o.value} type="button" role="radio" aria-checked={o.value === v} onClick={() => onTweak(t, o.value)}>
-            {o.label}
-          </button>
-        ))}
-      </div>
+      <RadioSeg label={t.label} options={t.options ?? []} value={v} onChange={(x) => onTweak(t, x)} />
     </div>
   )
 }
@@ -90,6 +85,12 @@ function MomentaryTweak({ t, v, rest, onTweak }: { t: Tweak; v: number; rest: nu
     down.current = false
     onTweak(t, rest)
   }
+  // unmounted while held (lesson switch, layout change): let go, or the button stays pressed
+  const releaseRef = useRef(release)
+  useEffect(() => {
+    releaseRef.current = release
+  })
+  useEffect(() => () => releaseRef.current(), [])
   const pressed = v === held && v !== rest
   return (
     <div className="tweak tweak-row">

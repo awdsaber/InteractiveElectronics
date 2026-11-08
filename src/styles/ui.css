@@ -892,6 +892,11 @@ input[type='range']:active::-webkit-slider-thumb {
   max-width: min(360px, calc(100vw - 32px));
   pointer-events: none;
 }
+/* with the instrument panel open the bottom right is the scope's control column: toasts go top right */
+.shell[data-instruments='open'] .toasts {
+  top: 16px;
+  bottom: auto;
+}
 /* toasts never block the bench: clicks pass through, only the close button catches them */
 .toast {
   pointer-events: none;

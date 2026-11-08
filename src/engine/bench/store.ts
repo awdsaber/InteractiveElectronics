@@ -176,6 +176,8 @@ export const useStore = create<AppState>()((set, get) => {
     bench = createBench(l, {
       code,
       speed: l.sim?.speed ?? 1,
+      // keep a frame's stepping inside ~8 ms of wall clock so the page stays responsive
+      stepBudgetMs: hasWindow ? 8 : undefined,
       onNote,
       onSnapshot: (snap) => set({ snap, tweaks: bench.tweakValues() }),
     })
@@ -267,6 +269,8 @@ export const useStore = create<AppState>()((set, get) => {
     },
 
     setTweak(t, value) {
+      // a control of the previous lesson letting go on unmount (a held momentary button)
+      if (!get().lesson.tweaks?.includes(t)) return
       bench.setTweak(tweakKey(t), value)
       set({ snap: bench.snapshot(), tweaks: bench.tweakValues() })
     },

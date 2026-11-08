@@ -96,6 +96,8 @@ export interface TriggerSpec {
   slope: 'rising' | 'falling'
   /** the sweep needs this much data after the crossing, s */
   post: number
+  /** search only the newest `lookback` seconds of samples (default: all of them) */
+  lookback?: number
   /** only crossings strictly after this time (the sweep already on screen) */
   after?: number
 }
@@ -107,7 +109,7 @@ export interface TriggerSpec {
 export function findTrigger(r: SampleRing, channel: number, spec: TriggerSpec): number | null {
   if (r.count < 2) return null
   const tEnd = r.lastT - spec.post
-  const after = spec.after ?? -Infinity
+  const after = Math.max(spec.after ?? -Infinity, r.lastT - (spec.lookback ?? Infinity))
   const rising = spec.slope === 'rising'
   const lv = spec.level
   // walk back from the newest sample whose crossing could still fit a full sweep

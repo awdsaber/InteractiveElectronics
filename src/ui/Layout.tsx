@@ -89,7 +89,7 @@ export function Layout(p: LayoutProps) {
     }
   }, [drawer])
   return (
-    <div className="shell">
+    <div className="shell" data-instruments={p.instruments ? 'open' : undefined}>
       <Sidebar {...p.syllabus} open={drawer} onClose={() => setDrawer(false)} />
       <div className="main">
         <header className="topbar">

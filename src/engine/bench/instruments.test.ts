@@ -123,6 +123,18 @@ describe('strip chart', () => {
   })
 })
 
+describe('strip chart power gaps', () => {
+  it('power-off pushes a NaN row so the trace breaks across the gap', async () => {
+    const b = createBench(rcLesson({ instruments: { chart: { signals: [1] } } }))
+    b.dispatch('power')
+    for (let i = 0; i < 10; i++) await b.frame(FRAME)
+    b.dispatch('power')
+    const c = b.chart
+    expect(c.value(0, c.count - 1)).toBeNaN()
+    expect(c.value(0, c.count - 2)).toBeGreaterThan(0)
+  })
+})
+
 describe('derived and peak-hold readouts', () => {
   it('derived readouts: diff and ratio of other readouts', async () => {
     const b = createBench(rcLesson())
@@ -211,8 +223,8 @@ describe('sim speed', () => {
     expect(b.snapshot().capped).toBe(false)
   })
 
-  it('a step cap holds a fine-dt lesson back and the snapshot says so', async () => {
-    const l = rcLesson({ sim: { dt: 1e-5 } })
+  it('a stepsPerFrame cap holds a fine-dt lesson back and the snapshot says so', async () => {
+    const l = rcLesson({ sim: { dt: 1e-5, stepsPerFrame: 30 } })
     const b = createBench(l)
     b.dispatch('power')
     for (let i = 0; i < 120; i++) await b.frame(FRAME) // wants 1667 steps a frame, gets 30
@@ -220,6 +232,25 @@ describe('sim speed', () => {
     expect(s.capped).toBe(true)
     expect(s.rate).toBeLessThan(0.05)
     expect(b.t).toBeCloseTo(120 * 30 * 1e-5, 6)
+  })
+
+  it('the default step cap is a whole frame of sim time, not 30 steps: a 10 µs lesson keeps up at ×1', async () => {
+    const b = createBench(rcLesson({ sim: { dt: 1e-5 } }))
+    b.dispatch('power')
+    await b.frame(FRAME) // 1667 steps owed, all taken (no wall-clock budget headless)
+    expect(b.t).toBeCloseTo(1667e-5, 9)
+    expect(b.snapshot().capped).toBe(false)
+  })
+
+  it('the wall-clock step budget stops a frame early and reports capped', async () => {
+    let clock = 0
+    // every clock read advances 1 ms: an 8 ms budget allows about 8 steps
+    const b = createBench(rcLesson({ sim: { dt: 1e-5 } }), { stepBudgetMs: 8, now: () => (clock += 1) })
+    b.dispatch('power')
+    await b.frame(FRAME)
+    expect(b.t).toBeGreaterThan(0)
+    expect(b.t).toBeLessThan(20e-5)
+    expect(b.snapshot().capped).toBe(true)
   })
 
   it('stepsPerFrame is a cap, not a fixed count', async () => {
