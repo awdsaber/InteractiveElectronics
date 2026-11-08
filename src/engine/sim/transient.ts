@@ -4,6 +4,9 @@
 // Trapezoidal steps fall back to one backward-Euler step after any discontinuity (start,
 // parameter / pin / netlist / dt change, square-wave edge, a device mode flip in the previous
 // step: V current limit, REG mode, LOGIC edge) so they don't ring numerically.
+// With a PIN in PWM and a nonlinear netlist (or a vccNode PWM pin) the pin really switches: each
+// step is cut at its edges and the pieces are solved in turn (pwm.ts). The returned solution is
+// the time average of the pieces over the last max(dt, PWM period), so readouts read like a DMM.
 
 import type { Element, Netlist, PinState, Solution } from '../types'
 import {
@@ -20,6 +23,7 @@ import {
   waveValue,
 } from './devices'
 import { setElementKey } from './failures'
+import { type PwmPins, blendArrays, blendSolutions, pwmEdges, pwmMask, pwmPins, pwmStatePins } from './pwm'
 import { type SolveContext, buildSolution, initialGuess, solveCompiled } from './solve'
 
 export interface TransientOptions {
@@ -69,7 +73,8 @@ export interface Transient {
   /**
    * the circuit `h` seconds after the last step with the current pins and parameters: one
    * backward-Euler step from the present C/L state that is NOT committed (time, state and lastGood
-   * stay put). For reads between steps, e.g. a digitalRead right after a pin changed.
+   * stay put). For reads between steps, e.g. a digitalRead right after a pin changed. Switching PWM
+   * pins switch inside it as in step(); the result is the time average over h.
    */
   peek(h: number): Solution
 }
@@ -114,6 +119,184 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   const pins: Record<number, PinState> = {}
   const sc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
 
+  // ── switched PWM (pwm.ts) ──
+  let pp: PwmPins | null = null
+  /** pins or the device split changed: recompute the switching pins before the next solve */
+  let ppDirty = true
+  /** per switch state (mask): its last solution (Newton warm start) and limiter memory */
+  let mem = new Map<number, { x: Float64Array; lim: Float64Array }>()
+  let memKey = ''
+  /** state of the committed solution (-1: none / averaged) */
+  let lastMask = -1
+  /** recent single-state pieces (oldest first), covering at least one period: the readouts' average */
+  let window: { w: number; sol: Solution; mask: number }[] = []
+  const WINDOW_MAX = 64
+  const statePins = new Map<number, Record<number, PinState>>()
+  const edgesBuf: number[] = []
+  // rollback buffers for a failed or peeked step
+  let xSave = new Float64Array(0)
+  let stSave = new Float64Array(0)
+  let limSave0 = new Float64Array(0)
+  let limSave1 = new Float64Array(0)
+  const psc: SolveContext = { mode: 'tran', dt, pins, t: 0, trap: false }
+
+  const refreshPwm = () => {
+    if (!ppDirty) return
+    ppDirty = false
+    const prevKey = pp?.key ?? ''
+    pp = pwmPins(compiled, pins)
+    statePins.clear()
+    if (!pp) {
+      window = []
+      lastMask = -1
+    } else if (pp.key !== prevKey || memKey === '') {
+      mem = new Map()
+      memKey = pp.key
+      lastMask = -1
+    }
+  }
+
+  interface Advance {
+    /** the solution at the end (plain), or the time-weighted pieces' blend (PWM) */
+    sol: Solution
+    ok: boolean
+    modes: boolean
+    /** trapezoidal rule used (only for one unsplit piece) */
+    trap: boolean
+  }
+
+  /**
+   * Advance the committed state over [t0, t0 + h]: one solve, or with switching PWM pins one solve
+   * per piece between their edges, each committed before the next. Pieces go to `pieces` (when
+   * given). With `commit` false (peek) every committed buffer is restored afterwards.
+   */
+  function advance(t0: number, h: number, trapOk: boolean, commit: boolean, pieces: { w: number; sol: Solution; mask: number }[] | null): Advance {
+    refreshPwm()
+    const c = compiled
+    const pl = pp
+    if (!pl) {
+      sc.dt = h
+      sc.t = t0 + h
+      sc.trap = trapOk
+      c.linTag = -1
+      const r = solveCompiled(c, sc, x)
+      const sol = buildSolution(c, r, sc)
+      sc.dt = dt
+      if (r.ok && commit) {
+        x.set(r.x)
+        captureState(c, x, h, trapOk)
+      }
+      return { sol, ok: r.ok, modes: r.ok && modesChanged(c), trap: trapOk }
+    }
+    // piece boundaries: the step ends plus every edge inside, closer than 1 ppm of h merged
+    const eb = edgesBuf
+    eb.length = 0
+    for (const p of pl.pins) pwmEdges(p, t0, h, eb)
+    eb.sort((u, v) => u - v)
+    const eps = h * 1e-6
+    if (xSave.length !== x.length) xSave = new Float64Array(x.length)
+    if (stSave.length !== c.st.length) stSave = new Float64Array(c.st.length)
+    if (limSave0.length !== c.lim.length) {
+      limSave0 = new Float64Array(c.lim.length)
+      limSave1 = new Float64Array(c.lim.length)
+    }
+    xSave.set(x)
+    stSave.set(c.st)
+    limSave0.set(c.lim)
+    limSave1.set(c.limSave)
+    const t1 = t0 + h
+    const parts: { weight: number; solution: Solution }[] = []
+    let a = t0
+    let ok = true
+    let modes = false
+    let trapUsed = false
+    let mask = lastMask
+    for (let e = 0; e <= eb.length && ok; e++) {
+      const b = e < eb.length ? eb[e] : t1
+      if (e < eb.length && (b - a < eps || t1 - b < eps)) continue
+      const hk = b - a
+      mask = pwmMask(pl, (a + b) / 2, t0, h)
+      let ps = statePins.get(mask)
+      if (!ps) {
+        ps = pwmStatePins(pl, pins, mask)
+        statePins.set(mask, ps)
+      }
+      let m = mem.get(mask)
+      if (!m) {
+        m = { x: new Float64Array(x), lim: new Float64Array(c.lim) }
+        if (mem.size > 32) mem.clear()
+        mem.set(mask, m)
+      }
+      const trap = trapOk && eb.length === 0 && mask === lastMask
+      c.lim.set(m.lim)
+      c.linTag = pl.aVaries ? mask : -1 // a vccNode / open-drain pin stamps the matrix per state
+      psc.dt = hk
+      psc.t = b
+      psc.trap = trap
+      psc.pins = ps
+      const r = solveCompiled(c, psc, m.x)
+      const sol = buildSolution(c, r, psc)
+      if (!r.ok) {
+        ok = false
+        parts.length = 0
+        parts.push({ weight: 1, solution: sol })
+        break
+      }
+      modes ||= modesChanged(c)
+      trapUsed = trap
+      if (commit) {
+        m.x.set(r.x)
+        m.lim.set(c.lim)
+      }
+      x.set(r.x)
+      captureState(c, x, hk, trap)
+      parts.push({ weight: hk, solution: sol })
+      pieces?.push({ w: hk, sol, mask })
+      a = b
+    }
+    if (!ok || !commit) {
+      x.set(xSave)
+      c.st.set(stSave)
+      c.lim.set(limSave0)
+      c.limSave.set(limSave1)
+    } else lastMask = mask
+    if (ok) for (const p of parts) p.weight /= h
+    const sol = parts.length === 1 ? parts[0].solution : blendSolutions(parts)
+    // several pieces: a state switched inside the step
+    return { sol, ok, modes: modes || parts.length > 1, trap: trapUsed }
+  }
+
+  /** add pieces to the readout window and return its time average over the last max(dt, period) */
+  function windowed(pieces: { w: number; sol: Solution; mask: number }[], stepH: number): Solution {
+    for (const p of pieces) {
+      const last = window[window.length - 1]
+      if (window.length >= WINDOW_MAX && last && last.mask === p.mask) {
+        // a long run in one state (dt ≪ period): one representative piece for its whole duration
+        last.w += p.w
+        last.sol = p.sol
+      } else window.push({ ...p })
+      if (window.length > 2 * WINDOW_MAX) {
+        const [o, n] = window.splice(0, 2)
+        window.unshift({ w: o.w + n.w, sol: n.sol, mask: n.mask })
+      }
+    }
+    const span = Math.max(stepH, pp?.tMax ?? 0)
+    let total = 0
+    for (const p of window) total += p.w
+    while (window.length > 1 && total - window[0].w >= span * (1 - 1e-9)) total -= window.shift()!.w
+    if (window.length === 1) return window[0].sol
+    const used = Math.min(total, span)
+    const extra = total - used
+    const n = window.length
+    const sols = new Array<Solution>(n)
+    const w = new Float64Array(n)
+    for (let k = 0; k < n; k++) {
+      sols[k] = window[k].sol
+      w[k] = (k === 0 ? window[k].w - extra : window[k].w) / used
+    }
+    return blendArrays(sols, w)
+  }
+
   const findSquares = () => {
     squares = []
     for (const el of current.elements) if (el.type === 'V' && el.wave?.kind === 'square') squares.push(el)
@@ -127,6 +310,10 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     compiled = next
     restart = true
     edge = true
+    ppDirty = true
+    memKey = ''
+    window = []
+    lastMask = -1
     findSquares()
   }
 
@@ -141,24 +328,22 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     const t0 = t
     const h0 = dt / (2 ** nSub - 1)
     const out: Substep[] = []
+    const pieces: { w: number; sol: Solution; mask: number }[] = []
     let sol: Solution | null = null
     let tk = t0
     for (let k = 0; k < nSub; k++) {
       const h = k === nSub - 1 ? t0 + dt - tk : h0 * 2 ** k
+      const ta = tk
       tk = k === nSub - 1 ? t0 + dt : tk + h
-      sc.dt = h
-      sc.t = tk
-      sc.trap = false
-      const r = solveCompiled(compiled, sc, x)
-      sol = buildSolution(compiled, r, sc)
-      if (r.ok) {
-        x.set(r.x)
-        captureState(compiled, x, h, false)
-        lastGood = sol
-      }
+      const r = advance(ta, tk - ta, false, true, pieces)
+      sol = r.sol
+      if (r.ok) lastGood = sol
       if (k < nSub - 1) out.push({ t: tk, solution: sol })
     }
-    sc.dt = dt
+    if (pp && pieces.length) {
+      sol = windowed(pieces, dt)
+      if (sol.ok) lastGood = sol
+    }
     lastTrap = false
     restart = true
     t = t0 + dt
@@ -202,18 +387,16 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       }
       edge = false
       const tNext = t + dt
-      const trap = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
-      sc.t = tNext
-      sc.trap = trap
-      lastTrap = trap
-      const r = solveCompiled(compiled, sc, x)
-      const sol = buildSolution(compiled, r, sc)
+      const trapOk = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
+      const pieces: { w: number; sol: Solution; mask: number }[] = []
+      const r = advance(t, dt, trapOk, true, pieces)
+      lastTrap = r.trap
+      let sol = r.sol
       if (r.ok) {
-        x.set(r.x)
-        captureState(compiled, x, dt, trap)
+        if (pp) sol = windowed(pieces, dt)
         lastGood = sol
-        // a device switched mode inside this step: take the next one with backward Euler
-        restart = modesChanged(compiled)
+        // a device switched mode (or a PWM pin switched) inside this step: take the next one with backward Euler
+        restart = r.modes
       }
       t = tNext
       return sol
@@ -233,6 +416,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
         compiled.byId.set(id, nd)
         partition(compiled)
         restart = edge = true
+        ppDirty = true
         findSquares()
       } else recompile()
     },
@@ -242,7 +426,8 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       if (!prev || prev.mode !== state.mode || prev.level !== state.level) {
         compiled.linValid = false
         restart = edge = true
-      }
+        ppDirty = true
+      } else if (prev.pwmHz !== state.pwmHz || prev.toneHz !== state.toneHz) ppDirty = true
     },
     setNetlist(n) {
       current = { ...n, elements: n.elements.slice() }
@@ -251,15 +436,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     peek(h) {
       const lim = new Float64Array(compiled.lim)
       const limSave = new Float64Array(compiled.limSave)
-      const saved = { dt: sc.dt, t: sc.t, trap: sc.trap }
-      sc.dt = Math.max(h, 1e-9)
-      sc.t = t + sc.dt
-      sc.trap = false
-      const r = solveCompiled(compiled, sc, new Float64Array(x))
-      const sol = buildSolution(compiled, r, sc)
-      sc.dt = saved.dt
-      sc.t = saved.t
-      sc.trap = saved.trap
+      const sol = advance(t, Math.max(h, 1e-9), false, false, null).sol
       compiled.lim.set(lim)
       compiled.limSave.set(limSave)
       return sol

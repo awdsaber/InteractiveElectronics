@@ -330,6 +330,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       prev.mode !== st.mode ||
       prev.level !== st.level ||
       prev.toneHz !== st.toneHz ||
+      prev.pwmHz !== st.pwmHz ||
       prev.servoDeg !== st.servoDeg
     if (dynamic && changed) {
       pinsChangedAt ??= mcuMicros()
@@ -371,6 +372,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     mcu = new VirtualMcu({
       vcc: sk.vcc,
       board: sk.board,
+      pwmFreq: sk.pwmFreq,
       libraries,
       onPin(pin, st) {
         mcuPins[pin] = { ...st }

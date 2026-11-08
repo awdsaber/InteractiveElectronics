@@ -83,6 +83,41 @@ const curOf = (s: Solution, id: string) => (s.currentOf ? s.currentOf(id) : (s.c
 const powOf = (s: Solution, id: string) => (s.powerOf ? s.powerOf(id) : (s.power[id] ?? 0))
 const xOf = (s: Solution, id: string, key: string) => (s.extraOf ? s.extraOf(id, key) : (s.extra[key] ?? 0))
 const vOf = (s: Solution, n: string) => (s.voltageOf ? s.voltageOf(n) : (s.nodeV[n] ?? 0))
+/** |V| across a maxV-rated element: the highest over the PWM states (an instant limit sees the peak) */
+function peakV(s: Solution, e: Entry): number {
+  if (e.vFixed !== null) return Math.abs(e.vFixed)
+  if (!s.phases) return Math.abs(vOf(s, e.va) - vOf(s, e.vb))
+  let v = 0
+  for (const p of s.phases) v = Math.max(v, Math.abs(vOf(p.solution, e.va) - vOf(p.solution, e.vb)))
+  return v
+}
+/**
+ * The current compared with maxI: on a switched PWM solution an LED or a PIN (junction / bond-wire
+ * limits) takes the instantaneous peak over the pieces; everything else (resistors, wiring, fuses)
+ * the RMS √(Σ w·i²), which is what heats it. Without pieces, |i|.
+ */
+function ratedI(s: Solution, e: Entry): number {
+  if (s.phases && e.peakI) {
+    let v = 0
+    for (const p of s.phases) v = Math.max(v, Math.abs(e.iKey ? xOf(p.solution, e.id, e.iKey) : curOf(p.solution, e.id)))
+    return v
+  }
+  return Math.sqrt(i2(s, e))
+}
+/** rated current squared: Σ w·i² over the PWM pieces (RMS heating), else i² */
+function i2(s: Solution, e: Entry): number {
+  const one = (x: Solution) => (e.iKey ? xOf(x, e.id, e.iKey) : curOf(x, e.id))
+  if (!s.phases) {
+    const i = one(s)
+    return i * i
+  }
+  let v = 0
+  for (const p of s.phases) {
+    const i = one(p.solution)
+    v += p.weight * i * i
+  }
+  return v
+}
 const publish = (s: Solution, key: string, v: number) => {
   if (s.publish) s.publish(key, v)
   else s.extra[key] = v
@@ -102,6 +137,8 @@ interface Entry {
   iKey: string | null
   kTj: string
   ocReason: BurnEvent['reason']
+  /** maxI is an instantaneous limit (LED, PIN), not a heating one */
+  peakI: boolean
 }
 
 const PLANS = new WeakMap<Netlist, Entry[]>()
@@ -146,6 +183,7 @@ function plan(netlist: Netlist): Entry[] {
       iKey: el.type === 'OPAMP' || el.type === 'REG' ? `${id}.iout` : null,
       kTj: `${id}.tj`,
       ocReason: el.type === 'PIN' ? 'pin-overcurrent' : 'overcurrent',
+      peakI: el.type === 'PIN' || el.type === 'LED',
     })
   }
   PLANS.set(netlist, p)
@@ -193,6 +231,10 @@ function nextTj(prev: number, r: Rating, p: number, dt: number): number {
  * without materialising the lazy maps) and caches its per-element plan per netlist object.
  * `state` is mutated (timers, temperatures, already-burnt set). At most one event per element.
  *
+ * On a switched PWM solution (solution.phases) maxV takes the highest |V| over the pieces; maxI
+ * takes the peak for LEDs and PINs and the RMS √(Σ w·i²) for everything else; fuse melting uses
+ * Σ w·i², and power is the time average Σ w·p.
+ *
  * `instantOnly` is for extra samples inside a frame (edge substeps): it fires only the instant
  * limit (maxV over-voltage) and leaves lastT, heat, running means, fuse melt and timers untouched,
  * so the per-frame checks integrate exactly as if the sample had not been taken.
@@ -217,10 +259,10 @@ export function checkRatings(
     const ps = part(state, id)
 
     if (el.type === 'FUSE' && !el.blown) {
-      const i = curOf(s, id)
-      ps.melt = Math.max(0, ps.melt + (i * i - el.iRated * el.iRated) * dt)
+      const ii = i2(s, e)
+      ps.melt = Math.max(0, ps.melt + (ii - el.iRated * el.iRated) * dt)
       if (ps.melt >= el.i2t) {
-        fire(state, events, e, 'blown', Math.abs(i), el.iRated, t)
+        fire(state, events, e, 'blown', Math.sqrt(ii), el.iRated, t)
         continue
       }
     }
@@ -251,7 +293,7 @@ export function checkRatings(
     if (el.disabled) continue
 
     if (r.maxV !== undefined) {
-      const v = Math.abs(e.vFixed ?? vOf(s, e.va) - vOf(s, e.vb))
+      const v = peakV(s, e)
       if (v > r.maxV) {
         fire(state, events, e, 'overvoltage', v, r.maxV, t)
         continue
@@ -259,10 +301,10 @@ export function checkRatings(
     }
 
     if (r.maxI !== undefined) {
-      const i = Math.abs(e.iKey ? xOf(s, id, e.iKey) : curOf(s, id))
-      let value = i
+      const ii = ratedI(s, e)
+      let value = ii
       if (r.rmsWindow) {
-        ps.meanI2 = mean(ps.meanI2, i * i, dt, r.rmsWindow)
+        ps.meanI2 = mean(ps.meanI2, e.peakI ? ii * ii : i2(s, e), dt, r.rmsWindow)
         value = Math.sqrt(ps.meanI2)
       }
       if (value > r.maxI) {
@@ -303,7 +345,7 @@ function checkInstant(netlist: Netlist, s: Solution, t: number, state: RatingSta
     const { el, id, r } = e
     if (r?.maxV === undefined || el.disabled || state.burnt.has(id)) continue
     if (state.parts.get(id)?.shutdown) continue
-    const v = Math.abs(e.vFixed ?? vOf(s, e.va) - vOf(s, e.vb))
+    const v = peakV(s, e)
     if (v > r.maxV) fire(state, events, e, 'overvoltage', v, r.maxV, t)
   }
   return events

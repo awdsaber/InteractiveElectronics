@@ -167,6 +167,17 @@ export interface Solution {
   voltageOf?(node: NodeId): number
   /** set extra[key] (e.g. `${id}.tj`) without materialising the map before it is read */
   publish?(key: string, value: number): void
+  /**
+   * Set on a switched-PWM solution (sim/pwm.ts): the single-state solutions this one time-averages,
+   * oldest first, with weights summing to 1. Ratings read peaks and RMS from them.
+   */
+  phases?: readonly PwmPhaseSolution[]
+}
+
+export interface PwmPhaseSolution {
+  /** fraction of the PWM period spent in this state */
+  weight: number
+  solution: Solution
 }
 
 /** OUTPUT_OPEN_DRAIN: LOW pulls down through rOut, HIGH releases the pin (high impedance) */
@@ -179,6 +190,8 @@ export interface PinState {
   servoDeg?: number
   /** set while tone() drives the pin: square-wave frequency in Hz (level is 0.5, the 50 % duty) */
   toneHz?: number
+  /** analogWrite PWM frequency in Hz (the simulator switches PWM pins at it; default 490) */
+  pwmHz?: number
 }
 
 // ───────────────────────── Failures ─────────────────────────
