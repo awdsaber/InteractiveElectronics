@@ -58,6 +58,8 @@ export interface LayoutProps {
   onQuizAnswer?: (correct: boolean) => void
   toasts: ToastMessage[]
   onDismissToast: (id: number) => void
+  /** the part inspector card (docked in the bench), while a part is selected */
+  inspector?: ReactNode
 }
 
 export function Layout(p: LayoutProps) {
@@ -119,6 +121,7 @@ export function Layout(p: LayoutProps) {
             <div className="bench-overlay-right">
               <StatusPanel {...p.panel} />
             </div>
+            {p.inspector}
           </div>
           <StatusLine {...p.statusLine} />
           <Controls settings={p.settings} onSetting={p.onSetting} {...p.benchControls} />

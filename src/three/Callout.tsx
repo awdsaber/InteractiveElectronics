@@ -30,6 +30,8 @@ export interface CalloutProps {
   tone?: CalloutTone
   /** Hide without unregistering (toggled labels stay mounted, which is cheap). */
   hidden?: boolean
+  /** board part id: the pill is a button that selects this part (see CalloutHost `onSelect`) */
+  target?: string
 }
 
 const TONE: Record<CalloutTone, string> = { ink: INK, accent: ACCENT, warn: WARN, ok: OK }
@@ -39,6 +41,11 @@ export const CALLOUT_REF_ZOOM = 60
 
 const CalloutLayerContext = createContext<CalloutLayer | null>(null)
 
+interface PillActions {
+  onSelect?: (target: string) => void
+  selected?: string | null
+}
+
 /** Shown while it and every ancestor is visible (drop animation, unplaced parts). */
 function shown(o: Object3D | null): boolean {
   for (let p = o; p; p = p.parent) if (!p.visible) return false
@@ -47,14 +54,14 @@ function shown(o: Object3D | null): boolean {
 
 const v = new Vector3()
 
-export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45], tone = 'ink', hidden = false }: CalloutProps) {
+export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45], tone = 'ink', hidden = false, target }: CalloutProps) {
   const layer = useContext(CalloutLayerContext)
   const id = useId()
   const grp = useRef<Group>(null)
   const tip = useRef<Group>(null)
   useLayoutEffect(() => {
-    layer?.set({ id, text, tone, hidden })
-  }, [layer, id, text, tone, hidden])
+    layer?.set({ id, text, tone, hidden, ...(target ? { target } : {}) })
+  }, [layer, id, text, tone, hidden, target])
   useLayoutEffect(() => () => layer?.remove(id), [layer, id])
   useFrame(({ camera, size }) => {
     const g = grp.current
@@ -79,49 +86,71 @@ export function Callout({ text, anchor = [0, 0, 0], offset = [-0.45, 1.1, 0.45],
   )
 }
 
-function Pill({ entry, layer }: { entry: CalloutEntry; layer: CalloutLayer }) {
+function Pill({ entry, layer, actions }: { entry: CalloutEntry; layer: CalloutLayer; actions: PillActions }) {
   const c = TONE[entry.tone]
-  return (
-    <div
-      ref={(el) => {
-        layer.bind(entry.id, el)
-        return () => layer.bind(entry.id, null)
+  const target = entry.target
+  const selectable = !!target && !!actions.onSelect
+  const selected = selectable && actions.selected === target
+  const face = (
+    <span
+      className="callout-face"
+      style={{
+        display: 'block',
+        background: selected ? INK : '#ffffff',
+        border: `1.5px solid ${INK}`,
+        borderRadius: 999,
+        padding: '2px 9px 2px 8px',
+        font: `600 10.5px/1.35 ${MONO}`,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: selected ? '#ffffff' : c,
+        whiteSpace: 'nowrap',
+        boxShadow: `2px 2px 0 ${selected ? ACCENT : INK}`,
+        userSelect: 'none',
       }}
-      className="callout"
-      data-callout={entry.text}
-      style={{ position: 'absolute', top: 0, left: 0, visibility: 'hidden', display: entry.hidden ? 'none' : undefined }}
     >
-      <div
-        style={{
-          background: '#ffffff',
-          border: `1.5px solid ${INK}`,
-          borderRadius: 999,
-          padding: '2px 9px 2px 8px',
-          font: `600 10.5px/1.35 ${MONO}`,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: c,
-          whiteSpace: 'nowrap',
-          boxShadow: `2px 2px 0 ${INK}`,
-          userSelect: 'none',
-        }}
-      >
-        {entry.tone !== 'ink' && (
-          <span
-            style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              background: c,
-              marginRight: 6,
-              verticalAlign: 1,
-            }}
-          />
-        )}
-        {entry.text}
+      {entry.tone !== 'ink' && (
+        <span
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            background: c,
+            marginRight: 6,
+            verticalAlign: 1,
+          }}
+        />
+      )}
+      {entry.text}
+    </span>
+  )
+  const ref = (el: HTMLElement | null) => {
+    layer.bind(entry.id, el)
+    return () => layer.bind(entry.id, null)
+  }
+  const style = { position: 'absolute', top: 0, left: 0, visibility: 'hidden', display: entry.hidden ? 'none' : undefined } as const
+  if (!selectable) {
+    return (
+      <div ref={ref} className="callout" data-callout={entry.text} style={style}>
+        {face}
       </div>
-    </div>
+    )
+  }
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="callout callout-btn"
+      data-callout={entry.text}
+      data-part={target}
+      aria-label={`Inspect ${entry.text}`}
+      aria-pressed={selected}
+      style={style}
+      onClick={() => actions.onSelect?.(target)}
+    >
+      {face}
+    </button>
   )
 }
 
@@ -130,8 +159,9 @@ function Pill({ entry, layer }: { entry: CalloutEntry; layer: CalloutLayer }) {
  * layer to the scene and draws every registered tag in one overlay the same size as the
  * canvas.
  */
-export function CalloutHost({ children }: { children: ReactNode }) {
+export function CalloutHost({ children, onSelect, selected }: { children: ReactNode } & PillActions) {
   const layer = useMemo(createCalloutLayer, [])
+  const actions = useMemo<PillActions>(() => ({ onSelect, selected }), [onSelect, selected])
   const entries = useSyncExternalStore(layer.subscribe, layer.list, layer.list)
   return (
     <CalloutLayerContext.Provider value={layer}>
@@ -141,7 +171,7 @@ export function CalloutHost({ children }: { children: ReactNode }) {
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', isolation: 'isolate' }}
       >
         {entries.map((e) => (
-          <Pill key={e.id} entry={e} layer={layer} />
+          <Pill key={e.id} entry={e} layer={layer} actions={actions} />
         ))}
       </div>
     </CalloutLayerContext.Provider>

@@ -239,6 +239,17 @@ describe('createBench: DC lessons', () => {
     expect(s.statusLine.text).toMatch(/above 5 V/)
   })
 
+  it('the snapshot carries each element power and the voltage across it (part inspector)', () => {
+    const b = createBench(dcLesson)
+    b.dispatch('power')
+    const s = b.snapshot()
+    // 9 V over 1 k + 2 k: 3 mA, 3 V across R1 (9 mW), 6 V across R2 (18 mW)
+    expect(s.elementV.R1).toBeCloseTo(3, 3)
+    expect(s.elementV.R2).toBeCloseTo(6, 3)
+    expect(s.power.R1).toBeCloseTo(0.009, 6)
+    expect(s.power.R2).toBeCloseTo(0.018, 6)
+  })
+
   it('tweaks and failures re-solve immediately', () => {
     const b = createBench(dcLesson)
     b.dispatch('power')

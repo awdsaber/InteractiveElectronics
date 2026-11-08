@@ -124,6 +124,13 @@ export interface BenchSnapshot {
   pins: Record<number, PinState>
   /** element currents of the latest good solution */
   current: Record<string, number>
+  /** element powers (W) of the latest good solution */
+  power: Record<string, number>
+  /**
+   * voltage across each element's rated terminals (V): nodes[0] − nodes[1] for two-terminal
+   * parts, C − E / D − S (nodes[0] − nodes[2]) for transistors; other elements are left out
+   */
+  elementV: Record<string, number>
   extra: Record<string, number>
   /** behavior values, keyed `${instance}.${key}` */
   published: Record<string, number>
@@ -142,6 +149,22 @@ export interface BenchSnapshot {
   rate: number
   /** the per-frame step cap held the sim back within the last half second */
   capped: boolean
+}
+
+const TRANSISTORS = new Set(['NPN', 'PNP', 'NMOS', 'PMOS'])
+
+/** voltage across each element's rated terminals (see BenchSnapshot.elementV) */
+export function elementVoltages(elements: readonly Element[], nodeV: Readonly<Record<string, number>>): Record<string, number> {
+  const out: Record<string, number> = {}
+  const v = (n: string | undefined) => (n === undefined ? undefined : n === '0' ? 0 : nodeV[n])
+  for (const e of elements) {
+    const nodes = (e as { nodes?: readonly string[] }).nodes
+    if (!nodes) continue
+    const a = v(nodes[0])
+    const b = TRANSISTORS.has(e.type) ? v(nodes[2]) : nodes.length === 2 ? v(nodes[1]) : undefined
+    if (a !== undefined && b !== undefined) out[e.id] = a - b
+  }
+  return out
 }
 
 export interface Bench {
@@ -849,6 +872,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       statusLine: statusLine(status, values),
       pins: Object.fromEntries(Object.entries(simPins).map(([k, v]) => [k, { ...v }])),
       current: s ? { ...s.current } : {},
+      power: s ? { ...s.power } : {},
+      elementV: s ? elementVoltages(netlist.elements, s.nodeV) : {},
       extra: s ? { ...s.extra } : {},
       published: { ...published },
       elementValues,

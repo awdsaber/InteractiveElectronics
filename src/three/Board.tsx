@@ -2,14 +2,15 @@
 // every part, with PartRenderState derived from the bench snapshot. Placement drops parts in
 // (250 ms ease from y + 3, staggered); the exploded view lifts mount layers apart.
 
-import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
 import type { BenchSnapshot } from '../engine/bench/simLoop'
 import type { Lesson, PartPlacement } from '../engine/types'
 import { PALETTES, type Settings } from '../ui/types'
 import { BenchBase } from './BenchBase'
 import { Callout, type CalloutTone } from './Callout'
+import { PartHighlight } from './Highlight'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
 import { matFrame } from './autoFrame'
 import { calloutOffset, partHeight } from './parts/frame'
@@ -124,7 +125,15 @@ interface Anim {
   lift: number
 }
 
-interface SlotProps {
+interface PickHandlers {
+  /** pointer over / out of a part (null: out) */
+  onHover?: (id: string | null) => void
+  onPick?: (id: string) => void
+  /** the slot group, for the highlight's bounding box */
+  onGroup?: (id: string, g: Group | null) => void
+}
+
+interface SlotProps extends PickHandlers {
   part: PartPlacement
   state: PartRenderState
   layer: number
@@ -133,9 +142,33 @@ interface SlotProps {
   labels: boolean
 }
 
-function PartSlot({ part, state, layer, exploded, anim, labels }: SlotProps) {
+/** a press that moved further than this (px) was an orbit drag, not a click */
+const CLICK_SLOP = 6
+
+function PartSlot({ part, state, layer, exploded, anim, labels, onHover, onPick, onGroup }: SlotProps) {
   const ref = useRef<Group>(null)
   const invalidate = useThree((s) => s.invalidate)
+  const id = part.id
+  const setRef = useCallback(
+    (g: Group | null) => {
+      ref.current = g
+      onGroup?.(id, g)
+    },
+    [id, onGroup],
+  )
+  const pick = onPick
+    ? {
+        onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation()
+          onHover?.(id)
+        },
+        onPointerOut: () => onHover?.(null),
+        onClick: (e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation()
+          if (e.delta <= CLICK_SLOP) onPick(id)
+        },
+      }
+    : {}
   const Comp = partRegistry[part.kind]
   useFrame(() => {
     const g = ref.current
@@ -151,7 +184,7 @@ function PartSlot({ part, state, layer, exploded, anim, labels }: SlotProps) {
     if (k < 1 || anim.lift !== target) invalidate()
   })
   return (
-    <group ref={ref}>
+    <group ref={setRef} {...pick}>
       <Comp part={part} state={state} />
       <PartLabel part={part} state={state} labels={labels} />
     </group>
@@ -181,16 +214,34 @@ function PartLabel({ part, state, labels }: { part: PartPlacement; state: PartRe
   }, [part])
   const c = partCallout(part, state, labels)
   if (!c) return null
-  return <Callout text={c.text} anchor={anchor} offset={calloutOffset(part)} tone={c.tone} hidden={c.hidden} />
+  return <Callout text={c.text} anchor={anchor} offset={calloutOffset(part)} tone={c.tone} hidden={c.hidden} target={part.id} />
 }
 
 export interface BoardProps {
   lesson: Lesson
   snap: BenchSnapshot
   settings: Settings
+  /** the inspected part (selection brackets) */
+  selected?: string | null
+  /** click a part to inspect it; without this the parts are not pickable */
+  onSelect?: (id: string) => void
 }
 
-export function Board({ lesson, snap, settings }: BoardProps) {
+export function Board({ lesson, snap, settings, selected = null, onSelect }: BoardProps) {
+  const [hovered, setHovered] = useState<string | null>(null)
+  const groups = useRef(new Map<string, Group>())
+  const gl = useThree((s) => s.gl)
+  const onHover = useCallback(
+    (id: string | null) => {
+      setHovered((h) => (id === null ? null : id === h ? h : id))
+      gl.domElement.style.cursor = id ? 'pointer' : ''
+    },
+    [gl],
+  )
+  const onGroup = useCallback((id: string, g: Group | null) => {
+    if (g) groups.current.set(id, g)
+    else groups.current.delete(id)
+  }, [])
   const { board } = lesson
   const breadboard = board.base === 'breadboard-only'
   const pcb = board.base !== 'breadboard-only'
@@ -232,8 +283,13 @@ export function Board({ lesson, snap, settings }: BoardProps) {
           exploded={exploded}
           anim={anims.current.get(p.id)!}
           labels={settings.labels}
+          onHover={onSelect ? onHover : undefined}
+          onPick={onSelect}
+          onGroup={onGroup}
         />
       ))}
+      {hovered && hovered !== selected && <PartHighlight key={`h-${hovered}`} object={groups.current.get(hovered)} mode="hover" />}
+      {selected && <PartHighlight key={`s-${selected}`} object={groups.current.get(selected)} mode="selected" />}
     </group>
   )
 }

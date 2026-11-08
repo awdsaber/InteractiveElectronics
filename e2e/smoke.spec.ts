@@ -147,3 +147,44 @@ test('mobile drawer: focus moves in and Escape closes it', async ({ page }) => {
   await expect(page.locator('.sidebar')).toHaveAttribute('data-open', 'false')
   await expect(page.getByRole('button', { name: 'Open syllabus' })).toBeFocused()
 })
+
+type Probe = { __partScreen?: (id: string) => { x: number; y: number } | null }
+
+test('part inspector: click a resistor and the card decodes its bands', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('#/lesson/resistor-codes-divider')
+  await expect(page.locator('canvas').first()).toBeVisible()
+  await expect(panel(page)).toContainText('READY')
+  const card = page.getByRole('dialog', { name: /R1/ })
+
+  // click R1's body on the bench (it has no callout pill)
+  const where = () => page.evaluate(() => (window as unknown as Probe).__partScreen?.('r1') ?? null)
+  await expect.poll(where).not.toBeNull()
+  const at = (await where())!
+  await page.mouse.click(at.x, at.y)
+  await expect(card).toBeVisible()
+  await expect(card.locator('.band-decode')).toHaveText('brown · black · orange · gold = 10 kΩ ±5 %')
+  await expect(card.locator('.band')).toHaveCount(4)
+  await expect(card).toContainText('P 0 W / 250 mW max, 0 %')
+  await expect(card.locator('.inspector-view canvas')).toBeVisible()
+
+  // live once powered: the divider current flows through R1
+  await page.getByRole('button', { name: 'Connect battery' }).click()
+  await expect(card.locator('.inspector-live')).toContainText(/µA|mA/)
+
+  // Escape closes it
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.inspector')).toHaveCount(0)
+
+  // a callout pill is a button: Enter on LOAD inspects R_LOAD
+  const pill = page.getByRole('button', { name: 'Inspect LOAD' })
+  await pill.focus()
+  await page.keyboard.press('Enter')
+  const load = page.getByRole('dialog', { name: /LOAD/ })
+  await expect(load.locator('.band-decode')).toHaveText('brown · black · yellow · gold = 100 kΩ ±5 %')
+  await expect(load.locator('.inspector-title')).toBeFocused()
+  await load.getByRole('button', { name: 'Close the part inspector' }).click()
+  await expect(pill).toBeFocused()
+  expect(errors).toEqual([])
+})
