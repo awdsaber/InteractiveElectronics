@@ -144,5 +144,7 @@ Electrolytics are polarised: the stripe marks the negative lead. They typically 
 
 ## SIM NOTE
 
-- `C` has no ESR or leakage parameters. Optional `esr` and `rLeak` fields would make capacitor failures (and the inrush from a direct short across a charged capacitor) realistic. This lesson avoids the screwdriver-short scenario until then.
-- Electrolytic reverse polarity is not modelled. A negative-voltage rating (e.g. `rating.maxVrev`) would let a "fit it backwards" failure exist.
+- `C` has no ESR or leakage parameters. Optional `esr` and `rLeak` fields would make capacitor failures (and the inrush from a direct short across a charged capacitor) realistic. This lesson avoids the screwdriver-short scenario until then; leakage is shown by adding a parallel resistor (F3).
+- Electrolytic reverse polarity is now modelled: `C.polarized` fails short after the reverse voltage stays above 1 V (see F4 in the authored lesson, "Fit the electrolytic backwards"). The 16 V rating is modelled as a hard limit with failMode `short`; a real part tolerates a brief surge of about 1.15 x rated and fails by leakage, heating and venting.
+- The authored lesson makes the charge switch a toggle tweak (open at the start, the supply is the power element), so DRAIN with the switch open gives the clean tau = 0.1 s discharge. DRAIN pressed while the charge switch is closed only divides the supply: V_C falls to 5 x 1k/11k = 0.45 V (tau = 10k||1k x C = 91 ms).
+- Datasheet check: a Nichicon UVR1C101M-class part is 100 uF, 16 V, +-20 %, so "tolerance +-20 %" and the 16 V rating are right. The 1 s timer is 0.8 s to 1.2 s from tolerance alone.
