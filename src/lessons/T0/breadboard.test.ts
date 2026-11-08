@@ -28,7 +28,7 @@ describe('T0 breadboard', () => {
     expect(validateLesson(L)).toEqual([])
     expect(L.readouts.map((r) => r.label)).toEqual(['LED CURRENT', 'R1 CURRENT', 'STRIP 15', '+ RAIL', '- RAIL'])
     expect(L.powerElementId).toBe('SW_PWR')
-    expect(L.powerLabel).toBe('Press module power button')
+    expect(L.powerLabel).toBe('Connect USB power')
     expect(L.board.base).toBe('breadboard-only')
     expect(L.quiz).toHaveLength(4)
   })

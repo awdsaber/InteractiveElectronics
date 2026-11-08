@@ -6,7 +6,7 @@
 
 - **Lesson id:** `breadboard` · **Track:** T0 Foundations
 - **Prerequisites:** `charge-voltage-current`, `ohms-law`
-- **Power element:** `SW_PWR` (powerLabel: "Press module power button")
+- **Power element:** `SW_PWR` (powerLabel: "Connect USB power")
 
 ## Learning goals
 
@@ -120,7 +120,7 @@ I = (5.0 V − 1.8 V) / 330 Ω ≈ **9.7 mA**, and P_R = I²R = 0.0097² × 330 
    - 29 Ω
    - 210 Ω
    - 500 Ω
-   - 290 Ω (use 270 or 330 Ω)
+   - 290 Ω
    - **Answer:** 3. *Why:* R = (5 − 2.1)/0.010 = 290 Ω. The nearest standard values are 270 Ω and 330 Ω.
 
 3. **On this board the LED's legs end up in the same strip. What current flows through the 330 Ω resistor?**

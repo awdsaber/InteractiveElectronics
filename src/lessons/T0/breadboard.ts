@@ -20,7 +20,7 @@ const withCallout = (w: ReturnType<typeof jumper>, callout: [number, number, num
 const fRed = jumper([PWR_AT[0] - 0.3, MOD_Y, PWR_AT[1] - 0.9], bbHole(BB, 6, '+b'), 'red', 0.45)
 const fBlack = jumper([PWR_AT[0] + 0.3, MOD_Y, PWR_AT[1] - 0.9], bbHole(BB, 7, '-b'), 'black', 0.45)
 // the ground-rail bridge across the rail's mid-gap
-const bridge = withCallout(jumper(bbHole(BB, 8, '-b'), bbHole(BB, 22, '-b'), 'blue', 0.9), [-0.4, 0.5, 1.6])
+const bridge = withCallout(jumper(bbHole(BB, 8, '-b'), bbHole(BB, 22, '-b'), 'blue', 0.9), [-2.6, 0.4, 1.6])
 // the circuit: + rail → col 10 (j1), R1 10 → 15, LED 15 → 16, col 16 → − rail (j2)
 const j1 = withCallout(jumper(bbHole(BB, 10, '+b'), bbHole(BB, 10, 'j'), 'red', 0.4), [-1.2, 0.9, 0.5])
 const j2 = withCallout(jumper(bbHole(BB, 16, 'j'), bbHole(BB, 16, '-b'), 'black', 0.3), [1.8, 0.6, 1.2])
@@ -39,6 +39,7 @@ export const lesson: LessonDef = {
   board: {
     name: 'PROTO-08',
     size: [17, 6],
+    frame: { size: [9.6, 6.6], center: [0.2, 1.3] }, // the circuit and the supply module fill the view
     base: 'breadboard-only',
     parts: [
       { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', role: 'Every 5-hole strip is one node; the rails run along the edges.' },
@@ -48,7 +49,7 @@ export const lesson: LessonDef = {
         pos: [PWR_AT[0], BENCH_Y, PWR_AT[1]],
         mount: 'module',
         label: 'RAILS',
-        role: 'Plug-on supply module (MB102 style): USB 5 V to the rails. Its push button is the power switch.',
+        role: 'Plug-on supply module (MB102 style): USB 5 V to the rails.',
         params: { title: 'MB102 5V/3.3V', color: '#5f6b75', w: 2.6, d: 2.2, pins: 0, chip: 'none', callout: [1.4, 1.2, 0.2] },
         circuitIds: ['V_USB', 'SW_PWR'],
       },
@@ -60,7 +61,7 @@ export const lesson: LessonDef = {
         ...bridge,
         mount: 'offboard',
         label: 'RAIL BRIDGE',
-        role: 'Many full-length boards break each rail at the midpoint. This jumper joins the two halves of the − rail again.',
+        role: 'On a full-length (830-point) board each rail breaks in the middle. The board drawn here is half-size, with continuous rails, but this jumper shows the habit: bridge the gap so both halves share one ground.',
         circuitIds: ['W_RAIL'],
       },
       { id: 'j1', kind: 'wire', ...j1, mount: 'offboard', label: 'JUMPER', role: '+ rail to strip 10.', circuitIds: ['W1'] },
@@ -136,7 +137,7 @@ export const lesson: LessonDef = {
     ],
   },
   powerElementId: 'SW_PWR',
-  powerLabel: 'Press module power button',
+  powerLabel: 'Connect USB power',
 
   readouts: [
     { label: 'LED CURRENT', source: { kind: 'current', elementId: 'LED1' }, unit: 'A' },
@@ -176,7 +177,7 @@ export const lesson: LessonDef = {
       id: 'split-rail',
       label: 'Split ground rail (bridge left out)',
       explain:
-        'Many full-length breadboards break each power rail at the midpoint, often marked by a gap in the printed line. Without the bridge jumper the right half of the − rail is cut off from the module ground: the LED is dark, and a meter on the − rail reads close to the + rail voltage instead of 0 V, because almost no current flows to drop any voltage. A reading that looks like power is not a working return path.',
+        'On a full-length (830-point) breadboard each power rail breaks at the midpoint, often marked by a gap in the printed line. (The half-size board drawn here has continuous rails, so the jumper is for the habit.) Without the bridge jumper the right half of the − rail is cut off from the module ground: the LED is dark, and a meter on the − rail reads close to the + rail voltage instead of 0 V, because almost no current flows to drop any voltage. The strongest tell: STRIP 15 sits at 5.00 V and the − rail at 4.52 V, with nothing flowing. A reading that looks like power is not a working return path.',
       patches: [{ op: 'remove', elementId: 'W_RAIL' }],
       parts: { hide: ['bridge'] },
     },
@@ -192,7 +193,7 @@ export const lesson: LessonDef = {
 
   meet: `Under the plastic, every **terminal strip** is a spring-metal clip joining 5 holes. The holes a–e of one numbered column are one node, and f–j of the same column are another. The **centre channel** (0.3 in / 7.62 mm wide) separates them, so a DIP chip can straddle it with each pin on its own node. The long **power rails** along the edges carry + and −.
 
-Build node by node, not part by part. This circuit has four nodes: the + rail, strip 10, strip 15 and strip 16 (tied to the − rail). R1 spans strips 10 → 15 and the LED spans 15 → 16 with its long leg (anode) in 15. The jumpers connect the rails: red to strip 10, black from strip 16. The blue jumper bridges the − rail, which on many full-length boards is cut in the middle.
+Build node by node, not part by part. This circuit has four nodes: the + rail, strip 10, strip 15 and strip 16 (tied to the − rail). R1 spans strips 10 → 15 and the LED spans 15 → 16 with its long leg (anode) in 15. The jumpers connect the rails: red to strip 10, black from strip 16. The blue jumper bridges the − rail: on a full-length (830-point) board the rails break in the middle, so you bridge the gap yourself. The board drawn here is half-size, with continuous rails.
 
 The current follows from KVL around the loop:
 
@@ -225,9 +226,9 @@ Now break it. Put both legs of a part in one strip and it is shorted on itself: 
     },
     {
       q: 'What resistor gives a green LED (Vf 2.1 V) about 10 mA from 5 V?',
-      options: ['29 Ω', '210 Ω', '500 Ω', '290 Ω (use 270 or 330 Ω)'],
+      options: ['29 Ω', '210 Ω', '500 Ω', '290 Ω'],
       answer: 3,
-      why: 'R = (5 − 2.1) / 0.010 = 290 Ω. The nearest standard values are 270 Ω and 330 Ω.',
+      why: 'R = (5 − 2.1) / 0.010 = 290 Ω. In practice use the nearest standard value, 270 Ω or 330 Ω.',
     },
     {
       q: "On this board the LED's legs end up in the same strip. What current flows through the 330 Ω resistor?",
