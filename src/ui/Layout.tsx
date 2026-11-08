@@ -4,7 +4,7 @@ import type { Lesson, Tweak } from '../engine/types'
 import { BenchActions } from './BenchActions'
 import type { BenchActionsProps } from './BenchActions'
 import { Controls } from './Controls'
-import type { SettingChange } from './Controls'
+import type { ControlsProps, SettingChange } from './Controls'
 import { MeetTheBoard } from './MeetTheBoard'
 import { Quiz } from './Quiz'
 import { Sidebar } from './Sidebar'
@@ -47,6 +47,12 @@ export interface LayoutProps {
   serialLines: string[]
   sketchError?: string | null
   tweakValues: Record<string, number>
+  /** the lesson's starting tweak values (momentary buttons rest there) */
+  tweakDefaults?: Record<string, number>
+  /** sim speed and the instruments toggle in the controls strip */
+  benchControls?: Pick<ControlsProps, 'sim' | 'instruments'>
+  /** the instrument panel, rendered under the controls strip while open */
+  instruments?: ReactNode
   onTweak: (tweak: Tweak, value: number) => void
   onQuizComplete: (score: number, total: number) => void
   onQuizAnswer?: (correct: boolean) => void
@@ -115,7 +121,8 @@ export function Layout(p: LayoutProps) {
             </div>
           </div>
           <StatusLine {...p.statusLine} />
-          <Controls settings={p.settings} onSetting={p.onSetting} />
+          <Controls settings={p.settings} onSetting={p.onSetting} {...p.benchControls} />
+          {p.instruments}
         </section>
 
         <div className="notes">
@@ -133,10 +140,10 @@ export function Layout(p: LayoutProps) {
                   error={p.sketchError}
                 />
               </Suspense>
-              {lesson.tweaks?.length ? <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} onTweak={p.onTweak} /> : null}
+              {lesson.tweaks?.length ? <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} defaults={p.tweakDefaults} onTweak={p.onTweak} /> : null}
             </div>
           ) : lesson.tweaks?.length ? (
-            <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} onTweak={p.onTweak} />
+            <Tweaks tweaks={lesson.tweaks} values={p.tweakValues} defaults={p.tweakDefaults} onTweak={p.onTweak} />
           ) : (
             <section className="note">
               <h2 className="note-head"><span>B</span> Try it yourself</h2>

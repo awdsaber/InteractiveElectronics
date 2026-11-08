@@ -58,3 +58,60 @@ The bench steps at `sim.dt` (default 1 ms) and checks ratings once per frame, so
 - **Use it** only when a failure depends on a sub-millisecond spike: a coil or motor `l` switched by a part with `vBreak` and `maxV` (see `T2/transistor-switch.ts`, failure `no-flyback`). The spike energy is ½·L·I².
 - **Cost:** n solves instead of one on each switching step, typically a handful per second, so it's cheap for sketches that toggle pins every few hundred ms. It costs more for sketches that change pins every few ms (bit-banging), because every change splits a step. `analogWrite` PWM is a duty level, not an edge per period, so it doesn't trigger this. Square-wave source edges and internal device mode flips are not split.
 - It is opt-in per lesson and never enabled automatically. Lessons without it behave exactly as before.
+- The scope and peak-hold readouts sample every substep, so the spike is visible on screen (see below).
+
+## Tweak kinds
+`kind` picks the control. Every kind keeps `min`, `max` and `unit`.
+
+```ts
+tweaks: [
+  // slider (default): linear or `log`, snapped to `step`
+  { label: 'Timing resistor', elementId: 'R1', key: 'value', min: 1e3, max: 1e5, log: true, unit: 'Ω' },
+  // toggle: an on/off switch, off = min, on = max (a SW `closed` key takes 0/1)
+  { label: 'Leads on midpoint', elementId: 'SW_VM', key: 'closed', kind: 'toggle', min: 0, max: 1, unit: '' },
+  // momentary: press and hold (pointer, or Space / Enter). Held, the value goes to the end of
+  // min..max away from the circuit's own value: normally open 0 → 1, normally closed 1 → 0
+  { label: 'CLOCK button', elementId: 'SW_CLK', key: 'closed', kind: 'momentary', min: 0, max: 1, unit: '' },
+  // enum: a segmented choice; option values must lie within min..max
+  { label: 'Range', elementId: 'R_SH', key: 'value', kind: 'enum', min: 0.1, max: 100, unit: 'Ω',
+    options: [{ label: '2 A', value: 0.1 }, { label: '200 mA', value: 1 }, { label: '2 mA', value: 100 }] },
+  // link: ganged. Every target gets the value × scale (default 1): a matched pair, a dual pot
+  { label: 'Divider resistors', elementId: 'R1', key: 'value', min: 1e3, max: 1e6, log: true, unit: 'Ω',
+    link: [{ elementId: 'R2', key: 'value' }] },
+]
+```
+
+Link targets follow the tweak from the start, so they take the tweak's value, not their own netlist value. A target may be `behavior:<instance>`.
+
+## Readouts: units, derived values, peak-hold
+- Units: `A V W Ω mΩ rpm ° °C Hz g cm % s µs counts dBm C` or `''`. The SI prefix is automatic (`0.0025 s` shows as "2.50 ms"), except for `rpm ° °C cm % µs mΩ dBm counts`, which are shown as given.
+- `source: { kind: 'derived', op: 'sum' | 'diff' | 'ratio' | 'product', of: [i, j, …] }` computes from other readouts (by index): `diff` = of[0] − of[1], `ratio` = of[0] / of[1] (a zero denominator shows "—"), `sum` and `product` take 2 or more. A derived readout may use later or other derived readouts, but not form a cycle.
+- `peak: true` shows the value of largest magnitude since power-on, sampled on every sim step and edge substep (so a µs spike counts). Repair, strip and the panel's "reset peak" button clear it.
+
+## Instruments (`lesson.instruments`)
+The bench has a toggleable instrument panel (the **Instruments** switch in the controls strip): a 2-channel oscilloscope and a strip chart. Both read sample rings that the bench fills inside its step loop, at every transient step and every edge substep, keyed by sim time, so they show what the simulator computed rather than what the frame rate caught. A lesson sets the starting probes; the learner can re-probe any node (against ground or another node) or any element current.
+
+```ts
+instruments: {
+  open: false, // the panel starts closed (default)
+  scope: {
+    channels: [ // 1 or 2
+      { label: 'V CE', source: { kind: 'voltage', node: 'c' /*, ref: 'e' */ }, perDiv: 10, offset: -3,
+        marks: [{ value: 40, label: 'V_CEO 40 V' }] }, // dashed rating line
+      { label: 'I MOTOR', source: { kind: 'current', elementId: 'M1' }, perDiv: 0.1, offset: -3.5 },
+    ],
+    timePerDiv: 0.5e-3, // 10 divisions wide; the trigger point sits 2 divisions in
+    // auto: free-runs without a trigger; normal: holds the last triggered sweep (catches one-off events)
+    trigger: { channel: 0, level: 3, slope: 'rising', mode: 'normal' },
+  },
+  chart: { signals: [0, 2, 3], span: 10 }, // readout indices, or inline readouts (any source)
+},
+```
+
+- `perDiv` is in V (or A) per division, 8 divisions tall. `offset` moves the trace's zero, in divisions above the centre line (−4..4).
+- Without a `scope`, opening the panel probes the lesson's first voltage readout; without a `chart`, it charts readout 0.
+- Capacity: 32 768 scope rows (≈ 33 s at the default 1 ms step), 2 048 chart rows. A sweep is 10 × timePerDiv wide, so keep `sim.dt` well under timePerDiv / 10 to have points to draw. Fast edges between steps need `sim.edgeSubsteps`.
+- `T2/transistor-switch.ts` is the reference: with D1 removed, the normal-mode scope holds the ≈ 60 V spike across the 40 V line.
+
+## Sim speed (`sim.speed`)
+The controls strip offers ×0.01, ×0.1, ×1, ×10 and ×100. `sim: { speed: 0.1 }` sets the lesson's starting speed. Slow motion still steps at `sim.dt`; it takes one step whenever a whole dt of sim time has built up. Time-lapse is capped at `sim.stepsPerFrame` steps per frame (default 30 × speed). When the cap holds the sim back, the strip shows "running slower than real time" (or "capped at ×N" above real time). With a fine `dt` (µs), even ×1 may be capped: set `speed` below 1 for those lessons.

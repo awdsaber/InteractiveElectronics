@@ -9,6 +9,20 @@ export type SettingChange =
 export interface ControlsProps {
   settings: Settings
   onSetting: (change: SettingChange) => void
+  /** sim speed: requested, achieved, and whether the per-frame step cap is holding it back */
+  sim?: { speed: number; rate: number; capped: boolean; onSpeed: (x: number) => void }
+  instruments?: { open: boolean; onToggle: (open: boolean) => void }
+}
+
+const SPEEDS = [0.01, 0.1, 1, 10, 100]
+const speedLabel = (x: number) => `×${x}`
+
+/** what the speed control says beside the buttons (empty while the sim keeps up) */
+function speedNote(speed: number, rate: number, capped: boolean): string {
+  if (!capped) return ''
+  // slow motion is meant to be slower than real time: there, say how far below the request it is
+  if (rate < 1 && speed >= 1) return `running slower than real time (×${Number(rate.toPrecision(2))})`
+  return `capped at ×${Number(rate.toPrecision(2))} of ×${speed}`
 }
 
 function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
@@ -22,9 +36,28 @@ function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange:
   )
 }
 
-export function Controls({ settings, onSetting }: ControlsProps) {
+export function Controls({ settings, onSetting, sim, instruments }: ControlsProps) {
+  const note = sim ? speedNote(sim.speed, sim.rate, sim.capped) : ''
   return (
     <div className="controls" role="group" aria-label="Bench controls">
+      {sim && (
+        <div className="ctl speed">
+          <span className="ctl-label">Sim speed</span>
+          <div className="seg" role="radiogroup" aria-label="Sim speed">
+            {SPEEDS.map((x) => (
+              <button key={x} type="button" role="radio" aria-checked={sim.speed === x} onClick={() => sim.onSpeed(x)}>
+                {speedLabel(x)}
+              </button>
+            ))}
+          </div>
+          {note && (
+            <span className="speed-note" role="status">
+              {note}
+            </span>
+          )}
+        </div>
+      )}
+      {instruments && <Toggle label="Instruments" on={instruments.open} onChange={instruments.onToggle} />}
       <label className="ctl">
         <span className="ctl-label">Ink wobble</span>
         <input
