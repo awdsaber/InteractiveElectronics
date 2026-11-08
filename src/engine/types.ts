@@ -306,6 +306,8 @@ export interface PartPlacement {
   circuitIds?: string[]
   /** not part of the build: only on the bench while a failure `parts.show`s it (e.g. a jumper in place of R1) */
   hidden?: boolean
+  /** short datasheet facts shown in the part inspector, e.g. "Vf 2.0 V at 20 mA (typ.)" */
+  facts?: string[]
 }
 
 export interface BoardSpec {
@@ -622,6 +624,15 @@ export interface Behavior {
   /** dt in seconds; called once per animation frame with the sim time that frame covered */
   tick?(ctx: BehaviorContext, dt: number): void
   onEvent?(ctx: BehaviorContext, ev: BehaviorLifecycleEvent): void
+  /**
+   * One instantaneous solve of a transient step, in time order, at sim time `t` (s): one per step,
+   * one per edge substep and one per switched-PWM piece (exactly what the scope samples), called
+   * inside the frame's stepping loop before tick. For meters that must see the waveform between
+   * frames (RMS, phase). Read the circuit from `solution` (voltageOf / currentOf / extraOf), not
+   * ctx.v or ctx.t, which are the last frame's. Called hundreds of times a frame: allocate nothing,
+   * publish in tick. Not called on DC (non-transient) benches, or for a step that failed.
+   */
+  onStep?(ctx: BehaviorContext, t: number, solution: Solution): void
   /**
    * A pin change as the circuit sees it (mode, level), at MCU time `tMicros` (µs since upload): every
    * sketch write that changes the pin, called synchronously inside the MCU's advance (so each edge of

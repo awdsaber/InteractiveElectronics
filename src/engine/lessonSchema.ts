@@ -29,10 +29,13 @@ const OPTIONAL_KEYS: Record<string, string[]> = {
 }
 const COMMON_KEYS = ['disabled', 'partId']
 const RATING_KEYS = ['maxI', 'maxP', 'maxV', 'failMode', 'rth', 'tauTh', 'tMax', 'rmsWindow']
+/** numeric fields of a V source's `wave` (dotted keys 'wave.freq' …, on a V that has a wave) */
+const WAVE_KEYS = ['amp', 'freq', 'offset', 'phase', 'duty']
 
 function hasKey(el: Element, key: string): boolean {
   const [head, sub] = key.split('.', 2)
   if (head === 'rating') return sub !== undefined && RATING_KEYS.includes(sub)
+  if (head === 'wave') return el.type === 'V' && el.wave !== undefined && sub !== undefined && WAVE_KEYS.includes(sub)
   if (sub !== undefined) return false
   return key in el || COMMON_KEYS.includes(key) || (OPTIONAL_KEYS[el.type] ?? []).includes(key)
 }
@@ -67,6 +70,7 @@ const part = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
   circuitIds: z.array(z.string()).optional(),
   hidden: z.boolean().optional(),
+  facts: z.array(z.string().min(1)).optional(),
 })
 
 const voltageSource = z.object({ kind: z.literal('voltage'), node, ref: node.optional() })
