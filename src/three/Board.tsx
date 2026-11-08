@@ -83,6 +83,7 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   if (p.kind === 'multimeter') {
     const i = typeof p.params?.readout === 'number' ? p.params.readout : 0
     s.reading = snap.readouts[i]?.value.split(' ')[0] ?? '----'
+    if (p.params?.autoUnit === true) s.readingUnit = snap.readouts[i]?.value.split(' ')[1] ?? ''
   }
   return s
 }
