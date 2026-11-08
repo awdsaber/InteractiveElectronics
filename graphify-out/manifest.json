@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794023886.5625992,
-    "seen": 1794023916.7955184,
-    "ast_hash": "d00de45bb5d0a126dbac63388b6b5081",
+    "mtime": 1794139550.4788063,
+    "seen": 1794139625.502901,
+    "ast_hash": "91583d6924f64561c5d20edd7a5d4f51",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/misc.tsx": {
-    "mtime": 1794003642.2218976,
-    "seen": 1794010374.609711,
-    "ast_hash": "d2138f01c8615dfbb59307936585d5e0",
+    "mtime": 1794139550.2117841,
+    "seen": 1794139625.502901,
+    "ast_hash": "66a0aea6365f38b0aebb3fd8ad1da05c",
     "semantic_hash": ""
   },
   "src/three/parts/motion.tsx": {
@@ -252,9 +252,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/passives.tsx": {
-    "mtime": 1794003642.2238965,
-    "seen": 1794010374.609711,
-    "ast_hash": "110c9be7c871fed4e2e5e0b369a094f2",
+    "mtime": 1794139550.4828131,
+    "seen": 1794139625.502901,
+    "ast_hash": "41bd8a683b3d3393268b35f98d3a9c52",
     "semantic_hash": ""
   },
   "src/three/parts/power.tsx": {
@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/types.ts": {
-    "mtime": 1794010458.5958967,
-    "seen": 1794010473.2440834,
-    "ast_hash": "ce50324cdd10ce2dd8e3435055d0cc96",
+    "mtime": 1794139550.2132902,
+    "seen": 1794139625.502901,
+    "ast_hash": "603bf61e967e294c599a6ac0d09b9cb9",
     "semantic_hash": ""
   },
   "src/three/textures.ts": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794024109.383263,
-    "seen": 1794024121.074094,
-    "ast_hash": "1ad5a45b3f908e35767f254b1d73f498",
+    "mtime": 1794139550.7522137,
+    "seen": 1794139625.5038953,
+    "ast_hash": "460945e4a494a104512fd876d26b46e4",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T0/kirchhoff.md": {
-    "mtime": 1794001625.7592518,
-    "seen": 1794010374.609711,
-    "ast_hash": "6af9d04b1b5c21b84e5a8a102c15ddc1",
+    "mtime": 1794139509.2859037,
+    "seen": 1794139625.5038953,
+    "ast_hash": "3c01202e2932a92ae3a2911fd3bad327",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/multimeter.md": {
@@ -594,15 +594,15 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T0/ohms-law.md": {
-    "mtime": 1794001625.7637768,
-    "seen": 1794010374.609711,
-    "ast_hash": "0c0a67fcf0e2c09920649bc7a413ac08",
+    "mtime": 1794139550.206784,
+    "seen": 1794139625.5038953,
+    "ast_hash": "d321388b7db09e33001a796d9d1968ca",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/power-heat.md": {
-    "mtime": 1794001625.7657773,
-    "seen": 1794010374.609711,
-    "ast_hash": "4591afb5d681d4a4e5cee7eb25bb24a4",
+    "mtime": 1794139550.4748058,
+    "seen": 1794139625.5038953,
+    "ast_hash": "975dbe428520e3a57c9a098365c2334f",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/series-parallel.md": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794023896.848086,
-    "seen": 1794023916.7955184,
-    "ast_hash": "ac622219e50337398ea44e63015fd7bc",
+    "mtime": 1794139550.4768057,
+    "seen": 1794139625.502901,
+    "ast_hash": "1b7a18c08be044bb4f585fc3fbc58e06",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794023886.5605998,
-    "seen": 1794023916.7955184,
-    "ast_hash": "601fe47d55cff1839c81f50b4598f06c",
+    "mtime": 1794139550.4778054,
+    "seen": 1794139625.502901,
+    "ast_hash": "759e74cbcdc704b0915b8644d68c793f",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -978,27 +978,27 @@
     "semantic_hash": ""
   },
   "src/three/BenchScene.tsx": {
-    "mtime": 1794011002.2952907,
-    "seen": 1794011165.2051692,
-    "ast_hash": "4f6640de9fee895cb64ad8992e074246",
+    "mtime": 1794139550.755215,
+    "seen": 1794139625.502901,
+    "ast_hash": "417bc9bf8e4d65fa74c4a3ffb6e4a206",
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794023886.564596,
-    "seen": 1794023916.7955184,
-    "ast_hash": "45453d6527c9203088b7daf7e3df934f",
+    "mtime": 1794139550.756218,
+    "seen": 1794139625.502901,
+    "ast_hash": "b203eb5e383aea415517600bad71496e",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794023886.5565996,
-    "seen": 1794023916.796517,
-    "ast_hash": "c8a56148e8c57ef447125480a4d43a9f",
+    "mtime": 1794139549.9275987,
+    "seen": 1794139625.5038953,
+    "ast_hash": "19a0d597b66f0984b7edf73925d2cf22",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794010690.4692006,
-    "seen": 1794010720.4371798,
-    "ast_hash": "27f9019103ef9671930ceedc1a8b7452",
+    "mtime": 1794139550.7542143,
+    "seen": 1794139625.5038953,
+    "ast_hash": "01bc89b7bc059dfefc2dfe7d674c661a",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -1323,6 +1323,108 @@
     "mtime": 1794024091.6565542,
     "seen": 1794024121.074094,
     "ast_hash": "f09bebc504bc6c7a64ce3bb53a680be3",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/coulomb-counter.test.ts": {
+    "mtime": 1794139549.9282024,
+    "seen": 1794139625.502901,
+    "ast_hash": "a4b550bc846542b37ba1bb11504061d2",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/coulomb-counter.ts": {
+    "mtime": 1794139549.928712,
+    "seen": 1794139625.502901,
+    "ast_hash": "30b75fdfeaf421b4d364314299af76b8",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/output-gate.ts": {
+    "mtime": 1794139509.2889068,
+    "seen": 1794139625.502901,
+    "ast_hash": "bad3f7251b7bce90fef4ad2bd6354b61",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/charge-voltage-current.test.ts": {
+    "mtime": 1794139549.9302318,
+    "seen": 1794139625.502901,
+    "ast_hash": "7a725d04952acb6adb0755e17a64d5c2",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/charge-voltage-current.ts": {
+    "mtime": 1794139549.9302318,
+    "seen": 1794139625.502901,
+    "ast_hash": "e3df4bb15bc3d7c501cf1a951e55ec20",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/kirchhoff.test.ts": {
+    "mtime": 1794139509.289917,
+    "seen": 1794139625.502901,
+    "ast_hash": "f28ad59d3b0341434e2fc23181231c2b",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/kirchhoff.ts": {
+    "mtime": 1794139509.2909162,
+    "seen": 1794139625.502901,
+    "ast_hash": "6a2d2c3dcd45dcdf428dbc67ecb83d11",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/ohms-law.test.ts": {
+    "mtime": 1794139550.208783,
+    "seen": 1794139625.502901,
+    "ast_hash": "cc22422a8aa7cef0ecbcb9d19d69ef27",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/ohms-law.ts": {
+    "mtime": 1794139550.2097838,
+    "seen": 1794139625.502901,
+    "ast_hash": "ecf5561b9e37b0906072c11ba2326694",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/power-heat.test.ts": {
+    "mtime": 1794139550.4798064,
+    "seen": 1794139625.502901,
+    "ast_hash": "b8ebbb5217ba0338e96e4d4ed30bd5ed",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/power-heat.ts": {
+    "mtime": 1794139550.4798064,
+    "seen": 1794139625.502901,
+    "ast_hash": "1c3119df933b24740cf711eaa2f85924",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/series-parallel.test.ts": {
+    "mtime": 1794139362.8099453,
+    "seen": 1794139625.502901,
+    "ast_hash": "145118f2392783ae2ac34b35970d3c5f",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/series-parallel.ts": {
+    "mtime": 1794139362.8109388,
+    "seen": 1794139625.502901,
+    "ast_hash": "434cbc71ff2e93003508f002d9c770b6",
+    "semantic_hash": ""
+  },
+  "src/three/autoFrame.test.ts": {
+    "mtime": 1794139550.756218,
+    "seen": 1794139625.502901,
+    "ast_hash": "0f9c765d8584b9064b8f66b7bc05214b",
+    "semantic_hash": ""
+  },
+  "src/three/autoFrame.ts": {
+    "mtime": 1794139550.757218,
+    "seen": 1794139625.502901,
+    "ast_hash": "fca339868b401a1bb82a96c068992122",
+    "semantic_hash": ""
+  },
+  "src/three/multimeterUnit.test.ts": {
+    "mtime": 1794139550.2117841,
+    "seen": 1794139625.502901,
+    "ast_hash": "a3d2c7065c3853d8d3b4c20aee9c4a61",
+    "semantic_hash": ""
+  },
+  "docs/plans/m3-foundations.md": {
+    "mtime": 1794024208.8233395,
+    "seen": 1794139625.5038953,
+    "ast_hash": "b300724c3d9e0e605210a2264710db42",
     "semantic_hash": ""
   },
   "package-lock.json": {
