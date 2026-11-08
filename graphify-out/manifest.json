@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/types.ts": {
-    "mtime": 1794139550.2132902,
-    "seen": 1794139625.502901,
-    "ast_hash": "603bf61e967e294c599a6ac0d09b9cb9",
+    "mtime": 1794150566.19248,
+    "seen": 1794150961.881968,
+    "ast_hash": "234d7d1a1aff0ce814a97d0f6296bc93",
     "semantic_hash": ""
   },
   "src/three/textures.ts": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794150237.9181902,
-    "seen": 1794150329.9322805,
-    "ast_hash": "52f7952e17da4a68ffda8d331c0b6a5a",
+    "mtime": 1794150932.776863,
+    "seen": 1794150961.881968,
+    "ast_hash": "71f1401aabad1cf384acc9a8d5358fef",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -564,15 +564,15 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T0/batteries.md": {
-    "mtime": 1794001625.746715,
-    "seen": 1794010374.609711,
-    "ast_hash": "446ffa183cda726008b604b092ceae95",
+    "mtime": 1794150879.6091378,
+    "seen": 1794150961.881968,
+    "ast_hash": "aae0e04035c793e1ef3ab901b8f662f7",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/breadboard.md": {
-    "mtime": 1794001625.7517247,
-    "seen": 1794010374.609711,
-    "ast_hash": "ff9fc9ba36675039fa4970a4c19c8d32",
+    "mtime": 1794150819.8072078,
+    "seen": 1794150961.881968,
+    "ast_hash": "c93415b6363319283cd10ee17a049ed7",
     "semantic_hash": ""
   },
   "docs/curriculum/T0/charge-voltage-current.md": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T1/resistor-codes-divider.md": {
-    "mtime": 1794001625.771294,
-    "seen": 1794010374.609711,
-    "ast_hash": "eed4265712445d37f27ae74d9670984f",
+    "mtime": 1794150512.4512405,
+    "seen": 1794150961.881968,
+    "ast_hash": "5b91de0a48c5c276b1102c6693514cf7",
     "semantic_hash": ""
   },
   "docs/curriculum/T1/rlc-resonance.md": {
@@ -684,9 +684,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T2/zener.md": {
-    "mtime": 1794001625.7869132,
-    "seen": 1794010374.609711,
-    "ast_hash": "086f9a4c0b43a606114ca22dadda28d6",
+    "mtime": 1794150932.7758598,
+    "seen": 1794150961.881968,
+    "ast_hash": "38c90d41b73be00016d1680e81ea51bc",
     "semantic_hash": ""
   },
   "docs/curriculum/T3/adc-dac-pwm.md": {
@@ -984,9 +984,9 @@
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794139550.756218,
-    "seen": 1794139625.502901,
-    "ast_hash": "b203eb5e383aea415517600bad71496e",
+    "mtime": 1794150565.5762155,
+    "seen": 1794150961.881968,
+    "ast_hash": "afb11b4b21c484d1ab4d6bd7241cfd1f",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
@@ -1416,9 +1416,9 @@
     "semantic_hash": ""
   },
   "src/three/multimeterUnit.test.ts": {
-    "mtime": 1794139550.2117841,
-    "seen": 1794139625.502901,
-    "ast_hash": "a3d2c7065c3853d8d3b4c20aee9c4a61",
+    "mtime": 1794150565.6583817,
+    "seen": 1794150961.881968,
+    "ast_hash": "f131ae37e8acf55826905358e7360c1a",
     "semantic_hash": ""
   },
   "docs/plans/m3-foundations.md": {
@@ -1515,6 +1515,66 @@
     "mtime": 1794150238.0018668,
     "seen": 1794150329.9322805,
     "ast_hash": "969cdd980597aab896cf340d6595b533",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/batteries.test.ts": {
+    "mtime": 1794150879.61114,
+    "seen": 1794150961.881968,
+    "ast_hash": "e94b2fa4e3b05b187152a3f7dc2f0ae7",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/batteries.ts": {
+    "mtime": 1794150879.6121416,
+    "seen": 1794150961.881968,
+    "ast_hash": "a672c778149767ce0dea1575f1d0e438",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/breadboard.test.ts": {
+    "mtime": 1794150819.8092074,
+    "seen": 1794150961.881968,
+    "ast_hash": "8dbe4c9f7dfd7192d78b5a03b0c05571",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/breadboard.ts": {
+    "mtime": 1794150819.8092074,
+    "seen": 1794150961.881968,
+    "ast_hash": "dd1a3e442ccd3b877d41e4c8f25a7244",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/multimeter.test.ts": {
+    "mtime": 1794150681.2373612,
+    "seen": 1794150961.881968,
+    "ast_hash": "14540da5386be6082489c899ec50d57b",
+    "semantic_hash": ""
+  },
+  "src/lessons/T0/multimeter.ts": {
+    "mtime": 1794150681.2373612,
+    "seen": 1794150961.881968,
+    "ast_hash": "8fa1e29f7956414993f2e5dfaa7cd3a7",
+    "semantic_hash": ""
+  },
+  "src/lessons/T1/resistor-codes-divider.test.ts": {
+    "mtime": 1794150512.4630225,
+    "seen": 1794150961.881968,
+    "ast_hash": "d9af466726c7c3f38ded1c80c544d458",
+    "semantic_hash": ""
+  },
+  "src/lessons/T1/resistor-codes-divider.ts": {
+    "mtime": 1794150512.4640253,
+    "seen": 1794150961.881968,
+    "ast_hash": "058ccba126afb46448e39876a3130d8c",
+    "semantic_hash": ""
+  },
+  "src/lessons/T2/zener.test.ts": {
+    "mtime": 1794150932.7778616,
+    "seen": 1794150961.881968,
+    "ast_hash": "2a5e0b2f7959267c73cd42a3e29f9d07",
+    "semantic_hash": ""
+  },
+  "src/lessons/T2/zener.ts": {
+    "mtime": 1794150932.778864,
+    "seen": 1794150961.881968,
+    "ast_hash": "8bb579557002e976f0586abe6bcacf4f",
     "semantic_hash": ""
   },
   "package-lock.json": {
