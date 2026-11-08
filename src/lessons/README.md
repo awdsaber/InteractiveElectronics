@@ -59,3 +59,11 @@ The bench steps at `sim.dt` (default 1 ms) and checks ratings once per frame, so
 - **Use it** only when a failure depends on a sub-millisecond spike: a coil or motor `l` switched by a part with `vBreak` and `maxV` (see `T2/transistor-switch.ts`, failure `no-flyback`). The spike energy is ½·L·I².
 - **Cost:** n solves instead of one on each switching step, typically a handful per second, so it's cheap for sketches that toggle pins every few hundred ms. It costs more for sketches that change pins every few ms (bit-banging), because every change splits a step. `analogWrite` PWM is a duty level, not an edge per period, so it doesn't trigger this. Square-wave source edges and internal device mode flips are not split.
 - It is opt-in per lesson and never enabled automatically. Lessons without it behave exactly as before.
+
+## Authoring pitfalls (learned in M3 batch 1)
+- The power element (`powerElementId` and every `extraPower` element) must start `closed: true`. The bench disables it while unpowered, and a `closed: false` switch leaves the circuit dead after power-on.
+- Breadboard lessons are auto-framed on their non-base parts. Set `board.frame` only when the auto frame is wrong. The circuit must read clearly at default zoom: drop generic labels like "BREADBOARD" and keep callouts off the star parts.
+- A `below` status-line condition also matches the all-zero readouts while unpowered. Prefer `above`, or put the state condition first.
+- In headless tests, sim time doesn't advance while nothing is powered, so a `runFor(t)` loop before power-on never ends. Use frame counts until powered.
+- Validate through `getLesson(id)`, not the raw export: `fig` is assigned at registration.
+- Check every curriculum figure against the datasheet. One curriculum file listed a datasheet minimum as "typical". Fix the curriculum file when it's wrong.
