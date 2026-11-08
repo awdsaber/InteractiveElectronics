@@ -2,7 +2,8 @@
 // wobble clock and the lesson Board. Renders on demand unless something moves.
 
 import { Canvas, useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { boardFrame } from './autoFrame'
 import type { BenchSnapshot } from '../engine/bench/simLoop'
 import type { Lesson } from '../engine/types'
 import type { Settings } from '../ui/types'
@@ -30,8 +31,9 @@ export function fitZoom(w: number, d: number, width: number, height: number, ove
 
 function Camera({ lesson }: { lesson: Lesson }) {
   const size = useThree((s) => s.size)
-  const [w, d] = lesson.board.frame?.size ?? lesson.board.size
-  const [cx, cz] = lesson.board.frame?.center ?? [0, 0]
+  const frame = useMemo(() => boardFrame(lesson.board), [lesson.board])
+  const [w, d] = frame.size
+  const [cx, cz] = frame.center ?? [0, 0]
   const overlays = size.width > 600 && window.innerWidth > 760
   const zoom = fitZoom(w, d, size.width, size.height, overlays)
   // a little off-centre so the board sits between the action column and the status panel

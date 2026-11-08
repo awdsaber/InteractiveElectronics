@@ -17,6 +17,7 @@ export const lesson: LessonDef = {
     name: 'XYZ-01', size: [16, 8.5], // size frames the camera
     base: 'breadboard-only', // no PCB / SMD / solder step; use 'mat' for a soldered PCB
     // frame: { size: [16.6, 7.4], center: [4.3, 0.5] }, // a PCB with a breadboard beside it: what the camera and mat cover
+    // a 'breadboard-only' board with no `frame` is framed automatically: the bounding box of every part except the breadboard (hidden failure parts included) plus a margin, never smaller than 7 × 5.5; set `frame` only to override it (src/three/autoFrame.ts)
     parts: [
       { id: 'r1', kind: 'resistor', pos: between(bbHole(BB, 3, 'c'), bbHole(BB, 7, 'c')), mount: 'tht',
         label: 'R1', role: 'One line, toasted when placed.', params: { ohms: 220, callout: [0.3, 2, -0.3] },
