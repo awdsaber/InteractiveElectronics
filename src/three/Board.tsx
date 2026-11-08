@@ -89,7 +89,9 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   if (p.kind === 'multimeter') {
     const i = typeof p.params?.readout === 'number' ? p.params.readout : 0
     s.reading = snap.readouts[i]?.value.split(' ')[0] ?? '----'
-    if (p.params?.autoUnit === true) s.readingUnit = snap.readouts[i]?.value.split(' ')[1] ?? ''
+    // the LCD shows the readout's own SI unit (mV, mA, kΩ…) unless a lesson opts out with autoUnit:false.
+    // A bare number under a fixed unit was 1000× wrong in three lessons, so this is the default.
+    if (p.params?.autoUnit !== false) s.readingUnit = snap.readouts[i]?.value.split(' ')[1] ?? ''
   }
   return s
 }

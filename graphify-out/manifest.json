@@ -18,15 +18,15 @@
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1794007463.3699057,
-    "seen": 1794010374.609711,
-    "ast_hash": "75ee5f9c31cc9d75abb988499e35e159",
+    "mtime": 1794150237.9277098,
+    "seen": 1794150329.9312801,
+    "ast_hash": "bdab274ea592fb3c60e2d1bceb669533",
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794139550.4788063,
-    "seen": 1794139625.502901,
-    "ast_hash": "91583d6924f64561c5d20edd7a5d4f51",
+    "mtime": 1794150237.9607687,
+    "seen": 1794150329.9312801,
+    "ast_hash": "d5409fbddf704091027bf2f171fd48ce",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794139550.7522137,
-    "seen": 1794139625.5038953,
-    "ast_hash": "460945e4a494a104512fd876d26b46e4",
+    "mtime": 1794150237.9181902,
+    "seen": 1794150329.9322805,
+    "ast_hash": "52f7952e17da4a68ffda8d331c0b6a5a",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -360,15 +360,15 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794012598.2742977,
-    "seen": 1794012619.8859131,
-    "ast_hash": "8a0154eb78676231c92b4ea53cff9b1a",
+    "mtime": 1794139808.2813451,
+    "seen": 1794139894.4167566,
+    "ast_hash": "e6a8e3bdf3541f1bc4f029cf11c1cd10",
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
-    "mtime": 1794004360.4474409,
-    "seen": 1794010374.609711,
-    "ast_hash": "dd9d7c4b31fb5b18b65657574538f90f",
+    "mtime": 1794139808.2827935,
+    "seen": 1794139894.4167566,
+    "ast_hash": "a343532b89815875bbe4ca711f28d366",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.test.ts": {
@@ -384,21 +384,21 @@
     "semantic_hash": ""
   },
   "src/engine/sim/format.test.ts": {
-    "mtime": 1794023886.5616004,
-    "seen": 1794023916.7955184,
-    "ast_hash": "2290b47c488fd139aa69d0593d9f800f",
+    "mtime": 1794150237.9537678,
+    "seen": 1794150329.9312801,
+    "ast_hash": "8871ebf5778b4c156b6072d1c5e0f526",
     "semantic_hash": ""
   },
   "src/engine/sim/format.ts": {
-    "mtime": 1794023886.5625992,
-    "seen": 1794023916.7955184,
-    "ast_hash": "d296f7d016bceeb56bed094565bc090f",
+    "mtime": 1794150237.955767,
+    "seen": 1794150329.9312801,
+    "ast_hash": "915f67769cf06ec9cd8096772a5f4748",
     "semantic_hash": ""
   },
   "src/engine/sim/index.ts": {
-    "mtime": 1794002003.3882856,
-    "seen": 1794010374.609711,
-    "ast_hash": "a14f4bd00dec8771d289f9457eb41d01",
+    "mtime": 1794139808.2838044,
+    "seen": 1794139894.4167566,
+    "ast_hash": "07583c78a9522febc8459b65be962b4d",
     "semantic_hash": ""
   },
   "src/engine/sim/mna.ts": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/perf.test.ts": {
-    "mtime": 1794009308.5303237,
-    "seen": 1794010374.609711,
-    "ast_hash": "b67f692830267fdbc2a5ec8c0bfeaa7a",
+    "mtime": 1794139808.284805,
+    "seen": 1794139894.4167566,
+    "ast_hash": "a08bb4779d26e8e1367855f7ee03855b",
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.test.ts": {
@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/ratings.ts": {
-    "mtime": 1794009237.8628252,
-    "seen": 1794010374.609711,
-    "ast_hash": "13c7ca43a632d790c6a46a1e8bca2b39",
+    "mtime": 1794139808.2888083,
+    "seen": 1794139894.4167566,
+    "ast_hash": "1d8a9ebd0768884ae3021343dc592fd5",
     "semantic_hash": ""
   },
   "src/engine/sim/solve.test.ts": {
@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/solve.ts": {
-    "mtime": 1794004360.4528959,
-    "seen": 1794010374.609711,
-    "ast_hash": "4d48c337059eb47bf1498929f4925237",
+    "mtime": 1794139808.2898061,
+    "seen": 1794139894.4167566,
+    "ast_hash": "e1229d881a92e78264990e89c999fb84",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.test.ts": {
@@ -444,9 +444,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/transient.ts": {
-    "mtime": 1794010690.4682004,
-    "seen": 1794010720.4361825,
-    "ast_hash": "3eac9604f0f889191937e0261e2b77b8",
+    "mtime": 1794150237.9577658,
+    "seen": 1794150329.9312801,
+    "ast_hash": "2605eb7f1f69f7d90e65e8436017e157",
     "semantic_hash": ""
   },
   "src/three/bake.test.ts": {
@@ -474,15 +474,15 @@
     "semantic_hash": ""
   },
   "src/ui/Controls.tsx": {
-    "mtime": 1794000303.3115854,
-    "seen": 1794010374.609711,
-    "ast_hash": "a9f0d080ac20f57a245877c1b7317f1a",
+    "mtime": 1794150237.978314,
+    "seen": 1794150329.9322805,
+    "ast_hash": "881bd5a8e6e8e991479ea9417300a7b4",
     "semantic_hash": ""
   },
   "src/ui/Layout.tsx": {
-    "mtime": 1794007463.3999083,
-    "seen": 1794010374.609711,
-    "ast_hash": "d2bcdc1a02710d963f2ec51484f3481a",
+    "mtime": 1794150237.9823084,
+    "seen": 1794150329.9322805,
+    "ast_hash": "eedc1e70b7b637394850b48f9ca44ce4",
     "semantic_hash": ""
   },
   "src/ui/MeetTheBoard.tsx": {
@@ -516,9 +516,9 @@
     "semantic_hash": ""
   },
   "src/ui/StatusPanel.tsx": {
-    "mtime": 1794000303.3155832,
-    "seen": 1794010374.609711,
-    "ast_hash": "8e77b54dec3e1c92fdc7d0904ef043a1",
+    "mtime": 1794150237.993852,
+    "seen": 1794150329.9322805,
+    "ast_hash": "5404fb507333f8e077989f84ff21186a",
     "semantic_hash": ""
   },
   "src/ui/Toast.tsx": {
@@ -534,9 +534,9 @@
     "semantic_hash": ""
   },
   "src/ui/Tweaks.tsx": {
-    "mtime": 1794000303.316583,
-    "seen": 1794010374.609711,
-    "ast_hash": "a90af520a764b1c079dbb63f41e50d59",
+    "mtime": 1794150237.996869,
+    "seen": 1794150329.9322805,
+    "ast_hash": "3e97737121209e0e552be3d790c89b57",
     "semantic_hash": ""
   },
   "src/ui/format.test.ts": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "src/ui/types.ts": {
-    "mtime": 1794007463.4014196,
-    "seen": 1794010374.609711,
-    "ast_hash": "d85e7ac9489d3f38c8097806cc50bd7d",
+    "mtime": 1794150238.006395,
+    "seen": 1794150329.9322805,
+    "ast_hash": "e65e232a3473573fb1620031d9c59a4b",
     "semantic_hash": ""
   },
   "docs/curriculum/README.md": {
@@ -894,9 +894,9 @@
     "semantic_hash": ""
   },
   "e2e/smoke.spec.ts": {
-    "mtime": 1794011133.2153554,
-    "seen": 1794011165.2051692,
-    "ast_hash": "1b2c86c23c14c4c972977d8a2f52c201",
+    "mtime": 1794150237.9211884,
+    "seen": 1794150329.9312801,
+    "ast_hash": "bf204c070c969c553bd95c96baf1df51",
     "semantic_hash": ""
   },
   "playwright.config.ts": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794139550.4768057,
-    "seen": 1794139625.502901,
-    "ast_hash": "1b7a18c08be044bb4f585fc3fbc58e06",
+    "mtime": 1794150237.9417207,
+    "seen": 1794150329.9312801,
+    "ast_hash": "d38573b67fcafed2205e94af096339a0",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -942,15 +942,15 @@
     "semantic_hash": ""
   },
   "src/engine/bench/store.ts": {
-    "mtime": 1794007463.3799026,
-    "seen": 1794010374.609711,
-    "ast_hash": "b52de0b74a142ca3fe8c3b14bed9120c",
+    "mtime": 1794150237.9447207,
+    "seen": 1794150329.9312801,
+    "ast_hash": "cd9eba71808f84637ead4e35b4b2678b",
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794139550.4778054,
-    "seen": 1794139625.502901,
-    "ast_hash": "759e74cbcdc704b0915b8644d68c793f",
+    "mtime": 1794150237.9507675,
+    "seen": 1794150329.9312801,
+    "ast_hash": "fd10f2fa4af6ce36ed2a5b80c4ad87c8",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794139550.7542143,
-    "seen": 1794139625.5038953,
-    "ast_hash": "01bc89b7bc059dfefc2dfe7d674c661a",
+    "mtime": 1794150237.9627838,
+    "seen": 1794150329.9322805,
+    "ast_hash": "d75caf89d5d9c44f440c1b493b34289b",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -1050,15 +1050,15 @@
     "semantic_hash": ""
   },
   "src/lessons/T2/transistor-switch.test.ts": {
-    "mtime": 1794009237.8713403,
-    "seen": 1794010374.609711,
-    "ast_hash": "fbe700ec837e859c629b08d90280fedd",
+    "mtime": 1794150237.9657872,
+    "seen": 1794150329.9312801,
+    "ast_hash": "b3cf35fc91d7d31c26ef60c21e601441",
     "semantic_hash": ""
   },
   "src/lessons/T2/transistor-switch.ts": {
-    "mtime": 1794009237.8723402,
-    "seen": 1794010374.609711,
-    "ast_hash": "63e1a1549707bcda6a51a58d8fac6c37",
+    "mtime": 1794150237.9677846,
+    "seen": 1794150329.9312801,
+    "ast_hash": "5138119dcbc68760c4a6b976285a5f7a",
     "semantic_hash": ""
   },
   "src/engine/behaviors/esp32-boot.test.ts": {
@@ -1116,9 +1116,9 @@
     "semantic_hash": ""
   },
   "src/lessons/T4/esp32-s3.test.ts": {
-    "mtime": 1794010458.59189,
-    "seen": 1794010473.2440834,
-    "ast_hash": "7b854d9cb43257befa8abc91b1269201",
+    "mtime": 1794139808.2978022,
+    "seen": 1794139894.4177558,
+    "ast_hash": "ad4338023ae576eee4cfbf5b97f57286",
     "semantic_hash": ""
   },
   "src/lessons/T4/esp32-s3.ts": {
@@ -1176,15 +1176,15 @@
     "semantic_hash": ""
   },
   "src/lessons/T4/arduino-uno.test.ts": {
-    "mtime": 1794010690.4702003,
-    "seen": 1794010720.4361825,
-    "ast_hash": "8f4c4ff4a1c025ba10f575790e1b35cb",
+    "mtime": 1794139808.2948048,
+    "seen": 1794139894.4167566,
+    "ast_hash": "1ed1d32759bf84fc6c91c1c54b440723",
     "semantic_hash": ""
   },
   "src/lessons/T4/arduino-uno.ts": {
-    "mtime": 1794010690.471202,
-    "seen": 1794010720.4361825,
-    "ast_hash": "ad616f0e8907f7b432c9da21f1ced82b",
+    "mtime": 1794140124.1560776,
+    "seen": 1794150329.9312801,
+    "ast_hash": "1c9bf18b9f84563d27218edd1a8d56c4",
     "semantic_hash": ""
   },
   "src/three/calloutLayer.test.ts": {
@@ -1242,15 +1242,15 @@
     "semantic_hash": ""
   },
   "src/lessons/T6/mpu6050-imu.test.ts": {
-    "mtime": 1794023434.5854013,
-    "seen": 1794023462.5061505,
-    "ast_hash": "ad55a3e80653d3233fc83879ebb845c5",
+    "mtime": 1794140124.157077,
+    "seen": 1794150329.9312801,
+    "ast_hash": "f39e2bf1ce5485ed84591601891f814f",
     "semantic_hash": ""
   },
   "src/lessons/T6/mpu6050-imu.ts": {
-    "mtime": 1794023434.586403,
-    "seen": 1794023462.5061505,
-    "ast_hash": "d268914d5568d1e0cf54ee128ca11689",
+    "mtime": 1794140124.158077,
+    "seen": 1794150329.9312801,
+    "ast_hash": "f76ab283cbeb82e1f444c0b8097a6fa4",
     "semantic_hash": ""
   },
   "src/ui/sketchBaud.test.ts": {
@@ -1425,6 +1425,96 @@
     "mtime": 1794024208.8233395,
     "seen": 1794139625.5038953,
     "ast_hash": "b300724c3d9e0e605210a2264710db42",
+    "semantic_hash": ""
+  },
+  "src/engine/mcu/pwmHz.test.ts": {
+    "mtime": 1794139808.2798338,
+    "seen": 1794139894.4167566,
+    "ast_hash": "a24c56b532cfc3f8be48c4e99b454bc2",
+    "semantic_hash": ""
+  },
+  "src/engine/sim/pwm.test.ts": {
+    "mtime": 1794139808.2858043,
+    "seen": 1794139894.4167566,
+    "ast_hash": "1283df0e5e71b50586e2cf431aba6221",
+    "semantic_hash": ""
+  },
+  "src/engine/sim/pwm.ts": {
+    "mtime": 1794139808.286811,
+    "seen": 1794139894.4167566,
+    "ast_hash": "0aae578fb2178a6e52f8108b392d0068",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/instruments.test.ts": {
+    "mtime": 1794150237.9297068,
+    "seen": 1794150329.9312801,
+    "ast_hash": "bce2a1bd195430c793b0abe525b34bbb",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/readouts.test.ts": {
+    "mtime": 1794150237.932722,
+    "seen": 1794150329.9312801,
+    "ast_hash": "3c5215596ef76a290f1416d4b4b9e68f",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/readouts.ts": {
+    "mtime": 1794150237.9357202,
+    "seen": 1794150329.9312801,
+    "ast_hash": "811f634acc42bf68fd3009c5e23ab085",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/sampleRing.test.ts": {
+    "mtime": 1794150237.9377189,
+    "seen": 1794150329.9312801,
+    "ast_hash": "a8ab7d70e2a879ed376562eec280aaf0",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/sampleRing.ts": {
+    "mtime": 1794150237.9397204,
+    "seen": 1794150329.9312801,
+    "ast_hash": "e70c4a2768719704475bc81f58cf2432",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/tweaks.test.ts": {
+    "mtime": 1794150237.945719,
+    "seen": 1794150329.9312801,
+    "ast_hash": "836e76867a560363118ebf441be2109e",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/tweaks.ts": {
+    "mtime": 1794150237.9472322,
+    "seen": 1794150329.9312801,
+    "ast_hash": "7e1f133ba3aa99361a1605ba512e0aed",
+    "semantic_hash": ""
+  },
+  "src/engine/lessonSchema.test.ts": {
+    "mtime": 1794150237.9487517,
+    "seen": 1794150329.9312801,
+    "ast_hash": "ac5f177ae765faffcca2823b90c23eaf",
+    "semantic_hash": ""
+  },
+  "src/ui/Instruments.tsx": {
+    "mtime": 1794150237.9803092,
+    "seen": 1794150329.9322805,
+    "ast_hash": "afcc8c1a00b33169144075db91864233",
+    "semantic_hash": ""
+  },
+  "src/ui/RadioSeg.tsx": {
+    "mtime": 1794150237.9898381,
+    "seen": 1794150329.9322805,
+    "ast_hash": "28c09d2e4c31eb52f694a32db19b996e",
+    "semantic_hash": ""
+  },
+  "src/ui/scopeView.test.ts": {
+    "mtime": 1794150237.9988682,
+    "seen": 1794150329.9322805,
+    "ast_hash": "c19b3d0c12644a3abd8bd43bafac4913",
+    "semantic_hash": ""
+  },
+  "src/ui/scopeView.ts": {
+    "mtime": 1794150238.0018668,
+    "seen": 1794150329.9322805,
+    "ast_hash": "969cdd980597aab896cf340d6595b533",
     "semantic_hash": ""
   },
   "package-lock.json": {
