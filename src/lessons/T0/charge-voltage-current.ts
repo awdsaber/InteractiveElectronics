@@ -54,6 +54,7 @@ export const lesson: LessonDef = {
   board: {
     name: 'CHARGE-01',
     size: [16.5, 8.6],
+    frame: { size: [13.4, 6.6], center: [0.4, -0.6] }, // the circuit fills the view at default zoom
     base: 'breadboard-only',
     parts: [
       { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', role: 'Holds the parts; each 5-hole strip is one electrical node.' },
@@ -64,7 +65,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'CELLS',
         role: 'Two alkaline AA cells in series: about 3.0 V of push, 0.3 Ω inside.',
-        params: { cells: 2, callout: [0, 1.8, 0] },
+        params: { cells: 2, callout: [-1.8, 1.6, 1.0] },
         circuitIds: ['V_BAT'],
       },
       {
@@ -105,7 +106,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'LAMP',
         role: '5 mm red LED: turns current into light, brighter as the current rises. Long leg (anode) toward the resistor.',
-        params: { color: 'red', callout: [-1.6, 1.6, -0.6] },
+        params: { color: 'red', callout: [-2.2, 1.3, 1.2] },
         circuitIds: ['LED1'],
       },
       { id: 'w-red', kind: 'wire', ...wRed, mount: 'offboard', role: 'Cells + to the switch.' },
@@ -148,6 +149,8 @@ export const lesson: LessonDef = {
     { label: 'ACROSS R1', source: { kind: 'voltage', node: 'r_in', ref: 'led_a' }, unit: 'V' },
   ],
 
+  // Hook: a V element that is not a multiple of 1.5 V (e.g. a 9 V block) makes liveParams round to the
+  // nearest cell count, so only 1.5 V packs should use `cells`. rInternal stays 0.3 Ω for every cell count.
   tweaks: [
     { label: 'Limit resistor', elementId: 'R1', key: 'value', min: 47, max: 1000, log: true, unit: 'Ω' },
     { label: 'Cells in series (1.5 V each)', elementId: 'V_BAT', key: 'value', min: 1.5, max: 4.5, step: 1.5, unit: 'V' },
@@ -175,7 +178,7 @@ export const lesson: LessonDef = {
       id: 'bypass-resistor',
       label: 'Bypass the resistor with a jumper',
       explain:
-        "An LED's current rises exponentially with voltage. With the resistor bypassed, only the cells' 0.3 Ω and the LED's own few ohms limit it, and 3 V is far above a red LED's ~1.8 V: the current jumps past 30 mA and after about 300 ms the LED burns open, so the current falls to 0.",
+        "An LED's current rises exponentially with voltage. With the resistor bypassed, only the cells' 0.3 Ω and the LED's own few ohms limit it, and 3 V is far above a red LED's ~1.8 V: the current jumps to 200+ mA (the 30 mA limit is exceeded almost at once) and after about 300 ms the LED burns open, so the current falls to 0.",
       patches: [{ op: 'short', a: 'r_in', b: 'led_a' }],
       parts: { hide: ['r1'], show: ['jumper'] },
     },
@@ -188,9 +191,11 @@ export const lesson: LessonDef = {
     },
   ],
 
-  meet: `**Charge** (Q) is counted in coulombs; one coulomb is about 6.24 × 10¹⁸ electrons. **Current** (I) is the rate charge passes a point: 1 ampere = 1 coulomb per second. **Voltage** (V) is the energy each coulomb gains or gives up: 1 volt = 1 joule per coulomb.
+  meet: `Press **Flip the switch**. Charge now goes round one closed loop: out of the cells, through the switch, **through the ammeter**, down the resistor, through the red LED and back into the cells. The ammeter sits *in* the loop so everything that flows must pass through it. It reads about **12 mA**, and the LED glows. Cut the loop anywhere and the reading drops to zero.
 
-Here two AA cells give 3.0 V. The red LED takes about 1.8 V, so the resistor gets the rest:
+Now the three words. **Charge** (Q) is counted in coulombs; one coulomb is about 6.24 × 10¹⁸ electrons. **Current** (I) is how fast charge passes a point: 1 ampere = 1 coulomb per second, which is exactly what the ammeter counts. **Voltage** (V) is the energy each coulomb gains or gives up: 1 volt = 1 joule per coulomb.
+
+Two AA cells give 3.0 V. The red LED takes about 1.8 V, so the resistor gets the rest:
 
 I = (3.0 V − 1.8 V) / 100 Ω ≈ **12 mA**
 
@@ -198,7 +203,7 @@ That is 0.012 C/s, or 0.012 / 1.602 × 10⁻¹⁹ ≈ 7.5 × 10¹⁶ electrons e
 
 The battery's rating converts the same way. 2500 mAh means 2.5 A·h = 2.5 × 3600 = 9000 C. At 12 mA that lasts 2500 / 12 ≈ **208 hours**, if the rating holds at this drain.
 
-By convention, current flows from + to −. The electrons actually drift the other way, very slowly, but the push travels around the loop almost instantly.`,
+A note on direction, for later lessons. Current is drawn flowing from + to −, an old convention chosen before electrons were known. The electrons actually drift the other way, very slowly, but the push travels around the loop almost instantly.`,
 
   mechanicalAnalogy: `Think of a closed hydraulic loop. The battery is a pump that adds pressure (voltage), the flow rate is current, and the volume of fluid moved is charge. The resistor is an orifice and the LED is a check valve that needs some cracking pressure before it passes flow. As in hydraulics, the fluid is not used up; it goes around.
 

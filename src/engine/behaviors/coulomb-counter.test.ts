@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createBench } from '../bench/simLoop'
 import type { Lesson } from '../types'
 import { behavior } from './coulomb-counter'

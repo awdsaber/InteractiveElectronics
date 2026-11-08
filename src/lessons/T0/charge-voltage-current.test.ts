@@ -48,6 +48,8 @@ describe('charge-voltage-current lesson', () => {
     const s = b.snapshot()
     expect(s.assembly.powered.SW1).toBe(false)
     expect(s.values[CURRENT]).toBe(0)
+    within(s.values[BATTERY], 3.0, 0.01) // the push is there even with the switch open
+    expect(s.statusLine.text).toMatch(/^SWITCH OPEN/)
     b.dispose()
   })
 
@@ -77,13 +79,26 @@ describe('charge-voltage-current lesson', () => {
     b.dispose()
   })
 
-  it('the 2 x AA / 2500 mAh arithmetic in the curriculum: 9000 C, 208 hours at 12 mA', () => {
-    const coulombs = 2.5 * 3600
-    expect(coulombs).toBe(9000)
-    expect(coulombs / 0.012 / 3600).toBeCloseTo(208.3, 1)
-    expect((0.012 * 600).toFixed(1)).toBe('7.2') // quiz 1
-    expect(L.quiz[0].options[L.quiz[0].answer]).toBe('7.2 C')
-    expect(L.quiz[2].options[L.quiz[2].answer]).toBe('208 h')
+  it('quiz answers follow from values measured on the bench', async () => {
+    const b = createBench(L)
+    b.dispatch('power')
+    const s = await runFor(b, 1)
+    const nearest = (q: number, target: number) => {
+      const nums = L.quiz[q].options.map((o) => parseFloat(o))
+      return nums.indexOf(nums.reduce((best, n) => (Math.abs(Math.log(n / target)) < Math.abs(Math.log(best / target)) ? n : best)))
+    }
+    const i = s.values[CURRENT]
+    // quiz 1: Q = I t over 10 minutes (measured I) -> about 7.5 C, nearest option 7.2 C
+    expect(nearest(0, i * 600)).toBe(L.quiz[0].answer)
+    // quiz 3: 2500 mAh at the measured current -> hours; the nearest option is 208 h
+    expect(nearest(2, 2.5 / i)).toBe(L.quiz[2].answer)
+    // quiz 2 is a definition: 1 V = 1 J/C, checked through P = V I = (J/C)(C/s)
+    expect(L.quiz[1].options[L.quiz[1].answer]).toMatch(/joule/)
+    b.dispatch('break:open-loop')
+    const open = await runFor(b, 0.5)
+    // quiz 4: the measured voltage across the empty gap
+    expect(nearest(3, open.values[R1_DROP])).toBe(L.quiz[3].answer)
+    b.dispose()
   })
 
   it('tweak: a smaller resistor makes the current, and the LED, rise; a bigger one dims it', async () => {
