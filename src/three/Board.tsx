@@ -67,6 +67,11 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   else if (tj !== undefined) s.glowColor = '#ff6a1f'
   // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id
   if (p.kind === 'button' && typeof p.params?.pressedWhen === 'string') s.value = snap.assembly.failures.includes(p.params.pressedWhen) ? 1 : 0
+  // a push button that is a switch element in the circuit shows pressed while the element is closed
+  if (p.kind === 'button' && cid && typeof p.params?.pressedWhen !== 'string') {
+    const closed = snap.elementValues[`${cid}.closed`]
+    if (closed !== undefined) s.value = closed
+  }
   if (cid && MOTOR_KINDS.has(p.kind)) s.rpm = snap.extra[`${cid}.rpm`] ?? 0
   // a stepper driven by a behavior: params.angleKey / rpmKey name published values (shaft degrees, rpm)
   if (p.kind === 'stepper-nema17') {

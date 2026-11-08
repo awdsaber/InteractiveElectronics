@@ -822,6 +822,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       const rec = e as unknown as Record<string, unknown>
       if (typeof rec.value === 'number') elementValues[`${e.id}.value`] = rec.value
       if (typeof rec.pos === 'number') elementValues[`${e.id}.pos`] = rec.pos
+      if (e.type === 'SW') elementValues[`${e.id}.closed`] = e.closed ? 1 : 0 // a push button part shows it
     }
     return {
       t,
