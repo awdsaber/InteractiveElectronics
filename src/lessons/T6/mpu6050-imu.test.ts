@@ -71,9 +71,7 @@ describe('T6 mpu6050-imu lesson', () => {
     const raw0 = s0.values[GYRO_RAW]
     const s = await run(b, 10)
     near((s.values[GYRO_RAW] - raw0) * 6, 2.1 * 60) // per minute
-    // the run ends with the shaker on: its ≈ 203 Hz shake aliases to ≈ 3 Hz in the 100 Hz loop (see
-    // the shaker test), which the filter passes as a ≈ ±1.5° wobble
-    expect(Math.abs(s.values[FILT] - s.values[TRUE])).toBeLessThan(2)
+    expect(Math.abs(s.values[FILT] - s.values[TRUE])).toBeLessThan(0.5)
     expect(Math.abs(s.values[GYRO_CAL])).toBeLessThan(1.5)
     const out = sketchOut(s)
     expect(Math.abs(out.gyro)).toBeLessThan(1.5) // the sketch calibrated too
@@ -106,11 +104,10 @@ describe('T6 mpu6050-imu lesson', () => {
       filt.push(x.values[FILT])
       line = x.statusLine.text
     })
-    // switched PWM: at analogWrite 200 (78 %) the ERM runs at ≈ 1275 rad/s, not the full-on
-    // 1560 rad/s the averaged pin gave (the averaged 3.9 V held Q1 saturated): 2.9e-7·1275²/√2 ≈ 0.33 g
-    near(s.values[VIB], 0.333)
+    // analogWrite 255: the ERM runs full-on at ≈ 1560 rad/s: 2.9e-7·1560²/√2 ≈ 0.5 g
+    near(s.values[VIB], 0.5)
     expect(stats(acc).sd).toBeGreaterThan(1)
-    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3) // measured ≈ 6×: the ≈ 203 Hz shake (78 % PWM) aliases to ≈ 3 Hz in the 100 Hz loop
+    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 10) // the ≈ 248 Hz shake aliases to ≈ 48 Hz in the 100 Hz loop
     expect(line).toMatch(/^Shaker on/)
     // and it stops: the vibration readout falls once the sketch turns the shaker off
     const off = await run(b, 1.5)
@@ -126,10 +123,7 @@ describe('T6 mpu6050-imu lesson', () => {
     const g1 = s1.values[GYRO_CAL]
     const sk1 = sketchOut(s1).gyro
     const filt: number[] = []
-    // shaker-off frames only: the switched-PWM shaker's ≈ 3 Hz alias would bias a 5 s mean
-    const s2 = await run(b, 5, (x) => {
-      if (x.values[VIB] < 0.01) filt.push(x.values[FILT])
-    })
+    const s2 = await run(b, 5, (x) => filt.push(x.values[FILT]))
     near((s2.values[GYRO_CAL] - g1) * 12, 54)
     near((sketchOut(s2).gyro - sk1) * 12, 54)
     near(stats(filt).mean, 0.44)
