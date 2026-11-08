@@ -22,10 +22,19 @@ describe('multimeter LCD unit hook (params.autoUnit)', () => {
     b.dispose()
   })
 
-  it('is left unset without autoUnit, so other meters keep params.unit', () => {
+  it('is the default: a meter without autoUnit still shows the readout unit', async () => {
     const b = createBench(lesson)
+    b.dispatch('power')
+    for (let i = 0; i < 20; i++) await b.frame(1 / 60)
     const plain = { ...meter, params: { ...meter.params, autoUnit: undefined } }
-    expect(partState(lesson, plain, b.snapshot()).readingUnit).toBeUndefined()
+    expect(partState(lesson, plain, b.snapshot()).readingUnit).toBe('mA')
+    b.dispose()
+  })
+
+  it('is left unset with autoUnit:false, so that meter keeps params.unit', () => {
+    const b = createBench(lesson)
+    const fixed = { ...meter, params: { ...meter.params, autoUnit: false } }
+    expect(partState(lesson, fixed, b.snapshot()).readingUnit).toBeUndefined()
     b.dispose()
   })
 

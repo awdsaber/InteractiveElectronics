@@ -20,7 +20,7 @@ export interface PartRenderState {
   value?: number
   /** live text for displays (multimeter reading) */
   reading?: string
-  /** unit text for the multimeter LCD (SI prefix + unit, e.g. 'mA'); set when params.autoUnit is true */
+  /** unit text for the multimeter LCD (SI prefix + unit, e.g. 'mA'); set unless params.autoUnit is false */
   readingUnit?: string
   /** live LED colour '#rrggbb' (addressable RGB LEDs); not in the bake key, so it never rebakes */
   glowColor?: string
