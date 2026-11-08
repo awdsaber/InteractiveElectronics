@@ -4,7 +4,8 @@
 import { z } from 'zod'
 import { ALL_PART_KINDS } from '../three/parts/kinds'
 import { registry as defaultRegistry } from './behaviors'
-import type { Behavior, Element, Lesson } from './types'
+import { readoutGraphErrors } from './bench/readouts'
+import type { Behavior, Element, Lesson, Readout } from './types'
 
 /** optional element fields a tweak or `set` patch may target, beyond the ones the element already has */
 const OPTIONAL_KEYS: Record<string, string[]> = {
@@ -68,30 +69,65 @@ const part = z.object({
   hidden: z.boolean().optional(),
 })
 
+const voltageSource = z.object({ kind: z.literal('voltage'), node, ref: node.optional() })
+const currentSource = z.object({ kind: z.literal('current'), elementId: z.string() })
+
 const readout = z.object({
   label: z.string().min(1),
   source: z.union([
-    z.object({ kind: z.literal('current'), elementId: z.string() }),
-    z.object({ kind: z.literal('voltage'), node, ref: node.optional() }),
+    currentSource,
+    voltageSource,
     z.object({ kind: z.literal('power'), elementId: z.string() }),
     z.object({ kind: z.literal('extra'), key: z.string() }),
     z.object({ kind: z.literal('behavior'), key: z.string() }),
+    z.object({ kind: z.literal('derived'), op: z.enum(['sum', 'diff', 'ratio', 'product']), of: z.array(z.number().int()).min(1) }),
   ]),
   unit: z.enum(['A', 'V', 'W', 'Ω', 'mΩ', 'rpm', '°', '°C', 'Hz', 'g', 'cm', '%', 's', 'µs', 'counts', 'dBm', 'C', '']),
   digits: z.number().int().min(1).max(6).optional(),
   floor: z.number().nonnegative().optional(),
+  peak: z.boolean().optional(),
 })
 
 const tweak = z.object({
   label: z.string(),
   elementId: z.string(),
   key: z.string(),
-  kind: z.enum(['slider', 'toggle', 'momentary']).optional(),
+  kind: z.enum(['slider', 'enum', 'momentary', 'toggle']).optional(),
+  options: z.array(z.object({ label: z.string().min(1), value: num })).optional(),
   min: num,
   max: num,
   step: num.positive().optional(),
   log: z.boolean().optional(),
   unit: z.string(),
+  link: z.array(z.object({ elementId: z.string().min(1), key: z.string().min(1), scale: num.optional() })).optional(),
+})
+
+const scopeChannel = z.object({
+  source: z.union([voltageSource, currentSource]),
+  label: z.string().optional(),
+  perDiv: num.positive().optional(),
+  offset: num.min(-4).max(4).optional(),
+  marks: z.array(z.object({ value: num, label: z.string() })).optional(),
+})
+
+const instruments = z.object({
+  scope: z
+    .object({
+      channels: z.array(scopeChannel).min(1).max(2),
+      timePerDiv: num.positive().optional(),
+      trigger: z
+        .object({
+          channel: z.number().int().min(0).max(1).optional(),
+          level: num.optional(),
+          slope: z.enum(['rising', 'falling']).optional(),
+          mode: z.enum(['auto', 'normal']).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  chart: z.object({ signals: z.array(z.union([z.number().int(), readout])).min(1).max(6), span: num.positive().optional() }).optional(),
+  open: z.boolean().optional(),
+  view: z.enum(['scope', 'chart']).optional(),
 })
 
 const status = z.enum(['BARE PCB', 'ASSEMBLING', 'READY', 'POWERED', 'RUNNING', 'FAULT'])
@@ -163,7 +199,16 @@ export const lessonSchema = z.object({
   quiz: z.array(z.object({ q: z.string().min(1), options: z.array(z.string()).min(2), answer: z.number().int(), why: z.string() })),
   behaviors: z.array(behaviorRef).optional(),
   transient: z.boolean().optional(),
-  sim: z.object({ dt: num.positive().optional(), method: z.enum(['be', 'trap']).optional(), stepsPerFrame: z.number().int().positive().optional(), edgeSubsteps: z.number().int().min(2).max(20).optional() }).optional(),
+  sim: z
+    .object({
+      dt: num.positive().optional(),
+      method: z.enum(['be', 'trap']).optional(),
+      stepsPerFrame: z.number().int().positive().optional(),
+      edgeSubsteps: z.number().int().min(2).max(20).optional(),
+      speed: num.positive().max(1000).optional(),
+    })
+    .optional(),
+  instruments: instruments.optional(),
 })
 
 /**
@@ -210,25 +255,50 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
     if (!el) errs.push(`power: no element "${id}"`)
     else if (el.type !== 'V' && el.type !== 'SW') errs.push(`power: "${id}" is a ${el.type}; power must be a V or SW`)
   }
-  lesson.readouts.forEach((r, i) => {
-    const s = r.source
-    if ((s.kind === 'current' || s.kind === 'power') && !has(s.elementId)) errs.push(`readouts.${i}: no element "${s.elementId}"`)
+  const source = (s: Readout['source'], where: string, readoutCount: number) => {
+    if ((s.kind === 'current' || s.kind === 'power') && !has(s.elementId)) errs.push(`${where}: no element "${s.elementId}"`)
     if (s.kind === 'voltage') {
-      node(s.node, `readouts.${i}`)
-      if (s.ref !== undefined) node(s.ref, `readouts.${i}`)
+      node(s.node, where)
+      if (s.ref !== undefined) node(s.ref, where)
     }
     if (s.kind === 'behavior') {
       const inst = s.key.split('.')[0]
-      if (!s.key.includes('.') || !instances.has(inst)) errs.push(`readouts.${i}: no behavior instance "${inst}" (keys are <instance>.<key>)`)
+      if (!s.key.includes('.') || !instances.has(inst)) errs.push(`${where}: no behavior instance "${inst}" (keys are <instance>.<key>)`)
     }
+    if (s.kind === 'derived') for (const j of s.of) if (j < 0 || j >= readoutCount) errs.push(`${where}: no readout ${j}`)
+  }
+  lesson.readouts.forEach((r, i) => {
+    if (r.source.kind !== 'derived') source(r.source, `readouts.${i}`, lesson.readouts.length)
   })
+  errs.push(...readoutGraphErrors(lesson.readouts))
+  /** a tweak (or link) target: an element with that key, or a behavior instance */
+  const target = (elementId: string, key: string, where: string) => {
+    if (elementId.startsWith('behavior:')) {
+      if (!instances.has(elementId.slice(9))) errs.push(`${where}: no behavior instance "${elementId.slice(9)}"`)
+    } else if (!has(elementId)) errs.push(`${where}: no element "${elementId}"`)
+    else keyOk(elementId, key, where)
+  }
   lesson.tweaks?.forEach((t, i) => {
-    if (t.elementId.startsWith('behavior:')) {
-      if (!instances.has(t.elementId.slice(9))) errs.push(`tweaks.${i}: no behavior instance "${t.elementId.slice(9)}"`)
-    } else if (!has(t.elementId)) errs.push(`tweaks.${i}: no element "${t.elementId}"`)
-    else keyOk(t.elementId, t.key, `tweaks.${i}`)
+    target(t.elementId, t.key, `tweaks.${i}`)
     if (!(t.max > t.min)) errs.push(`tweaks.${i}: max must be above min`)
     if (t.log && t.min <= 0) errs.push(`tweaks.${i}: a log slider needs min > 0`)
+    if (t.kind === 'enum') {
+      if (!t.options || t.options.length < 2) errs.push(`tweaks.${i}: an enum tweak needs at least 2 options`)
+      for (const o of t.options ?? []) if (o.value < t.min || o.value > t.max) errs.push(`tweaks.${i}: option "${o.label}" (${o.value}) is outside min..max`)
+    } else if (t.options) errs.push(`tweaks.${i}: options are only for kind "enum"`)
+    t.link?.forEach((l, j) => target(l.elementId, l.key, `tweaks.${i}.link.${j}`))
+  })
+  const ins = lesson.instruments
+  if (ins?.scope) {
+    ins.scope.channels.forEach((c, i) => source(c.source, `instruments.scope.channels.${i}`, 0))
+    const ch = ins.scope.trigger?.channel ?? 0
+    if (ch >= ins.scope.channels.length) errs.push(`instruments.scope.trigger: no channel ${ch}`)
+  }
+  ins?.chart?.signals.forEach((sig, i) => {
+    const where = `instruments.chart.signals.${i}`
+    if (typeof sig === 'number') {
+      if (sig < 0 || sig >= lesson.readouts.length) errs.push(`${where}: no readout ${sig}`)
+    } else source(sig.source, where, lesson.readouts.length)
   })
   const partSet = new Set(partIds)
   for (const f of lesson.failures) {

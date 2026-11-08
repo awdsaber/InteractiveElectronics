@@ -33,9 +33,9 @@ import type {
   Netlist,
   PinState,
   Readout,
+  ScopeSource,
   Solution,
   StatusLine,
-  Tweak,
 } from '../types'
 import type { PartChoice, ReadoutView } from '../../ui/types'
 import {
@@ -55,6 +55,11 @@ import {
   reduceAssembly,
   remainingParts,
 } from './assembly'
+import { PeakHold, createReadoutEval, derivedValue, readSource } from './readouts'
+import { SampleRing } from './sampleRing'
+import { snapTweak, tweakAssignments, tweakKey, tweakTargets } from './tweaks'
+
+export { tweakKey } from './tweaks'
 
 export interface BenchOptions {
   /** behavior registry (defaults to src/engine/behaviors) */
@@ -70,7 +75,12 @@ export interface BenchOptions {
   code?: string
   /** tweak values to start from, keyed like tweakKey() */
   tweaks?: Record<string, number>
+  /** scope ring capacity, samples (default SCOPE_SAMPLES) */
+  scopeSamples?: number
 }
+
+/** a strip-chart signal: a lesson readout index, or an inline readout (any source) */
+export type ChartSignal = number | Readout
 
 export interface StatusLineView {
   text: string
@@ -119,6 +129,12 @@ export interface BenchSnapshot {
   serial: string[]
   sketchError: string | null
   warnings: string[]
+  /** requested sim speed (sim seconds per real second) */
+  speed: number
+  /** achieved sim speed, smoothed over about half a second of frames */
+  rate: number
+  /** the per-frame step cap held the sim back within the last half second */
+  capped: boolean
 }
 
 export interface Bench {
@@ -134,6 +150,22 @@ export interface Bench {
   setTweak(key: string, value: number): void
   tweakValues(): Record<string, number>
   setSpeed(x: number): void
+  /** the tweak values the lesson starts from (a momentary button's resting value) */
+  tweakDefaults(): Record<string, number>
+  /** forget every peak-hold readout's held value */
+  resetPeaks(): void
+  /**
+   * scope samples: 2 channels (NaN where a channel is off), one row per transient step and per
+   * edge substep, keyed by sim time (DC lessons: one per frame)
+   */
+  readonly scope: SampleRing
+  /** probe these sources on the scope (null = channel off); clears the scope */
+  setScope(sources: readonly (ScopeSource | null)[]): void
+  /** strip-chart samples, one channel per signal, at least 2·span/CHART_SAMPLES of sim time apart */
+  readonly chart: SampleRing
+  setChart(signals: readonly ChartSignal[], span?: number): void
+  /** what the scope and chart currently probe */
+  instrumentConfig(): { scope: (ScopeSource | null)[]; chart: ChartSignal[]; span: number }
   serialIn(text: string): void
   /** advance by one animation frame of `realDt` seconds; resolves when this frame's MCU advance is done */
   frame(realDt: number): Promise<void>
@@ -145,9 +177,12 @@ export interface Bench {
   dispose(): void
 }
 
-export const tweakKey = (t: Pick<Tweak, 'elementId' | 'key'>): string => `${t.elementId}.${t.key}`
-
 const MAX_FRAME = 0.1
+/** scope ring default: 32768 rows ≈ 33 s at the default 1 ms step (fewer with substeps) */
+export const SCOPE_SAMPLES = 1 << 15
+/** strip-chart rows kept; the chart samples every 2·span / CHART_SAMPLES of sim time */
+export const CHART_SAMPLES = 2048
+export const CHART_MAX_SIGNALS = 6
 const SERIAL_KEEP = 200
 const EVENT_KEEP = 4000
 const DYNAMIC: Element['type'][] = ['C', 'L', 'MOTOR']
@@ -167,8 +202,6 @@ function powerOffPatch(el: Element): FailurePatch {
   // a disabled element stamps as an open circuit
   return { op: 'set', elementId: el.id, key: 'disabled', value: true }
 }
-
-const floor = (unit: string) => (unit === 'V' ? 1e-6 : unit === 'A' || unit === 'W' ? 1e-9 : 0)
 
 function initialTweaks(l: Lesson, behaviors: ResolvedBehavior[]): Record<string, number> {
   const out: Record<string, number> = {}
@@ -201,13 +234,21 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   let liveDirty = false
 
   const resolved = (lesson.behaviors ?? []).map(resolveBehaviorRef)
-  const tweaks: Record<string, number> = { ...initialTweaks(lesson, resolved), ...(opts.tweaks ?? {}) }
-  for (const r of resolved) {
-    for (const [k, v] of Object.entries(tweaks)) {
+  const tweakDefaults = initialTweaks(lesson, resolved)
+  const tweaks: Record<string, number> = { ...tweakDefaults, ...(opts.tweaks ?? {}) }
+  /** behavior params set by tweaks, including the behavior targets of ganged tweaks */
+  function applyBehaviorTweaks(): void {
+    for (const r of resolved) {
       const pre = `behavior:${r.instance}.`
-      if (k.startsWith(pre)) r.params[k.slice(pre.length)] = v
+      for (const [k, v] of Object.entries(tweaks)) if (k.startsWith(pre)) r.params[k.slice(pre.length)] = v
+    }
+    for (const a of tweakAssignments(lesson.tweaks ?? [], tweaks)) {
+      if (!a.elementId.startsWith('behavior:')) continue
+      const r = resolved.find((x) => `behavior:${x.instance}` === a.elementId)
+      if (r) r.params[a.key] = a.value
     }
   }
+  applyBehaviorTweaks()
 
   // ── circuit ──
   const dynamic =
@@ -256,11 +297,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   function buildNetlist(): Netlist {
     const patches: FailurePatch[] = []
     const ids = new Set(lesson.circuit.elements.map((e) => e.id))
-    for (const tw of lesson.tweaks ?? []) {
-      if (tw.elementId.startsWith('behavior:') || !ids.has(tw.elementId)) continue
-      const v = tweaks[tweakKey(tw)]
-      const el = lesson.circuit.elements.find((e) => e.id === tw.elementId) as Record<string, unknown> | undefined
-      patches.push({ op: 'set', elementId: tw.elementId, key: tw.key, value: typeof el?.[tw.key] === 'boolean' ? v >= 0.5 : v })
+    for (const a of tweakAssignments(lesson.tweaks ?? [], tweaks)) {
+      if (a.elementId.startsWith('behavior:') || !ids.has(a.elementId)) continue
+      const el = lesson.circuit.elements.find((e) => e.id === a.elementId) as Record<string, unknown> | undefined
+      patches.push({ op: 'set', elementId: a.elementId, key: a.key, value: typeof el?.[a.key] === 'boolean' ? a.value >= 0.5 : a.value })
     }
     for (const [k, v] of Object.entries(live)) {
       const [elementId, key] = k.split('\u0000')
@@ -538,6 +578,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     if (prev.running && !state.running) stopSketch()
     else if (state.running && (!prev.running || a === 'upload')) uploaded = startSketch()
     rebuild()
+    if ((!wasOn && isOn) || a === 'repair' || a === 'strip') peaks.reset()
     if (!wasOn && isOn) lifecycle('power-on')
     if (wasOn && !isOn) {
       clearPublished()
@@ -563,17 +604,74 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
 
   // ── readouts / status ──
-  function readValue(r: Readout, s: Solution | null): number {
-    const src = r.source
-    if (src.kind === 'behavior') return published[src.key] ?? 0
-    if (!s) return 0
-    let v = 0
-    if (src.kind === 'current') v = s.current[src.elementId] ?? 0
-    else if (src.kind === 'voltage') v = (s.nodeV[src.node] ?? 0) - (src.ref ? (s.nodeV[src.ref] ?? 0) : 0)
-    else if (src.kind === 'power') v = s.power[src.elementId] ?? 0
-    else if (src.kind === 'extra') v = s.extra[src.key] ?? 0
-    return Math.abs(v) < (r.floor ?? floor(r.unit)) ? 0 : v
+  const readoutEval = createReadoutEval(lesson.readouts)
+  const peaks = new PeakHold(lesson.readouts)
+  /** per-step scratch: every readout's value (peak-hold and the chart read it) */
+  const stepVals = new Float64Array(lesson.readouts.length)
+
+  // ── instruments ──
+  const scope = new SampleRing(opts.scopeSamples ?? SCOPE_SAMPLES, 2)
+  let scopeSrc: (ScopeSource | null)[] = [null, null]
+  let scopeOn = false
+  let chart = new SampleRing(CHART_SAMPLES, 1)
+  let chartSignals: ChartSignal[] = []
+  let chartSpan = 10
+  let chartEvery = 0
+  let chartLastT = -Infinity
+  const chartRow = new Float64Array(CHART_MAX_SIGNALS)
+  const chartOps: number[][] = []
+
+  function setScope(sources: readonly (ScopeSource | null)[]): void {
+    scopeSrc = [sources[0] ?? null, sources[1] ?? null]
+    scopeOn = scopeSrc.some(Boolean)
+    scope.clear()
   }
+  function setChart(signals: readonly ChartSignal[], span = 10): void {
+    chartSignals = signals.slice(0, CHART_MAX_SIGNALS)
+    chartSpan = span
+    chart =new SampleRing(CHART_SAMPLES, Math.max(1, chartSignals.length))
+    chartEvery = (Math.max(1e-6, span) * 2) / CHART_SAMPLES
+    chartLastT = -Infinity
+    chartOps.length = 0
+    for (const sig of chartSignals) chartOps.push(typeof sig !== 'number' && sig.source.kind === 'derived' ? new Array<number>(sig.source.of.length).fill(0) : [])
+  }
+
+  /** one sim sample (a transient step, an edge substep, or a DC frame) for peak-hold and the instruments */
+  function sample(tt: number, s: Solution | null): void {
+    if (!s || !s.ok) return
+    if (scopeOn) {
+      const a = scopeSrc[0] ? readSource(scopeSrc[0], s, published) : NaN
+      const b = scopeSrc[1] ? readSource(scopeSrc[1], s, published) : NaN
+      scope.push2(tt, a, b)
+    }
+    const charting = chartSignals.length > 0 && tt - chartLastT >= chartEvery
+    if (!peaks.any && !charting) return
+    readoutEval.evalInto(s, published, stepVals)
+    peaks.update(stepVals)
+    if (!charting) return
+    chartLastT = tt
+    for (let i = 0; i < chartSignals.length; i++) {
+      const sig = chartSignals[i]
+      if (typeof sig === 'number') chartRow[i] = sig < stepVals.length ? stepVals[sig] : NaN
+      else if (sig.source.kind === 'derived') {
+        const ops = chartOps[i]
+        for (let m = 0; m < ops.length; m++) ops[m] = stepVals[sig.source.of[m]] ?? NaN
+        chartRow[i] = derivedValue(sig.source.op, ops)
+      } else chartRow[i] = readSource(sig.source, s, published)
+    }
+    chart.push(tt, chartRow)
+  }
+
+  if (lesson.instruments?.scope) setScope(lesson.instruments.scope.channels.map((c) => c.source))
+  if (lesson.instruments?.chart) setChart(lesson.instruments.chart.signals, lesson.instruments.chart.span)
+
+  // ── speed ──
+  /** slow motion: sim time owed that is still under one step */
+  let owed = 0
+  let rate = speed
+  /** real seconds of frames so far, and when the step cap last held the sim back */
+  let realClock = 0
+  let cappedAt = -Infinity
 
   function lineMatches(l: StatusLine, values: number[], status: BenchStatus): boolean {
     const w = l.when
@@ -651,10 +749,15 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   function snapshot(): BenchSnapshot {
     const s = solution()
     const status = benchStatus(lesson, asm)
-    const values = lesson.readouts.map((r) => readValue(r, s))
+    const values: number[] = new Array<number>(lesson.readouts.length).fill(0)
+    readoutEval.evalInto(s, published, values)
+    peaks.update(values)
+    peaks.apply(values)
     const pinWarn = s ? pinWarnings(netlist, s).length > 0 : false
     const tone: ReadoutView['tone'] = status === 'FAULT' || pinWarn ? 'warn' : 'normal'
-    const readouts = lesson.readouts.map((r, i) => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone }))
+    const readouts = lesson.readouts.map(
+      (r, i): ReadoutView => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone, ...(r.peak ? { peak: true } : {}) }),
+    )
     // a dead GPIO pin doesn't char the whole board module: the status line reports it instead
     const charring = asm.burns.filter((b) => !isThermal(b))
     const partBurnt: Record<string, boolean> = {}
@@ -703,6 +806,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       serial: serial.slice(),
       sketchError,
       warnings: warnings.slice(),
+      speed,
+      rate,
+      capped: realClock - cappedAt < 0.5,
     }
   }
 
@@ -718,20 +824,41 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     const simDt = rdt * speed
     const t0 = t
     const subBurns: BurnEvent[] = []
+    realClock += rdt
     if (dynamic && sim) {
-      const n = lesson.sim?.stepsPerFrame ?? Math.min(Math.ceil(30 * Math.max(1, speed)), Math.ceil(simDt / dt - 1e-9))
-      for (let k = 0; k < n; k++) {
-        sim.step()
-        // a split switching step: µs events (an inductive kick) only exist inside it
-        for (const sub of sim.substeps) subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true }))
+      // steps owed this frame: ⌈simDt/dt⌉, or in slow motion (under one step a frame) one step each
+      // time a whole dt of sim time has built up; capped by stepsPerFrame (default 30 × speed)
+      let need: number
+      if (simDt >= dt) {
+        need = Math.ceil(simDt / dt - 1e-9)
+        owed = 0
+      } else {
+        owed += simDt
+        need = owed >= dt * (1 - 1e-9) ? 1 : 0
+        if (need) owed = Math.max(0, owed - dt)
       }
-      t = sim.t
-      stale = false
-      pinsChangedAt = null
-      peekCache = null
+      const cap = lesson.sim?.stepsPerFrame ?? Math.ceil(30 * Math.max(1, speed))
+      const n = Math.min(cap, need)
+      if (n < need) cappedAt = realClock
+      for (let k = 0; k < n; k++) {
+        const sol = sim.step()
+        // a split switching step: µs events (an inductive kick) only exist inside it
+        for (const sub of sim.substeps) {
+          subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true }))
+          sample(sub.t, sub.solution)
+        }
+        sample(sim.t, sol)
+      }
+      if (n > 0) {
+        t = sim.t
+        stale = false
+        pinsChangedAt = null
+        peekCache = null
+      }
     } else {
       t += simDt
     }
+    if (rdt > 0) rate += Math.min(1, rdt / 0.5) * ((t - t0) / rdt - rate)
 
     // MCU: catch up to sim time, one advance at a time
     let wait: Promise<void> = Promise.resolve()
@@ -769,6 +896,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
 
     // ratings: once per frame, on the latest good solution
     const sol = solution()
+    if (!dynamic) sample(t, sol)
     const burns = [...subBurns, ...(sol ? checkRatings(netlist, sol, t, ratings) : [])]
     burns.push(...pendingBurns.splice(0))
     if (burns.length) {
@@ -816,17 +944,32 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       return dispatch('upload')
     },
     setTweak(key, value) {
-      tweaks[key] = value
-      const m = /^behavior:([^.]+)\.(.+)$/.exec(key)
-      if (m) {
-        const inst = instances.find((i) => i.r.instance === m[1])
-        if (inst) inst.r.params[m[2]] = value
-      } else rebuild(false)
+      const tw = lesson.tweaks?.find((x) => tweakKey(x) === key)
+      tweaks[key] = tw && tw.kind && tw.kind !== 'slider' ? snapTweak(tw, value) : value
+      applyBehaviorTweaks()
+      const touchesCircuit = tw ? tweakTargets(tw).some((g) => !g.elementId.startsWith('behavior:')) : !key.startsWith('behavior:')
+      if (touchesCircuit) rebuild(false)
       emit()
     },
     tweakValues: () => ({ ...tweaks }),
+    tweakDefaults: () => ({ ...tweakDefaults }),
+    resetPeaks() {
+      peaks.reset()
+      emit()
+    },
+    get scope() {
+      return scope
+    },
+    setScope,
+    get chart() {
+      return chart
+    },
+    setChart,
+    instrumentConfig: () => ({ scope: scopeSrc.slice(), chart: chartSignals.slice(), span: chartSpan }),
     setSpeed(x) {
-      speed = Math.max(0.001, x)
+      const next = Math.max(0.001, x)
+      if (next !== speed) owed = 0
+      speed = next
     },
     serialIn(text) {
       mcu?.serialIn(text)

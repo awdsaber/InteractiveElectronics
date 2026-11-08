@@ -23,7 +23,16 @@ export interface AppState {
   /** sketch text per lesson id (only edited ones) */
   code: Record<string, string>
   tweaks: Record<string, number>
+  /** the lesson's starting tweak values (a momentary button's resting value) */
+  tweakDefaults: Record<string, number>
+  /** requested sim speed (sim seconds per real second) */
+  speed: number
+  /** the instrument panel (scope / strip chart) is open */
+  instrumentsOpen: boolean
   toasts: ToastMessage[]
+  setSpeed(x: number): void
+  setInstrumentsOpen(open: boolean): void
+  resetPeaks(): void
   selectLesson(id: string): void
   act(a: BenchAction): void
   setSetting(c: SettingChange): void
@@ -166,6 +175,7 @@ export const useStore = create<AppState>()((set, get) => {
     raf = 0
     bench = createBench(l, {
       code,
+      speed: l.sim?.speed ?? 1,
       onNote,
       onSnapshot: (snap) => set({ snap, tweaks: bench.tweakValues() }),
     })
@@ -186,14 +196,40 @@ export const useStore = create<AppState>()((set, get) => {
     progress: asProgress(loadRaw('progress')),
     code,
     tweaks: bench.tweakValues(),
+    tweakDefaults: bench.tweakDefaults(),
+    speed: lesson.sim?.speed ?? 1,
+    instrumentsOpen: !!lesson.instruments?.open,
     toasts: [],
+
+    setSpeed(x) {
+      bench.setSpeed(x)
+      set({ speed: x })
+      kick()
+    },
+
+    setInstrumentsOpen(open) {
+      set({ instrumentsOpen: open })
+    },
+
+    resetPeaks() {
+      bench.resetPeaks()
+      set({ snap: bench.snapshot() })
+    },
 
     selectLesson(id) {
       const l = getLesson(id)
       if (!l || l.id === get().lesson.id) return
       if (hasWindow && lessonFromHash(location.hash) !== id) location.hash = `#/lesson/${id}`
       const snap = mount(l, get().code[l.id])
-      set({ lesson: l, snap, tweaks: bench.tweakValues(), toasts: [] })
+      set({
+        lesson: l,
+        snap,
+        tweaks: bench.tweakValues(),
+        tweakDefaults: bench.tweakDefaults(),
+        speed: l.sim?.speed ?? 1,
+        instrumentsOpen: !!l.instruments?.open || get().instrumentsOpen,
+        toasts: [],
+      })
     },
 
     act(a) {
