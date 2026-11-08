@@ -4,6 +4,7 @@ import type { Netlist, PinState, Solution } from '../types'
 import {
   type Compiled,
   type Dev,
+  type LinSlot,
   type Measured,
   type StampCtx,
   GMIN,
@@ -14,6 +15,7 @@ import {
   stampDevice,
 } from './devices'
 import { addA, clearSystem, luFactor, luSolve, residualOk, restoreMatrix } from './mna'
+import { blendSolutions, pwmPlan } from './pwm'
 
 export const MAX_ITER = 100
 export const RELTOL = 1e-6
@@ -21,6 +23,8 @@ export const VNTOL = 1e-6 // V
 export const ABSTOL = 1e-9 // A (branch variables)
 /** node voltages beyond this mean the answer is held up only by gmin (e.g. a current source into nothing) */
 export const V_SANE = 1e6
+/** linear matrices kept per compiled circuit (switched PWM alternates a few step sizes) */
+export const LIN_SLOTS = 4
 
 export interface SolveOptions {
   /** GPIO states for PIN elements, keyed by pin number (default: INPUT) */
@@ -71,33 +75,61 @@ function newton(c: Compiled, sc: SolveContext, x0: Float64Array, gmin: number, s
     srcScale,
   }
 
-  // linear part
-  const cached =
-    c.linValid &&
-    c.linMode === sc.mode &&
-    c.linDt === sc.dt &&
-    c.linGmin === gmin &&
-    c.linScale === srcScale &&
-    c.linTrap === ctx.trap
-  if (!cached) c.luValid = false
-  // a linear circuit's sys.A is untouched since it was cached; otherwise rebuild below
+  // linear part: one of a few cached matrices (LIN_SLOTS) keyed by mode, dt, gmin, scale, trap, tag
+  if (!c.linValid) {
+    for (const sl of c.linSlots) sl.ok = false
+    c.linValid = true
+    c.luValid = false
+  }
+  let slot: LinSlot | null = null
+  for (const sl of c.linSlots)
+    if (
+      sl.ok &&
+      sl.dt === sc.dt &&
+      sl.mode === sc.mode &&
+      sl.gmin === gmin &&
+      sl.scale === srcScale &&
+      sl.trap === ctx.trap &&
+      sl.tag === c.linTag
+    ) {
+      slot = sl
+      break
+    }
+  const cached = slot !== null
+  if (slot !== c.linCur) c.luValid = false // the LU (linear circuits) belongs to another matrix
+  // cached: only the right-hand side is restamped (the matrix comes from the slot)
   sys.rhsOnly = cached
   clearSystem(sys)
   for (const d of c.linDevs) stampDevice(d, sys, ctx)
   sys.rhsOnly = false
-  if (!cached) {
+  if (!slot) {
     for (let k = 0; k < c.nNodes; k++) addA(sys, c.nodeUnk[k], c.nodeUnk[k], gmin)
-    c.Alin.set(sys.A)
-    c.rfLin.set(sys.rf)
-    c.rlLin.set(sys.rl)
-    c.clLin.set(sys.cl)
-    c.linValid = true
-    c.linMode = sc.mode
-    c.linDt = sc.dt
-    c.linGmin = gmin
-    c.linScale = srcScale
-    c.linTrap = ctx.trap
-  }
+    if (c.linSlots.length < LIN_SLOTS) {
+      const n = c.size
+      slot = { A: new Float64Array(n * n), rf: new Int32Array(n), rl: new Int32Array(n), cl: new Int32Array(n), ok: false, mode: '', dt: 0, gmin: 0, scale: 0, trap: false, tag: -1, used: 0 }
+      c.linSlots.push(slot)
+    } else {
+      slot = c.linSlots[0]
+      for (const sl of c.linSlots) if (sl.used < slot.used) slot = sl
+    }
+    slot.A.set(sys.A)
+    slot.rf.set(sys.rf)
+    slot.rl.set(sys.rl)
+    slot.cl.set(sys.cl)
+    slot.ok = true
+    slot.mode = sc.mode
+    slot.dt = sc.dt
+    slot.gmin = gmin
+    slot.scale = srcScale
+    slot.trap = ctx.trap
+    slot.tag = c.linTag
+  } else if (slot !== c.linCur && !c.nonlinear) restoreMatrix(sys, slot.A, slot.rf, slot.rl, slot.cl) // for the LU below
+  slot.used = ++c.linClock
+  c.linCur = slot
+  c.Alin = slot.A
+  c.rfLin = slot.rf
+  c.rlLin = slot.rl
+  c.clLin = slot.cl
   c.blin.set(sys.b)
 
   if (!c.nonlinear) {
@@ -319,7 +351,20 @@ export function initialGuess(c: Compiled, netlist: Netlist): Float64Array {
  */
 export function solveDC(netlist: Netlist, opts: SolveOptions = {}): Solution {
   const c = compile(netlist)
-  const sc: SolveContext = { mode: 'dc', dt: 0, pins: opts.pins ?? {}, t: 0 }
-  const r = solveCompiled(c, sc, initialGuess(c, netlist), opts.maxIter ?? MAX_ITER)
+  const pins = opts.pins ?? {}
+  const x0 = initialGuess(c, netlist)
+  const plan = pwmPlan(c, pins)
+  if (plan) {
+    // duty-weighted PWM (pwm.ts): one operating point per switch state, blended
+    const parts = plan.phases.map((ph) => {
+      const sc: SolveContext = { mode: 'dc', dt: 0, pins: ph.pins, t: 0 }
+      c.lim.fill(Number.NaN)
+      c.linValid = false
+      return { weight: ph.weight, solution: buildSolution(c, solveCompiled(c, sc, x0, opts.maxIter ?? MAX_ITER), sc) }
+    })
+    return blendSolutions(parts)
+  }
+  const sc: SolveContext = { mode: 'dc', dt: 0, pins, t: 0 }
+  const r = solveCompiled(c, sc, x0, opts.maxIter ?? MAX_ITER)
   return buildSolution(c, r, sc)
 }

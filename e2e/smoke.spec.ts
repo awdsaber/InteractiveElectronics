@@ -101,6 +101,42 @@ test('tweak slider, quiz completion and progress survive a reload', async ({ pag
   await expect(ledCheck()).toHaveText('✓')
 })
 
+test('transistor-switch: the scope catches the no-flyback kick; speed control; strip chart', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('#/lesson/transistor-switch')
+  await expect(page.locator('canvas').first()).toBeVisible()
+  await page.getByRole('switch', { name: 'Instruments' }).click()
+  await expect(page.locator('.scope-canvas')).toBeVisible()
+  // speed control: ×1 by default, buttons switch it
+  const speed = page.getByRole('radiogroup', { name: 'Sim speed' })
+  await expect(speed.getByRole('radio', { name: '×1', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await speed.getByRole('radio', { name: '×10', exact: true }).click()
+  await expect(speed.getByRole('radio', { name: '×10', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await speed.getByRole('radio', { name: '×1', exact: true }).click()
+
+  await page.getByRole('button', { name: 'Plug USB' }).click()
+  await page.getByRole('button', { name: 'Connect pack' }).click()
+  await page.getByRole('button', { name: 'Upload sketch' }).click()
+  await page.getByRole('button', { name: /Break something/ }).click()
+  await page.getByRole('menuitem', { name: /Remove the flyback diode/ }).click()
+  await expect(panel(page)).toContainText('FAULT', { timeout: 15_000 })
+  // the µs spike is in the held sweep and in the peak-hold readout
+  await expect.poll(async () => Number(/V CE: max ([\d.]+) V/.exec(await page.locator('.inst-stats').innerText())?.[1] ?? 0), { timeout: 10_000 }).toBeGreaterThan(55)
+  expect(Number(/([\d.]+)\s*V/.exec(await readout(page, 'V CE PEAK').innerText())?.[1])).toBeGreaterThan(55)
+
+  await page.getByRole('tab', { name: 'Strip chart' }).click()
+  await expect(page.locator('.chart-canvas')).toBeVisible()
+  await page.getByRole('switch', { name: 'Q1 POWER' }).click()
+  await expect(page.getByRole('switch', { name: 'Q1 POWER' })).toHaveAttribute('aria-checked', 'true')
+
+  // mobile: the panel stacks, no sideways scroll
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('tab', { name: 'Oscilloscope' }).click()
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  expect(errors).toEqual([])
+})
+
 test('mobile drawer: focus moves in and Escape closes it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('#/lesson/led-resistor')

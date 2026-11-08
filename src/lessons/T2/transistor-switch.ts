@@ -249,7 +249,30 @@ export const lesson: LessonDef = {
     { label: 'V CE', source: { kind: 'extra', key: 'Q1.vce' }, unit: 'V' },
     { label: 'SPEED', source: { kind: 'extra', key: 'M1.rpm' }, unit: 'rpm' },
     { label: 'Q1 POWER', source: { kind: 'power', elementId: 'Q1' }, unit: 'W' },
+    // sampled on every step and edge substep: catches the µs turn-off kick the readouts above miss
+    { label: 'V CE PEAK', source: { kind: 'extra', key: 'Q1.vce' }, unit: 'V', peak: true },
   ],
+
+  // The scope samples every sim step and every edge substep (the first ≈ 1 µs after the switch),
+  // so the turn-off edge is drawn at µs resolution: clamped at ≈ 6.7 V by D1, or with D1 removed
+  // the ≈ 60 V avalanche spike, far over the 40 V V_CEO line. Normal trigger holds the last edge.
+  instruments: {
+    scope: {
+      channels: [
+        {
+          label: 'V CE',
+          source: { kind: 'voltage', node: 'c' },
+          perDiv: 10,
+          offset: -3,
+          marks: [{ value: 40, label: 'V_CEO 40 V' }],
+        },
+        { label: 'I MOTOR', source: { kind: 'current', elementId: 'M1' }, perDiv: 0.1, offset: -3.5 },
+      ],
+      timePerDiv: 0.5e-3,
+      trigger: { channel: 0, level: 3, slope: 'rising', mode: 'normal' },
+    },
+    chart: { signals: [0, 2, 3], span: 10 },
+  },
 
   sketch: { title: 'Motor on/off', code: sketch, pins: { 9: 'PIN9' }, vcc: 5, board: 'uno' },
 

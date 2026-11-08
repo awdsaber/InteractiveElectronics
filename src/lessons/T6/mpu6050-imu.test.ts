@@ -104,9 +104,10 @@ describe('T6 mpu6050-imu lesson', () => {
       filt.push(x.values[FILT])
       line = x.statusLine.text
     })
+    // analogWrite 255: the ERM runs full-on at ≈ 1560 rad/s: 2.9e-7·1560²/√2 ≈ 0.5 g
     near(s.values[VIB], 0.5)
     expect(stats(acc).sd).toBeGreaterThan(1)
-    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 3) // measured ≈ 31×: the ≈ 245 Hz shake aliases to ≈ 45–50 Hz in the 100 Hz loop
+    expect(stats(filt).sd).toBeLessThan(stats(acc).sd / 10) // the ≈ 248 Hz shake aliases to ≈ 48 Hz in the 100 Hz loop
     expect(line).toMatch(/^Shaker on/)
     // and it stops: the vibration readout falls once the sketch turns the shaker off
     const off = await run(b, 1.5)

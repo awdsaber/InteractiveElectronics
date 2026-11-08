@@ -12,6 +12,9 @@
   --warn: #d9480f;
   --ok: #2f9e44;
   --rule: rgba(29, 27, 23, 0.14);
+  /* instrument traces: blueprint blue and a plum ink, apart from warn orange and ok green */
+  --trace-1: #2b59c3;
+  --trace-2: #a23b8f;
 
   --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --serif: 'Fraunces', Georgia, 'Times New Roman', serif;

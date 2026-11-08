@@ -103,10 +103,10 @@ void loop() {
   pitchGyro = pitchGyro + rate * DT;                          // integrate only
   pitch = ALPHA * (pitch + rate * DT) + (1.0 - ALPHA) * pa;   // blend
 
-  // Shaker: on for 3 s out of every 10 s.
+  // Shaker: fully on for 3 s out of every 10 s (≈ 15 000 rpm, ≈ 250 Hz).
   unsigned long phase = millis() % 10000;
   if (phase < 3000) {
-    analogWrite(SHAKER, 200);
+    analogWrite(SHAKER, 255);
   } else {
     analogWrite(SHAKER, 0);
   }
@@ -405,6 +405,8 @@ export const lesson: LessonDef = {
 **Complementary filter:** pitch = α·(pitch + rate·dt) + (1 − α)·accelPitch. With α = 0.98 and dt = 10 ms, the time constant is τ = α·dt/(1 − α) = 0.98 × 0.01 / 0.02 = **0.49 s**. Above about 1/(2πτ) ≈ 0.3 Hz you trust the gyro, below it the accelerometer: a high-pass on the gyro plus a low-pass on the accelerometer, with crossovers that sum to one.
 
 **Steady error from residual bias:** bias × τ. 0.9 °/s × 0.49 s ≈ 0.44°.
+
+**Aliasing:** the shaker spins at about 250 Hz, far above the 50 Hz Nyquist limit of a 100 Hz loop. The 44 Hz DLPF cuts the shake to a sixth, and what is left folds down to 250 − 2 × 100 ≈ 50 Hz, a fast flicker the filter's 0.3 Hz corner throws away. Slow the shaker (try analogWrite(SHAKER, 200), about 200 Hz) and it folds to a few hertz instead: the filter now passes it as a slow wobble of a degree or two. Fold-down near 0 Hz is the case to fear: pick the DLPF so nothing strong reaches the sampler above half the loop rate.
 
 **Digital low-pass filter (DLPF):** CONFIG register setting 0–6 trades bandwidth for delay: 260 Hz with no delay at 0, 44 Hz and about 5 ms at 3, 5 Hz and about 19 ms at 6. A wider setting lets more noise and vibration through.
 
