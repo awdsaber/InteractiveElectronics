@@ -2,6 +2,7 @@
 // azimuth 45°) with gently clamped OrbitControls.
 
 import { OrbitControls, OrthographicCamera } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { OrthographicCamera as OrthoImpl } from 'three'
@@ -32,7 +33,38 @@ export interface IsoCameraProps {
   distance?: number
   /** change to snap the camera back to the iso pose */
   resetKey?: unknown
+  /**
+   * animated framing: when `goalKey` changes the camera eases (back to the iso angle) to
+   * `goal`, or to the default target / zoom when `goal` is null
+   */
+  goal?: { target: [number, number, number]; zoom: number } | null
+  goalKey?: unknown
 }
+
+/** camera ease time for a goal change, ms */
+export const GOAL_MS = 450
+
+/** smoothstep ease 0..1 */
+export const easeInOut = (k: number): number => {
+  const x = Math.min(1, Math.max(0, k))
+  return x * x * (3 - 2 * x)
+}
+
+interface Tween {
+  t0: number
+  fromPos: [number, number, number]
+  fromTarget: [number, number, number]
+  fromZoom: number
+  toPos: [number, number, number]
+  toTarget: [number, number, number]
+  toZoom: number
+}
+
+const lerp3 = (a: [number, number, number], b: [number, number, number], k: number): [number, number, number] => [
+  a[0] + (b[0] - a[0]) * k,
+  a[1] + (b[1] - a[1]) * k,
+  a[2] + (b[2] - a[2]) * k,
+]
 
 export function isoPosition(
   target: [number, number, number],
@@ -61,9 +93,14 @@ export function IsoCamera({
   elevationSwing = 12,
   distance = 60,
   resetKey,
+  goal = null,
+  goalKey,
 }: IsoCameraProps) {
   const cam = useRef<OrthoImpl>(null)
   const controls = useRef<OrbitControlsImpl>(null)
+  const tween = useRef<Tween | null>(null)
+  const lastGoalKey = useRef(goalKey)
+  const invalidate = useThree((s) => s.invalidate)
   const [tx, ty, tz] = target
   const position = useMemo(() => isoPosition([tx, ty, tz], distance), [tx, ty, tz, distance])
 
@@ -79,7 +116,45 @@ export function IsoCamera({
       ctl.target.set(tx, ty, tz)
       ctl.update()
     }
+    tween.current = null
   }, [position, zoom, tx, ty, tz, resetKey])
+
+  // Ease to the goal (or back to the default frame) when goalKey changes.
+  const gt = goal?.target
+  const gz = goal?.zoom
+  useEffect(() => {
+    if (Object.is(lastGoalKey.current, goalKey)) return
+    lastGoalKey.current = goalKey
+    const c = cam.current
+    const ctl = controls.current
+    if (!c || !ctl) return
+    const toTarget: [number, number, number] = gt ? [gt[0], gt[1], gt[2]] : [tx, ty, tz]
+    tween.current = {
+      t0: performance.now(),
+      fromPos: c.position.toArray() as [number, number, number],
+      fromTarget: ctl.target.toArray() as [number, number, number],
+      fromZoom: c.zoom,
+      toPos: isoPosition(toTarget, distance),
+      toTarget,
+      toZoom: gz ?? zoom,
+    }
+    invalidate()
+  }, [goalKey, gt, gz, tx, ty, tz, zoom, distance, invalidate])
+
+  useFrame(() => {
+    const tw = tween.current
+    const c = cam.current
+    const ctl = controls.current
+    if (!tw || !c || !ctl) return
+    const k = easeInOut((performance.now() - tw.t0) / GOAL_MS)
+    c.position.set(...lerp3(tw.fromPos, tw.toPos, k))
+    c.zoom = tw.fromZoom + (tw.toZoom - tw.fromZoom) * k
+    c.updateProjectionMatrix()
+    ctl.target.set(...lerp3(tw.fromTarget, tw.toTarget, k))
+    ctl.update()
+    if (k >= 1) tween.current = null
+    else invalidate()
+  })
 
   const polar = 90 - ISO_ELEVATION_DEG
   return (
