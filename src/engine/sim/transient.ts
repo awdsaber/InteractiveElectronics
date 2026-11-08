@@ -62,6 +62,13 @@ export interface Transient {
   readonly lastGood: Solution | null
   /** intermediate solutions of the last step when it was split by edgeSubsteps (else empty) */
   readonly substeps: readonly Substep[]
+  /**
+   * every instantaneous solve of the last step, in time order, at the time it ends: one per step
+   * normally, one per edge substep, and one per PWM state piece (pin HIGH / LOW) when switched PWM
+   * cuts the step. Unlike step()'s return value (the time average a meter would show), these are
+   * what a scope sees. Empty when the step failed.
+   */
+  readonly instants: readonly Substep[]
   /** change one element parameter, e.g. setParam('S1', 'closed', true); dotted keys ('wave.freq') reach nested fields */
   setParam(id: string, key: string, value: number | boolean | string): void
   /** set the GPIO state of every PIN element with this pin number */
@@ -114,6 +121,10 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   let edge = false
   const nSub = Math.max(0, Math.floor(opts.edgeSubsteps ?? 0))
   let substeps: Substep[] = []
+  let instants: Substep[] = []
+  /** a solved stretch of a step: its length w, solution, PWM state mask and end time t */
+  type Piece = { w: number; sol: Solution; mask: number; t: number }
+  const toInstants = (pieces: readonly Piece[]): Substep[] => pieces.map((p) => ({ t: p.t, solution: p.sol }))
   let lastTrap = false
   let squares: Extract<Element, { type: 'V' }>[] = []
   const pins: Record<number, PinState> = {}
@@ -129,7 +140,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   /** state of the committed solution (-1: none / averaged) */
   let lastMask = -1
   /** recent single-state pieces (oldest first), covering at least one period: the readouts' average */
-  let window: { w: number; sol: Solution; mask: number }[] = []
+  let window: Piece[] = []
   const WINDOW_MAX = 64
   const statePins = new Map<number, Record<number, PinState>>()
   const edgesBuf: number[] = []
@@ -170,7 +181,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
    * per piece between their edges, each committed before the next. Pieces go to `pieces` (when
    * given). With `commit` false (peek) every committed buffer is restored afterwards.
    */
-  function advance(t0: number, h: number, trapOk: boolean, commit: boolean, pieces: { w: number; sol: Solution; mask: number }[] | null): Advance {
+  function advance(t0: number, h: number, trapOk: boolean, commit: boolean, pieces: Piece[] | null): Advance {
     refreshPwm()
     const c = compiled
     const pl = pp
@@ -186,6 +197,8 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
         x.set(r.x)
         captureState(c, x, h, trapOk)
       }
+      // one piece: the whole stretch (callers that window only do so with a PWM plan)
+      if (r.ok) pieces?.push({ w: h, sol, mask: -1, t: t0 + h })
       return { sol, ok: r.ok, modes: r.ok && modesChanged(c), trap: trapOk }
     }
     // piece boundaries: the step ends plus every edge inside, closer than 1 ppm of h merged
@@ -251,7 +264,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       x.set(r.x)
       captureState(c, x, hk, trap)
       parts.push({ weight: hk, solution: sol })
-      pieces?.push({ w: hk, sol, mask })
+      pieces?.push({ w: hk, sol, mask, t: b })
       a = b
     }
     if (!ok || !commit) {
@@ -267,7 +280,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
   }
 
   /** add pieces to the readout window and return its time average over the last max(dt, period) */
-  function windowed(pieces: { w: number; sol: Solution; mask: number }[], stepH: number): Solution {
+  function windowed(pieces: Piece[], stepH: number): Solution {
     for (const p of pieces) {
       const last = window[window.length - 1]
       if (window.length >= WINDOW_MAX && last && last.mask === p.mask) {
@@ -277,7 +290,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       } else window.push({ ...p })
       if (window.length > 2 * WINDOW_MAX) {
         const [o, n] = window.splice(0, 2)
-        window.unshift({ w: o.w + n.w, sol: n.sol, mask: n.mask })
+        window.unshift({ w: o.w + n.w, sol: n.sol, mask: n.mask, t: n.t })
       }
     }
     const span = Math.max(stepH, pp?.tMax ?? 0)
@@ -328,17 +341,19 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     const t0 = t
     const h0 = dt / (2 ** nSub - 1)
     const out: Substep[] = []
-    const pieces: { w: number; sol: Solution; mask: number }[] = []
+    const pieces: Piece[] = []
     let sol: Solution | null = null
     let tk = t0
     for (let k = 0; k < nSub; k++) {
       const h = k === nSub - 1 ? t0 + dt - tk : h0 * 2 ** k
       const ta = tk
       tk = k === nSub - 1 ? t0 + dt : tk + h
+      const n0 = pieces.length
       const r = advance(ta, tk - ta, false, true, pieces)
       sol = r.sol
       if (r.ok) lastGood = sol
-      if (k < nSub - 1) out.push({ t: tk, solution: sol })
+      // the substep's instantaneous end state, not a blend of a PWM edge inside it
+      if (k < nSub - 1) out.push({ t: tk, solution: pieces.length > n0 ? pieces[pieces.length - 1].sol : sol })
     }
     if (pp && pieces.length) {
       sol = windowed(pieces, dt)
@@ -348,6 +363,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     restart = true
     t = t0 + dt
     substeps = out
+    instants = toInstants(pieces)
     return sol!
   }
 
@@ -373,6 +389,9 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     get substeps() {
       return substeps
     },
+    get instants() {
+      return instants
+    },
     setDt(next) {
       checkDt(next)
       if (next !== dt) restart = edge = true
@@ -388,8 +407,9 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       edge = false
       const tNext = t + dt
       const trapOk = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
-      const pieces: { w: number; sol: Solution; mask: number }[] = []
+      const pieces: Piece[] = []
       const r = advance(t, dt, trapOk, true, pieces)
+      instants = r.ok ? toInstants(pieces) : []
       lastTrap = r.trap
       let sol = r.sol
       if (r.ok) {

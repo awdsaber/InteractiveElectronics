@@ -1,7 +1,8 @@
 // The app: Layout wired to the bench store. The 3D canvas loads as its own chunk.
 import { Suspense, lazy, useMemo } from 'react'
-import { useStore } from './engine/bench/store'
+import { getBench, useStore } from './engine/bench/store'
 import { lessons, pinned, tracks } from './lessons'
+import { Instruments } from './ui/Instruments'
 import { Layout } from './ui/Layout'
 import { sfx } from './audio/sound'
 
@@ -44,7 +45,7 @@ export default function App() {
         onAction: s.act,
         breadboard: lesson.board.base === 'breadboard-only',
       }}
-      panel={{ placed: snap.placedCount, total: snap.totalParts, status: snap.status, readouts: snap.readouts }}
+      panel={{ placed: snap.placedCount, total: snap.totalParts, status: snap.status, readouts: snap.readouts, onResetPeaks: s.resetPeaks }}
       statusLine={snap.statusLine}
       settings={settings}
       onSetting={s.setSetting}
@@ -54,6 +55,12 @@ export default function App() {
       serialLines={snap.serial.slice(-12)}
       sketchError={snap.sketchError}
       tweakValues={s.tweaks}
+      tweakDefaults={s.tweakDefaults}
+      benchControls={{
+        sim: { speed: s.speed, rate: snap.rate, capped: snap.capped, onSpeed: s.setSpeed },
+        instruments: { open: s.instrumentsOpen, onToggle: s.setInstrumentsOpen },
+      }}
+      instruments={s.instrumentsOpen ? <Instruments key={lesson.id} lesson={lesson} bench={getBench} /> : null}
       onTweak={s.setTweak}
       onQuizComplete={s.completeQuiz}
       onQuizAnswer={(ok) => sfx(ok ? 'place' : 'pop', ok ? 0.5 : 0.2)}
