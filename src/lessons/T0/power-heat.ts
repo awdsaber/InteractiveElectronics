@@ -53,7 +53,7 @@ export const lesson: LessonDef = {
         params: { w: 4.2, d: 1.8, title: 'BENCH PSU', pins: 0, callout: [0, 1.4, -0.6] },
         circuitIds: ['V_PSU', 'SW_OUT'],
       },
-      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', label: 'BREADBOARD', role: 'Holds the resistor.' },
+      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', role: 'Holds the resistor.' },
       {
         id: 'r1',
         kind: 'resistor',
