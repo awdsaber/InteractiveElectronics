@@ -5,16 +5,16 @@ import { BENCH_Y, bbHole, between, jumper } from '../layout'
 // Bench layout (the camera looks from +x +z): breadboard front left, the 4 × AA pack behind it with its
 // leads toward the breadboard, the multimeter to the right. The network sits in the top half of the board
 // (rows a-e share a strip per column):
-//   column 12 = node "a"  (pack + enters at row a, R1's left lead at row b)
-//   column 16 = node "b"  (R1's right lead; R3 row a, R2 row c, and the failure parts R_X row e / bridge row d)
-//   column 20 = ground    (R3 row a, R2 row c, R_X row e; the ground jumper leaves from row b to the − rail)
+//   column 14 = node "a"  (pack + enters at row a, R1's left lead at row b)
+//   column 20 = node "b"  (R1's right lead; R3 row a, R2 row c, and the failure parts R_X row e / bridge row d)
+//   column 26 = ground    (R3 row a, R2 row c, R_X row e; the ground jumper leaves from row b to the − rail)
 const BB: [number, number] = [-1.0, 1.0]
-const PACK_AT: [number, number] = [-1.0, -4.6]
-const METER_AT: [number, number] = [5.7, -0.3]
+const PACK_AT: [number, number] = [0.5, -4.6]
+const METER_AT: [number, number] = [5.2, -0.8]
 
-const C_A = 12
-const C_B = 16
-const C_G = 20
+const C_A = 14
+const C_B = 20
+const C_G = 26
 
 /** where the pack's own red (+) / black (−) leads end (pack at rot 90: leads leave toward +z) */
 const packLead = (c: 'red' | 'black'): [number, number, number] =>
@@ -30,8 +30,8 @@ const rxL = bbHole(BB, C_B, 'e')
 const rxR = bbHole(BB, C_G, 'e')
 
 const wPlus = jumper(packLead('red'), bbHole(BB, C_A, 'a'), 'red', 0.3)
-const wMinus = jumper(packLead('black'), bbHole(BB, 17, '-t'), 'black', 0.3)
-const wGnd = jumper(bbHole(BB, C_G, 'b'), bbHole(BB, 21, '-t'), 'black', 0.3)
+const wMinus = jumper(packLead('black'), bbHole(BB, 22, '-t'), 'black', 0.3)
+const wGnd = jumper(bbHole(BB, C_G, 'b'), bbHole(BB, 27, '-t'), 'black', 0.3)
 // the "solder bridge" failure: a stray wire from the junction column to the ground column
 const wBridge = jumper(bbHole(BB, C_B, 'd'), bbHole(BB, C_G, 'd'), 'green', 0.12)
 
@@ -49,8 +49,8 @@ export const lesson: LessonDef = {
 
   board: {
     name: 'NET-04',
-    size: [13, 12],
-    frame: { size: [13, 11.6], center: [1.2, -1.9] },
+    size: [13, 12], // frame (below) crops the camera to the network, the meter and the front of the pack
+    frame: { size: [9.4, 7.4], center: [2.5, -0.9] },
     base: 'breadboard-only',
     parts: [
       {
@@ -61,10 +61,10 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'PACK',
         role: '6 V nominal from four alkaline AAs (about 0.6 Ω internal). Its slide switch is the Connect battery button.',
-        params: { cells: 4, callout: [0, 1.8, 0] },
+        params: { cells: 4, callout: [-0.5, 0.4, 2.0] },
         circuitIds: ['V_PACK', 'SW1'],
       },
-      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', label: 'BREADBOARD', role: 'Holds the network.' },
+      { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', role: 'Holds the network.' },
       {
         id: 'r1',
         kind: 'resistor',
@@ -72,7 +72,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'SERIES',
         role: 'R1, 1 kΩ: carries the whole current (brown-black-red-gold, 1/4 W).',
-        params: { ohms: 1000, callout: [0, 1.7, -0.3] },
+        params: { ohms: 1000, callout: [-1.4, 1.0, 0.8] },
         circuitIds: ['R1'],
       },
       {
@@ -82,7 +82,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'BRANCH',
         role: 'R2, 2.2 kΩ: one of two parallel paths (red-red-red-gold, 1/4 W).',
-        params: { ohms: 2200, callout: [0.3, 1.6, 0.4] },
+        params: { ohms: 2200, callout: [1.2, 0.5, 1.6] },
         circuitIds: ['R2'],
       },
       {
@@ -92,7 +92,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'SHUNT',
         role: 'R3, 3.3 kΩ: the other parallel path (orange-orange-red-gold, 1/4 W).',
-        params: { ohms: 3300, callout: [0.2, 1.6, -0.6] },
+        params: { ohms: 3300, callout: [1.4, 1.5, -0.8] },
         circuitIds: ['R3'],
       },
       {
@@ -102,16 +102,16 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'TOTAL',
         role: 'Ammeter in series with the pack: reads the total current. The other currents are on the status panel.',
-        params: { scale: 0.5, readout: 0, unit: 'mA', mode: 'A', title: 'BENCH DMM', callout: [0, 1.8, 1.4] },
+        params: { scale: 0.5, readout: 0, unit: 'mA', mode: 'A', title: 'BENCH DMM', callout: [0, 1.6, -1.0] },
         circuitIds: ['P_T'],
       },
-      { id: 'w-plus', kind: 'wire', ...withCallout(wPlus, [-0.8, 0.5, 0]), mount: 'offboard', label: 'PACK +', role: 'Pack + to the start of R1 (column 12).' },
+      { id: 'w-plus', kind: 'wire', ...wPlus, mount: 'offboard', role: 'Pack + to the start of R1 (column 12).' },
       { id: 'w-minus', kind: 'wire', ...wMinus, mount: 'offboard', role: 'Pack − to the ground rail.' },
-      { id: 'w-gnd', kind: 'wire', ...withCallout(wGnd, [1.0, 0.4, 0.3]), mount: 'offboard', label: 'GND', role: 'Column 20, where R2 and R3 end, to the ground rail.' },
+      { id: 'w-gnd', kind: 'wire', ...withCallout(wGnd, [1.6, 0.6, -1.0]), mount: 'offboard', label: 'GND', role: 'Column 20, where R2 and R3 end, to the ground rail.' },
       {
         id: 'bridge',
         kind: 'wire',
-        ...withCallout(wBridge, [1.2, 0.9, 1.0]),
+        ...withCallout(wBridge, [-1.2, 0.5, 1.2]),
         mount: 'offboard',
         label: 'BRIDGE',
         role: 'A stray wire (or solder blob) from the junction to ground.',
@@ -124,7 +124,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'EXTRA 100 Ω',
         role: 'A 100 Ω resistor that someone pushed in across the pair (brown-black-brown-gold).',
-        params: { ohms: 100, callout: [0.3, 1.7, 1.0] },
+        params: { ohms: 100, callout: [1.2, 0.6, 2.2] },
         hidden: true,
       },
     ],
@@ -158,9 +158,9 @@ export const lesson: LessonDef = {
   ],
 
   statusLines: [
-    { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: {0} leaves the pack, passes R1, then splits into {1} through R2 and {2} through R3. The junction sits at {3}.' },
-    { when: { kind: 'above', readout: 0, value: 0.004 }, text: 'R1 is small now: the parallel pair takes most of the 6 V ({3} at the junction), and {0} flows in total.' },
-    { when: { kind: 'above', readout: 2, value: 0.0025 }, text: 'WARNING: R3 is the low-value branch and takes {2} of the {0}: the junction has collapsed to {3}, so R2 barely conducts.' },
+    { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: {0} leaves the pack, passes R1, then splits into {1} through R2 and {2} through R3. The junction sits at {3}. Watch I(R2) + I(R3) = TOTAL I.' },
+    { when: { kind: 'above', readout: 0, value: 0.004 }, text: 'NOTE: R1 is small now: the parallel pair takes most of the 6 V ({3} at the junction), and {0} flows in total.' },
+    { when: { kind: 'above', readout: 2, value: 0.0025 }, text: 'NOTE: R3 is the low-value branch and takes {2} of the {0}: the junction has collapsed to {3}, so R2 barely conducts.' },
   ],
 
   failures: [
@@ -168,7 +168,7 @@ export const lesson: LessonDef = {
       id: 'r3-open',
       label: 'R3 goes open (lead breaks off)',
       explain:
-        'With one branch gone only R1 + R2 = 3.2 kΩ remain: I = 6/3200 = 1.87 mA. The junction rises to 4.12 V, because R2 now has no help sharing the load and so takes a bigger slice of the 6 V. I(R3) is zero.',
+        'R3 is gone, so the parallel part is just R2: its resistance rises from 1.32 kΩ to 2.2 kΩ and it takes a bigger share of the 6 V (the junction rises from 3.41 V to 4.12 V). The total is R1 + R2 = 3.2 kΩ: I = 6/3200 = 1.87 mA, all of it through R2. I(R3) is zero, and moving the R3 slider changes nothing until you repair.',
       patches: [{ op: 'remove', elementId: 'R3' }],
       parts: { hide: ['r3'] },
     },

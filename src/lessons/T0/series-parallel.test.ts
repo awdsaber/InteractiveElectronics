@@ -45,6 +45,8 @@ describe('series-parallel lesson', () => {
     within(s.values[I_3], 1.03e-3, 0.02)
     expect(s.values[I_2] + s.values[I_3]).toBeCloseTo(s.values[I_T], 6) // KCL at the junction
     expect(s.statusLine.text).toMatch(/^POWERED/)
+    expect(s.statusLine.text).toContain('I(R2) + I(R3) = TOTAL I')
+    expect(s.statusLine.text).toContain('I(R2) + I(R3) = TOTAL I')
     expect(s.assembly.burns).toEqual([])
     b.dispose()
   })
@@ -59,7 +61,7 @@ describe('series-parallel lesson', () => {
     s = await runFor(b, 0.2)
     expect(s.values[V_B]).toBeLessThan(0.7) // 100 Ω ∥ 2.2 k ≈ 95.7 Ω under 1 k
     expect(s.values[I_3]).toBeGreaterThan(5 * s.values[I_2])
-    expect(s.statusLine.text).toMatch(/^WARNING/)
+    expect(s.statusLine.text).toMatch(/^NOTE: R3 is the low-value branch/)
     b.dispose()
   })
 
@@ -69,6 +71,8 @@ describe('series-parallel lesson', () => {
     const s = await runFor(b, 0.2)
     within(s.values[I_T], 6 / (100 + 1320), 0.02) // 4.2 mA
     within(s.values[V_B], 6 * (1320 / 1420), 0.02)
+    expect(s.statusLine.text).toMatch(/^NOTE: R1 is small now/)
+    expect(s.statusLine.tone).toBe('ok')
     b.dispose()
   })
 
@@ -81,6 +85,11 @@ describe('series-parallel lesson', () => {
     within(s.values[V_B], 4.12, 0.02)
     expect(Math.abs(s.values[I_3])).toBeLessThan(1e-6)
     expect(s.assembly.burns).toEqual([])
+    // the R3 slider cannot bring a removed R3 back
+    b.setTweak('R3.value', 200)
+    const t = await runFor(b, 0.2)
+    within(t.values[I_T], 1.87e-3, 0.02)
+    expect(Math.abs(t.values[I_3])).toBeLessThan(1e-6)
     b.dispose()
   })
 
