@@ -137,5 +137,5 @@ Ohm's law ignores power, but the resistor can't. Every operating point dissipate
 Every number above was recomputed: 144/0.25 = 576 Ω, 12 V/470 Ω = 25.5 mA and 0.306 W, 5/2.1 mA = 2.38 kΩ, 9/4.7 kΩ = 1.91 mA, 12 V/100 Ω = 120 mA and 1.44 W (5.8 × the rating), 5 V/10 Ω = 500 mA and 2.5 W. No datasheet error found; only the SIM NOTE was out of date (the engine now has `V.iLimit`), so it is replaced by F4 and the CC tweak and readout.
 
 ## Sim notes
-- The lesson adds a tweak "Supply current limit" (`V_PSU.iLimit`, 0.02–0.9 A, log) and a readout "SUPPLY CC" (`V_PSU.cc`, 1 while the supply is in constant-current mode).
+- The lesson adds a tweak "Supply current limit" (`V_PSU.iLimit`, 0.02–0.9 A, log) and a readout "CC MODE (0 OFF, 1 ON)" (`V_PSU.cc`, 1 while the supply is in constant-current mode).
 - The sim treats `maxP` as a hard limit (burns after 300 ms above it). A real 1/4 W resistor at 1.2 × its rating runs very hot but does not always fail at once.

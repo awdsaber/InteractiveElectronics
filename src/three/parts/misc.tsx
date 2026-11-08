@@ -109,10 +109,16 @@ const MODES: Record<string, { angle: number; label: string }> = {
   A: { angle: 60, label: 'A' },
 }
 
+/** dial mode from the LCD unit's last character: mV and V read volts, kΩ and Ω ohms, µA, mA and A amps */
+export function multimeterMode(unit: string): string {
+  const u = unit.slice(-1)
+  return u === 'Ω' ? 'R' : u === 'A' ? 'A' : 'V'
+}
+
 function MultimeterBody({ part, state }: PartProps) {
   const reading = state.reading ?? str(part, 'reading', '0.000')
   const unit = state.readingUnit ?? str(part, 'unit', 'V')
-  const modeKey = str(part, 'mode', unit === 'Ω' ? 'R' : unit === 'A' ? 'A' : 'V')
+  const modeKey = str(part, 'mode', multimeterMode(unit))
   const mode = MODES[modeKey] ?? MODES.V
   const W = 7.4
   const L = 14

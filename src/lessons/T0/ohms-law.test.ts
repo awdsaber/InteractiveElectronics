@@ -28,7 +28,7 @@ async function powered(): Promise<Bench> {
 describe('T0 ohms-law', () => {
   it('validates, and the readouts are in the order this test assumes', () => {
     expect(validateLesson(L)).toEqual([])
-    expect(L.readouts.map((r) => r.label)).toEqual(['VOLTAGE', 'CURRENT', 'R1 POWER', 'SUPPLY CC'])
+    expect(L.readouts.map((r) => r.label)).toEqual(['VOLTAGE', 'CURRENT', 'R1 POWER', 'CC MODE (0 OFF, 1 ON)'])
     expect(L.powerElementId).toBe('SW_OUT')
     expect(L.powerLabel).toBe('Output ON')
     expect(L.board.base).toBe('breadboard-only')
