@@ -8,8 +8,9 @@
 // Means are normalised by the running mean of 1, so they are exact weighted averages from the first
 // step after a reset. From them, per frame:
 //   rms = √⟨x²⟩, dc = ⟨x⟩, acrms = √(⟨x²⟩ − ⟨x⟩²), amp = √2·acrms (the peak of a sine);
-//   gain = acrmsB / acrms; phase = atan2(−cov(x, y'), cov(x, y)·σ(y')/σ(y)) of B against A
-//   (for y = B·sin(ωt + φ) against x = A·sin ωt: cov(x, y) ∝ cos φ, cov(x, y') ∝ −sin φ);
+//   gain = acrmsB / acrms; phase = atan2(−cov(x, y'), ω·cov(x, y)) of B against A, ω = 2π·freq
+//   (for y = B·sin(ωt + φ) against x = A·sin ωt: cov(x, y) = ½AB·cos φ, cov(x, y') = −½ABω·sin φ).
+//   Phase is defined for sinusoids only: it reads 0 when either channel's shape is not a sine;
 //   vpp from the min / max of the last two blocks of samples (a block ≥ 1.25 periods, so it never
 //   droops between peaks and forgets an old waveform within two blocks);
 //   freq from the times of rising crossings through the mean (with hysteresis ±0.3·amp, each time
@@ -28,8 +29,8 @@
 // vppB, gain (ratio), gainPct (%), phase (°, + = B leads A).
 //
 // Lifecycle: the means restart on power-on / off, break, repair, strip and reset, and whenever the
-// circuit's structure (a burn, a switch, a removed part) or a V / I source's setting (a tweak of the
-// stimulus) changes; the readings stay 0 for the first max(window/8, one period) after a restart. A
+// circuit's structure (a burn, a switch, a removed part) or a V source's `wave` (a tweak of the
+// stimulus) changes, not on a DC `value` that a behavior drives; the readings stay 0 for the first max(window/8, one period) after a restart. A
 // channel that isn't driven (node touched by nothing, or cut off from ground by open / burnt /
 // disabled parts; a measured element that is gone or burnt) and a frame with no good solve read 0.
 // Other changes (a resistor tweak) are tracked by the means within about a window.
@@ -38,7 +39,7 @@ import { OPEN_R } from '../sim/failures'
 import type { Behavior, BehaviorContext, Element, Netlist, Solution } from '../types'
 
 const STAGES = 3
-/** quantities: 0 one, 1 x, 2 x², 3 y, 4 y², 5 xy, 6 y', 7 y'², 8 x·y' */
+/** quantities: 0 one, 1 x, 2 x², 3 y, 4 y², 5 xy, 6 y', 7 y'² (unused since σ(y') = ω·acB), 8 x·y' */
 const NQ = 9
 const HYST = 0.3
 
@@ -210,12 +211,11 @@ function fingerprint(n: Netlist): number {
     h = mixStr(mixStr(h, e.id), e.type)
     for (const node of e.nodes) h = mixStr(h, node)
     h = mix(h, isCut(e) ? 1 : 0)
-    if (e.type === 'V' || e.type === 'I') {
-      h = mixNum(h, e.value)
-      if (e.type === 'V' && e.wave) {
-        const w = e.wave
-        h = mixNum(mixNum(mixNum(mixNum(mixStr(h, w.kind), w.amp), w.freq), w.offset ?? 0), w.phase ?? 0)
-      }
+    // a source's DC `value` is left out: behaviors (square-wave, the driver ICs) set it nearly every
+    // frame, and the means follow such changes; a `wave` setting is the stimulus itself
+    if (e.type === 'V' && e.wave) {
+      const w = e.wave
+      h = mixNum(mixNum(mixNum(mixNum(mixStr(h, w.kind), w.amp), w.freq), w.offset ?? 0), w.phase ?? 0)
     }
   }
   return h
@@ -376,6 +376,9 @@ function block(st: State): number {
   return f > 0 ? Math.max(st.window / 4, 1.25 / f) : st.window / 4
 }
 
+/** vpp / (2√2·acrms) of a sine is 1 */
+const sineLike = (vpp: number, ac: number) => Math.abs(vpp / (2 * Math.SQRT2 * ac) - 1) < 0.1
+
 const KEYS_A = ['rms', 'dc', 'acrms', 'amp', 'vpp', 'freq', 'period'] as const
 const KEYS_B = ['rmsB', 'dcB', 'acrmsB', 'ampB', 'vppB', 'gain', 'gainPct', 'phase'] as const
 
@@ -419,6 +422,8 @@ export const behavior: Behavior = {
 
     // channel A
     let acA = 0
+    let vppA = 0
+    let freqA = 0
     if (a.driven) {
       const dc = M(1)
       const ms = Math.max(0, M(2))
@@ -431,6 +436,8 @@ export const behavior: Behavior = {
       let freq = 0
       const per = st.pW > 0 ? st.pM / st.pW : 0
       if (acA > 0 && per > 0 && st.lastT - st.lastTc < 2.5 * per) freq = 1 / per
+      vppA = vpp
+      freqA = freq
       ctx.publish('rms', Math.sqrt(ms))
       ctx.publish('dc', dc)
       ctx.publish('acrms', acA)
@@ -463,12 +470,15 @@ export const behavior: Behavior = {
     const gain = acA > 0 ? acB / acA : 0
     ctx.publish('gain', gain)
     ctx.publish('gainPct', 100 * gain)
+    // phase: defined for sinusoids only. σ(y') of a sine is ω·acB, so the slope enters only through
+    // cov(x, y') (an integral of x·dy, bounded on edges); it reads 0 without a measured frequency or
+    // when either channel's vpp / (2√2·acrms) shows it is not a sine (square 0.71, triangle 1.22)
     let phase = 0
-    const sdB = Math.sqrt(Math.max(0, M(7) - M(6) * M(6)))
-    if (acA > 0 && acB > 0 && sdB > 0) {
+    const om = 2 * Math.PI * freqA
+    if (acA > 0 && acB > 0 && om > 0 && sineLike(vppA, acA) && sineLike(vppB, acB)) {
       const cxy = M(5) - M(1) * dcB
       const cxd = M(8) - M(1) * M(6)
-      phase = (Math.atan2(-cxd * acB, cxy * sdB) * 180) / Math.PI
+      phase = (Math.atan2(-cxd, cxy * om) * 180) / Math.PI
     }
     ctx.publish('phase', phase)
   },

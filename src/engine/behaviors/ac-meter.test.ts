@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { type Bench, createBench } from '../bench/simLoop'
 import type { Lesson } from '../types'
 import { behavior } from './ac-meter'
+import { behavior as squareWave } from './square-wave'
 
 // A function generator (ideal sine) into a 3.3 kΩ / 1 µF RC low-pass, stepped at 50 µs.
 const R = 3300
@@ -184,6 +185,37 @@ describe('ac-meter: lifecycle', () => {
     b.dispatch('power')
     await run(b, 0.5, 60)
     expect(pub(b, 'amp')).toBeCloseTo(5, 1)
+    b.dispose()
+  })
+})
+
+describe('ac-meter: a behavior-driven source (square-wave sets V.value every frame)', () => {
+  it('keeps measuring: Vrms ≈ 3.54 V and 5 Hz, and the phase of a non-sine reads 0, not noise', async () => {
+    const base = rcLesson(50, {})
+    const l: Lesson = {
+      ...base,
+      circuit: { elements: [{ id: 'V1', type: 'V', nodes: ['in', '0'], value: 0 }, ...base.circuit.elements.slice(1)] },
+      powerElementId: 'V1',
+      tweaks: [],
+      sim: { dt: 50e-6, method: 'trap', edgeSubsteps: 6 },
+      behaviors: [
+        { id: 'square-wave', params: { element: 'V1', hz: 5, v: 5 } },
+        { id: 'ac-meter', instance: 'm', params: { node: 'in', nodeB: 'out' } },
+      ],
+    }
+    const b = createBench(l, { registry: { 'ac-meter': behavior, 'square-wave': squareWave } })
+    b.dispatch('power')
+    await run(b, 3, 60)
+    const [lo, hi] = await span(b, 'rms', 30, 60)
+    expect(lo).toBeGreaterThan(3.5)
+    expect(hi).toBeLessThan(3.58)
+    expect(pub(b, 'acrms')).toBeCloseTo(2.5, 1)
+    expect(pub(b, 'dc')).toBeCloseTo(2.5, 1)
+    expect(pub(b, 'freq')).toBeCloseTo(5, 1)
+    expect(pub(b, 'vpp')).toBeCloseTo(5, 2)
+    const [plo, phi] = await span(b, 'phase', 30, 60)
+    expect(plo).toBe(0)
+    expect(phi).toBe(0)
     b.dispose()
   })
 })
