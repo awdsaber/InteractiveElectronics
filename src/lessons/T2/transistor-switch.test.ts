@@ -206,3 +206,51 @@ describe('transistor-switch lesson', () => {
     b.dispose()
   })
 })
+
+describe('transistor-switch scope (lesson.instruments)', () => {
+  const V_PEAK = 5
+  const maxFrom = (b: Bench, ch: number, from: number) => {
+    const r = b.scope
+    let m = -Infinity
+    for (let k = r.lowerBound(from); k < r.count; k++) m = Math.max(m, r.value(ch, k))
+    return m
+  }
+
+  it('probes V_CE and the motor current by default', () => {
+    const b = createBench(L)
+    expect(b.scope.channels).toBe(2)
+    expect(L.instruments?.scope?.trigger).toMatchObject({ level: 3, slope: 'rising', mode: 'normal' })
+    b.dispose()
+  })
+
+  it('with D1 the turn-off edge is clamped near 6.7 V', async () => {
+    const b = await running()
+    const t0 = b.t
+    await runUntil(b, low)
+    await runFor(b, 0.05)
+    const m = maxFrom(b, 0, t0)
+    expect(m).toBeGreaterThan(6.2)
+    expect(m).toBeLessThan(7.5)
+    b.dispose()
+  })
+
+  it('F1 no flyback diode: the edge substeps put the ≈ 60 V avalanche spike in the scope ring', async () => {
+    const b = await running()
+    b.dispatch('break:no-flyback')
+    const t0 = b.t
+    const s = await runUntil(b, (x) => x.assembly.burns.length > 0, 3)
+    const r = b.scope
+    let kMax = -1
+    for (let k = r.lowerBound(t0); k < r.count; k++) if (kMax < 0 || r.value(0, k) > r.value(0, kMax)) kMax = k
+    expect(r.value(0, kMax)).toBeGreaterThan(55)
+    // a µs event: the spike sample sits inside a 1 ms step, off the step grid
+    const tk = r.time(kMax)
+    expect(Math.abs(tk * 1000 - Math.round(tk * 1000))).toBeGreaterThan(1e-4)
+    expect(r.time(kMax) - r.time(kMax - 1)).toBeLessThan(1e-4)
+    // the frame-rate readout never saw it; the peak-hold readout did
+    expect(s.values[V_CE]).toBeLessThan(40)
+    expect(s.values[V_PEAK]).toBeGreaterThan(55)
+    expect(s.readouts[V_PEAK].peak).toBe(true)
+    b.dispose()
+  })
+})

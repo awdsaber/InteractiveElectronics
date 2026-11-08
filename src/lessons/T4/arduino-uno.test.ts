@@ -68,15 +68,20 @@ describe('T4 arduino-uno', () => {
     within(val(t, 'A0'), 2.49, 0.02)
     expect(s.statusLine.text).toMatch(/L blinks at 1 Hz/)
     expect(s.serial).toEqual(['Uno tour ready']) // no phantom press while the pull-up comes up
-    // ≈ 45 mA board + 3 mA ON LED + 0.5 mA pot through the polyfuse. The curriculum's ≈ 65 mA also
-    // counts L and the fade LED at full duty, but the engine sources pin loads from the PIN's ideal
-    // rail (see the pin9 note in the lesson), so they don't show in USB CURRENT.
+    // ≈ 45 mA board + 3 mA ON LED + 0.5 mA pot + 13 mA fade LED (pin 9 sources from the 5 V rail)
+    // through the polyfuse: the curriculum's ≈ 65 mA. L's ≈ 3 mA comes from the op-amp's ideal rail.
     b.setTweak('behavior:knob.turn', 100)
     await runUntil(b, (x) => x.pins[13]?.level === 1 && val(x, 'FADE LED') > 0.01)
     await frames(b, 2)
     t = b.snapshot()
-    within(val(t, 'USB CURRENT'), 0.045 + 0.003 + 0.0005)
-    within(val(t, 'USB CURRENT') + val(t, 'L LED') + val(t, 'FADE LED'), 0.065) // the curriculum's total
+    within(val(t, 'USB CURRENT'), 0.065)
+    within(val(t, 'USB CURRENT'), 0.045 + 0.003 + 0.0005 + val(t, 'FADE LED'), 0.05)
+    // at 50 % duty the fade LED adds half its full-on current, with no phantom shoot-through
+    b.setTweak('behavior:knob.turn', 50)
+    await frames(b, 10)
+    t = b.snapshot()
+    within(val(t, 'FADE LED'), 0.013 / 2)
+    within(val(t, 'USB CURRENT'), 0.045 + 0.003 + 0.0005 + 0.013 / 2, 0.05)
     within(val(t, '5V RAIL'), 4.96, 0.02)
     // the board's own LEDs: ON ≈ 3 mA, and the curriculum's 5 V/(1 kΩ) class of current
     expect(t.current.led_on).toBeGreaterThan(0.002)

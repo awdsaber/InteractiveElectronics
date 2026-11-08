@@ -546,9 +546,7 @@ export const lesson: LessonDef = {
       { id: 'u5a', type: 'OPAMP', nodes: ['d13', 'lbuf', 'lbuf'], vPos: 5, vNeg: 0, partId: 'u5' },
       { id: 'r_l', type: 'R', nodes: ['lbuf', 'l_a'], value: 1000, partId: 'r1' },
       { id: 'led_l', type: 'LED', nodes: ['l_a', '0'], color: 'yellow', rating: { maxI: 0.02 }, partId: 'led_l' },
-      // no vccNode on the PWM pin: the engine averages PWM as a divider between the rails, which
-      // would draw a phantom shoot-through current from the 5 V rail through the polyfuse
-      { id: 'pin9', type: 'PIN', nodes: ['d9', '0'], pin: 9, vcc: 5, partId: 'u1' },
+      { id: 'pin9', type: 'PIN', nodes: ['d9', '0'], pin: 9, vcc: 5, vccNode: '5v', partId: 'u1' },
       { id: 'r_ext', type: 'R', nodes: ['d9', 'ext_a'], value: 220, rating: { maxP: 0.25 }, partId: 'r_ext' },
       { id: 'led_ext', type: 'LED', nodes: ['ext_a', '0'], color: 'red', rating: LED_EXT_RATING, partId: 'led_ext' },
       { id: 'pin2', type: 'PIN', nodes: ['d2', '0'], pin: 2, vcc: 5, vccNode: '5v', partId: 'u1' },
@@ -611,7 +609,7 @@ export const lesson: LessonDef = {
       id: 'bypass-resistor',
       label: 'Bypass the 220 Ω resistor',
       explain:
-        "Only the pin's ≈ 25 Ω output resistance limits the LED, so at full duty (pot turned up) about 100 mA flows: the LED (30 mA) and the pin (40 mA) both burn. At lower duty the bench averages the PWM and shows less, but a real LED still takes 100 mA pulses. An LED has almost no resistance once it conducts. On real silicon the output transistor heats and its resistance rises, but it is still far out of spec and the damage builds up.",
+        "Only the pin's ≈ 25 Ω output resistance limits the LED, so about 100 mA flows whenever the pin is HIGH: the LED (30 mA) and the pin (40 mA) both burn. Turning the pot down doesn't save them: lower duty only shortens the pulses, and each pulse is still about 100 mA, which is what the ratings see. An LED has almost no resistance once it conducts. On real silicon the output transistor heats and its resistance rises, but it is still far out of spec and the damage builds up.",
       patches: [{ op: 'short', a: 'd9', b: 'ext_a' }],
       parts: { show: ['jBypass'] },
     },

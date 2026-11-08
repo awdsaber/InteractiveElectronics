@@ -167,6 +167,17 @@ export interface Solution {
   voltageOf?(node: NodeId): number
   /** set extra[key] (e.g. `${id}.tj`) without materialising the map before it is read */
   publish?(key: string, value: number): void
+  /**
+   * Set on a switched-PWM solution (sim/pwm.ts): the single-state solutions this one time-averages,
+   * oldest first, with weights summing to 1. Ratings read peaks and RMS from them.
+   */
+  phases?: readonly PwmPhaseSolution[]
+}
+
+export interface PwmPhaseSolution {
+  /** fraction of the PWM period spent in this state */
+  weight: number
+  solution: Solution
 }
 
 /** OUTPUT_OPEN_DRAIN: LOW pulls down through rOut, HIGH releases the pin (high impedance) */
@@ -179,6 +190,8 @@ export interface PinState {
   servoDeg?: number
   /** set while tone() drives the pin: square-wave frequency in Hz (level is 0.5, the 50 % duty) */
   toneHz?: number
+  /** analogWrite PWM frequency in Hz (the simulator switches PWM pins at it; default 490) */
+  pwmHz?: number
 }
 
 // ───────────────────────── Failures ─────────────────────────
@@ -315,19 +328,31 @@ export interface BoardSpec {
 
 export type TrackId = 'T0' | 'T1' | 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7'
 
+export type ReadoutSource =
+  | { kind: 'current'; elementId: string }
+  | { kind: 'voltage'; node: NodeId; ref?: NodeId }
+  | { kind: 'power'; elementId: string }
+  | { kind: 'extra'; key: string } // Solution.extra key
+  | { kind: 'behavior'; key: string } // value published by a behavior
+  /**
+   * computed from other readouts (indices into `lesson.readouts`): sum / product of all of them,
+   * diff = of[0] − of[1], ratio = of[0] / of[1] (a 0 denominator reads "—")
+   */
+  | { kind: 'derived'; op: 'sum' | 'diff' | 'ratio' | 'product'; of: number[] }
+
 export interface Readout {
   label: string // "LED CURRENT"
   /** what to read */
-  source:
-    | { kind: 'current'; elementId: string }
-    | { kind: 'voltage'; node: NodeId; ref?: NodeId }
-    | { kind: 'power'; elementId: string }
-    | { kind: 'extra'; key: string } // Solution.extra key
-    | { kind: 'behavior'; key: string } // value published by a behavior
+  source: ReadoutSource
   unit: ReadoutUnit
   digits?: number
   /** |value| below this reads 0 (default: 1 µV for V, 1 nA / 1 nW for A / W) */
   floor?: number
+  /**
+   * peak-hold: show the value of largest magnitude since power-on (or repair / strip / a manual
+   * reset), sampled on every sim step and edge substep, so µs spikes are caught
+   */
+  peak?: boolean
   /** the readout shows in the warn tone while its value is above this */
   warnAbove?: number
 }
@@ -353,19 +378,38 @@ export type ReadoutUnit =
   | 'C'
   | ''
 
+export interface TweakTarget {
+  /** netlist element id, or `behavior:<instance>` */
+  elementId: string
+  key: string
+  /** the target gets the tweak's value × scale (default 1) */
+  scale?: number
+}
+
 export interface Tweak {
   label: string
   /** netlist element id, or `behavior:<instance>` to drive a behavior param */
   elementId: string
   key: string // 'value', 'closed', 'r', 'load' ... (or the behavior param name)
-  /** slider (default), toggle (0/1), momentary (1 while held) */
-  kind?: 'slider' | 'toggle' | 'momentary'
+  /**
+   * - slider (default): min..max, linear or log, snapped to `step`
+   * - toggle: an on/off switch, off = min, on = max
+   * - enum: one of `options` (a segmented choice)
+   * - momentary: a press-and-hold button (pointer or Space / Enter): while held the value is the
+   *   end of min/max opposite its resting value (the circuit's own value), e.g. a normally open
+   *   SW `closed` 0 → 1, a normally closed one 1 → 0
+   */
+  kind?: 'slider' | 'enum' | 'momentary' | 'toggle'
+  /** enum choices; values within min..max */
+  options?: { label: string; value: number }[]
   min: number
   max: number
   step?: number
   /** log slider for resistors / caps */
   log?: boolean
   unit: string
+  /** ganged: these targets follow the tweak too (a dual pot, a matched resistor pair, a DPDT switch) */
+  link?: TweakTarget[]
 }
 
 export interface StatusLine {
@@ -405,6 +449,10 @@ export interface SimSettings {
   dt?: number
   /** integration: 'be' backward Euler (default, damps), 'trap' trapezoidal (keeps LC ringing) */
   method?: 'be' | 'trap'
+  /**
+   * cap on transient steps per animation frame (default 30 × max(1, speed)); when the steps a
+   * frame owes exceed it, the sim runs slower than requested and the speed control says so
+   */
   stepsPerFrame?: number
   /**
    * split the step after each external switching event (a pin, tweak, failure or power change;
@@ -413,6 +461,54 @@ export interface SimSettings {
    * vBreak clamp) are seen at a coarse dt. Opt-in per lesson; default off.
    */
   edgeSubsteps?: number
+  /** starting sim speed, sim seconds per real second (the speed control offers ×0.01 … ×100; default 1) */
+  speed?: number
+}
+
+/** what a scope channel probes */
+export type ScopeSource = { kind: 'voltage'; node: NodeId; ref?: NodeId } | { kind: 'current'; elementId: string }
+
+export interface ScopeChannel {
+  source: ScopeSource
+  /** trace name on screen (default "V(node)" / "I(id)") */
+  label?: string
+  /** volts (or amps) per division; 8 divisions tall */
+  perDiv?: number
+  /** vertical position of the trace's zero, divisions above the centre line (−4..4) */
+  offset?: number
+  /** dashed reference lines, e.g. a rating: { value: 40, label: 'V_CEO 40 V' } */
+  marks?: { value: number; label: string }[]
+}
+
+export interface ScopeDefaults {
+  /** 1 or 2 channels */
+  channels: ScopeChannel[]
+  /** seconds per division; 10 divisions wide */
+  timePerDiv?: number
+  trigger?: {
+    /** 0 = CH1 (default), 1 = CH2 */
+    channel?: number
+    level?: number
+    slope?: 'rising' | 'falling'
+    /** auto (default): free-run when nothing triggers; normal: hold the last triggered sweep */
+    mode?: 'auto' | 'normal'
+  }
+}
+
+export interface ChartDefaults {
+  /** signals against time: readout indices, or inline readouts (any source) */
+  signals: (number | Readout)[]
+  /** seconds shown (default 10) */
+  span?: number
+}
+
+export interface InstrumentDefaults {
+  scope?: ScopeDefaults
+  chart?: ChartDefaults
+  /** the instrument panel starts open (default closed) */
+  open?: boolean
+  /** which instrument the panel shows first (default: scope when it has one, else chart) */
+  view?: 'scope' | 'chart'
 }
 
 export interface Lesson {
@@ -444,6 +540,8 @@ export interface Lesson {
   /** transient step needed? (RC, motors, PWM). default true when C/L/MOTOR present, a sketch or a ticking behavior */
   transient?: boolean
   sim?: SimSettings
+  /** defaults for the instrument panel (scope, strip chart); the learner can change channels */
+  instruments?: InstrumentDefaults
 }
 
 export type BehaviorRef = string | { id: string; instance?: string; params?: Record<string, number | string | boolean> }
