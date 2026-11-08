@@ -39,7 +39,8 @@ describe('ratingUse: how close a value is to its limit', () => {
   it('fraction, percent and tone', () => {
     expect(ratingUse(0.013, 0.02)).toEqual({ frac: 0.65, pct: 65, tone: 'ok' })
     expect(ratingUse(-0.013, 0.02)?.pct).toBe(65) // magnitude
-    expect(ratingUse(0.017, 0.02)?.tone).toBe('warn') // from 80 %
+    expect(ratingUse(0.017, 0.02)?.tone).toBe('ok') // 85 %: below the 90 % warn line
+    expect(ratingUse(0.019, 0.02)?.tone).toBe('warn') // 95 %
     expect(ratingUse(0.03, 0.02)).toEqual({ frac: 1.5, pct: 150, tone: 'warn' })
   })
   it('a temperature is measured from ambient (25 °C)', () => {

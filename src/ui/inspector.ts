@@ -66,7 +66,7 @@ export interface RatingUse {
   tone: UseTone
 }
 
-export const WARN_FRAC = 0.8
+export const WARN_FRAC = 0.9
 
 /**
  * How much of a limit a value uses. `floor` is the zero of the scale (ambient for a
