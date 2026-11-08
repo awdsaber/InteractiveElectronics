@@ -68,7 +68,7 @@ Halving R at constant V doubles the power. Doubling V at constant R quadruples i
 - **Why:** the voltage went up 2.4×, so power went up 2.4² = 5.8×. Heating follows the square.
 
 ### F3: Fit a 2 W resistor instead
-- **Patches:** `{op:'set', elementId:'R1', key:'value', value:47}`, then `rating.maxP` 2, `rating.rth` 70, `rating.tauTh` 8 (nested `set` keys are already supported by `applyPatches`)
+- **Patches:** `{op:'set', elementId:'R1', key:'value', value:47}`, then `rating.maxP` 2, `rating.rth` 42.5, `rating.tauTh` 8 (nested `set` keys are already supported by `applyPatches`)
 - **Sim shows:** POWER 0.53 W again, but R1 survives.
 - **Why:** a larger body has a lower thermal resistance to air, so the same watts make a smaller temperature rise. Its rating reflects that.
 
@@ -85,6 +85,8 @@ In a resistor, all of that power becomes heat, and heat raises temperature throu
 At 0.114 W the rise is 0.114 × 340 ≈ **39 °C**: about 64 °C on a 25 °C bench, too hot to hold but safe. At 0.53 W the rise would be about 180 °C.
 
 Heating also takes time. Power appears instantly, but the body's thermal mass makes temperature climb over several seconds.
+
+The 0.25 W rating holds at **70 °C ambient**. On a 25 °C bench the part survives up to about 0.38 W (130 °C of rise ÷ 340 °C/W), but inside a 70 °C enclosure the same 0.25 W reaches 155 °C and it burns. That margin is why engineers derate.
 
 Design rule: run resistors at **50% or less** of their rating, and less again in a hot enclosure.
 
@@ -130,6 +132,6 @@ Design rule: run resistors at **50% or less** of their rating, and less again in
 
 ## SIM NOTE
 
-- No behavior is needed: the engine's thermal rating (`rth`, `tauTh`, `tMax`) is the first-order model, T = T_amb + P·θ (T_amb 25 °C), publishes `R1.tj`, and burns the part when it passes `tMax` (replacing the 300 ms over-power timer). Use ≈ 340 °C/W for a 1/4 W axial body and ≈ 70 °C/W for a 2 W one. τ_th is compressed to 5 s (a real body takes ≈ 20 s or more) so the burn lands within about 6 s.
+- No behavior is needed: the engine's thermal rating (`rth`, `tauTh`, `tMax`) is the first-order model, T = T_amb + P·θ (T_amb 25 °C), publishes `R1.tj`, and burns the part when it passes `tMax` (replacing the 300 ms over-power timer). Use ≈ 340 °C/W for a 1/4 W axial body and ≈ 42.5 °C/W (85 °C ÷ 2 W) for a 2 W one. τ_th is compressed to 5 s (a real body takes ≈ 20 s or more) so the burn lands within about 6 s.
 - Nested `set` keys (`rating.maxP`) are supported by `applyPatches`.
 - `θ` for the 2 W body is an illustrative engine value; tune it against a datasheet derating curve when implementing.

@@ -52,7 +52,7 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   // a resistor with a thermal rating (rth/tMax) publishes `<id>.tj`: its body glows orange from
   // 70 °C (barely warm) to full at 155 °C (the 1/4 W carbon-film limit)
   const tj = p.kind === 'resistor' && cid ? snap.extra[`${cid}.tj`] : undefined
-  if (tj !== undefined) glow = Math.min(1, Math.max(0, (tj - 60) / 80))
+  if (tj !== undefined) glow = Math.min(1, Math.max(0, (tj - 42) / 98))
   const s: PartRenderState = {
     visible: placed,
     soldered: !breadboard && snap.assembly.soldered && (p.mount === 'tht' || p.mount === 'smd'),

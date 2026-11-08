@@ -3,6 +3,7 @@ import { type Bench, type BenchSnapshot, createBench } from '../../engine/bench/
 import { validateLesson } from '../../engine/lessonSchema'
 import type { Lesson } from '../../engine/types'
 import { partState } from '../../three/Board'
+import { partBakeKey } from '../../three/parts/frame'
 import { lesson as def } from './power-heat'
 
 const lesson: Lesson = { ...def, fig: def.fig ?? 3 }
@@ -132,10 +133,30 @@ describe('T0 power-heat lesson', () => {
     expect(b.snapshot().partVisible.r1big).toBe(true)
     const s = await run(b, 40)
     near(s.values[POWER], 0.53)
-    near(s.values[TEMP], 62) // 25 + 0.53 × 70
+    near(s.values[TEMP], 47.5) // 25 + 0.53 × 42.5
     expect(s.assembly.burns).toEqual([])
     expect(s.status).not.toBe('FAULT')
     b.dispose()
+  })
+
+  it('ambient boundary: 0.37 W survives on the 25 °C bench, 0.4 W burns (limit 130/340 = 0.38 W)', async () => {
+    // 5 V across R: 0.37 W is 67.6 Ω, 0.4 W is 62.5 Ω
+    const sOk = await run(build({ tweaks: { 'R1.value': 67.6 } }), 40)
+    expect(sOk.assembly.burns).toEqual([])
+    expect(sOk.values[TEMP]).toBeGreaterThan(145)
+    const sHot = await runUntilBurn(build({ tweaks: { 'R1.value': 62.5 } }), 40)
+    expect(sHot.assembly.burns[0]).toMatchObject({ elementId: 'R1', reason: 'overtemp' })
+  })
+
+  it('BODY TEMP warns above 90 °C, and the glow never changes the bake key', async () => {
+    const b = build({ tweaks: { 'R1.value': 100 } })
+    expect(b.snapshot().readouts[TEMP].tone).toBe('normal')
+    const s = await run(b, 40)
+    expect(s.readouts[TEMP].tone).toBe('warn')
+    expect(s.readouts[CURRENT].tone).toBe('normal')
+    const part = lesson.board.parts.find((p) => p.id === 'r1')!
+    const st = (glow: number) => ({ visible: true, soldered: false, glow, burnt: false, explodedOffset: 0, showLabel: false, glowColor: '#ff6a1f' })
+    expect(partBakeKey(part, st(0.3), {})).toBe(partBakeKey(part, st(0.9), {}))
   })
 
   it('the resistor glows as it heats (3D render state), and the status line warns before it burns', async () => {

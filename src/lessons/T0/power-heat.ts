@@ -41,6 +41,7 @@ export const lesson: LessonDef = {
     name: 'HEAT-03',
     size: [13.5, 9.2],
     base: 'breadboard-only',
+    frame: { size: [10.5, 6.4], center: [-0.2, 0.2] },
     parts: [
       {
         id: 'psu',
@@ -70,7 +71,7 @@ export const lesson: LessonDef = {
         pos: between(r1Left, r1Right),
         mount: 'tht',
         label: '2 W',
-        role: 'A 2 W resistor: a bigger body sheds heat to the air far more easily (70 °C/W).',
+        role: 'A 2 W resistor: a bigger body sheds heat to the air far more easily (42.5 °C/W).',
         params: { ohms: 47, film: 'metal', callout: [0.2, 2.3, -0.4] },
         circuitIds: ['R1'],
         hidden: true,
@@ -93,7 +94,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'TEMP',
         role: 'Thermocouple tip on the resistor body. The BODY TEMP readout is its reading.',
-        params: { color: '#d9a21b', tilt: 25, callout: [1.2, 1.2, 0.2] },
+        params: { color: '#d9a21b', tilt: 25, callout: [1.0, 0.6, 2.2] },
       },
       { id: 'w1', kind: 'wire', ...wPsuToMeter, mount: 'offboard', role: 'Supply positive to the ammeter.' },
       { id: 'w2', kind: 'wire', ...wMeterToBb, mount: 'offboard', role: 'Ammeter out to the resistor.' },
@@ -116,7 +117,7 @@ export const lesson: LessonDef = {
   readouts: [
     { label: 'CURRENT', source: { kind: 'current', elementId: 'P_I' }, unit: 'A' },
     { label: 'POWER', source: { kind: 'power', elementId: 'R1' }, unit: 'W' },
-    { label: 'BODY TEMP', source: { kind: 'extra', key: 'R1.tj' }, unit: '°C', digits: 3 },
+    { label: 'BODY TEMP', source: { kind: 'extra', key: 'R1.tj' }, unit: '°C', digits: 3, warnAbove: 90 },
     { label: 'SUPPLY', source: { kind: 'voltage', node: 'r_top' }, unit: 'V' },
   ],
 
@@ -135,7 +136,7 @@ export const lesson: LessonDef = {
       id: 'r-47',
       label: '47 Ω fitted instead of 220 Ω',
       explain:
-        'P = V²/R = 25/47 = 0.53 W, 213 % of the 1/4 W rating, and the body would settle at 25 + 0.53 × 340 ≈ 205 °C. It climbs past 155 °C in a few seconds and R1 goes open (a real part discolours and smells first). Heat takes time, but it always arrives.',
+        'P = V²/R = 25/47 = 0.53 W, 213 % of the 1/4 W rating, and the body would settle at 25 + 0.53 × 340 ≈ 205 °C. It climbs past 155 °C in a few seconds and R1 goes open (a real part discolours and smells first). Heat takes time, but it always arrives. The sensor reads 0 once the part is open.',
       patches: [{ op: 'set', elementId: 'R1', key: 'value', value: 47 }],
     },
     {
@@ -149,11 +150,11 @@ export const lesson: LessonDef = {
       id: 'big-2w',
       label: 'Fit a 2 W resistor instead',
       explain:
-        'The same 47 Ω still turns 0.53 W into heat, but a larger body has a lower thermal resistance to the air (70 °C/W instead of 340), so the temperature rise is about 37 °C instead of 180 °C. The rating exists because of the body, not the ohms.',
+        'The same 47 Ω still turns 0.53 W into heat, but a larger body has a lower thermal resistance to the air (42.5 °C/W instead of 340), so the temperature rise is about 23 °C instead of 180 °C. The rating exists because of the body, not the ohms.',
       patches: [
         { op: 'set', elementId: 'R1', key: 'value', value: 47 },
         { op: 'set', elementId: 'R1', key: 'rating.maxP', value: 2 },
-        { op: 'set', elementId: 'R1', key: 'rating.rth', value: 70 },
+        { op: 'set', elementId: 'R1', key: 'rating.rth', value: 42.5 },
         { op: 'set', elementId: 'R1', key: 'rating.tauTh', value: 8 },
       ],
       parts: { hide: ['r1'], show: ['r1big'] },
@@ -171,6 +172,8 @@ In a resistor, all of that power becomes heat, and heat raises temperature throu
 At 0.114 W the rise is 0.114 × 340 ≈ **39 °C**: about 64 °C on a 25 °C bench, too hot to hold for long but safe. At 0.53 W the rise would be about 180 °C, so the part never gets there.
 
 Heating also takes time. Power appears instantly, but the body's thermal mass makes temperature climb over seconds (the bench compresses a real body's tens of seconds to a time constant of 5 s).
+
+The 0.25 W rating holds at **70 °C ambient**. On this 25 °C bench the part survives up to about 0.38 W (155 − 25 = 130 °C of rise ÷ 340 °C/W), but inside a 70 °C enclosure the same 0.25 W reaches 155 °C and it burns. That margin is why engineers derate.
 
 Design rule: run resistors at **50 % or less** of their rating, and less again in a hot enclosure.`,
 
