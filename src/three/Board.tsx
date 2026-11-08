@@ -11,6 +11,7 @@ import { PALETTES, type Settings } from '../ui/types'
 import { BenchBase } from './BenchBase'
 import { Callout, type CalloutTone } from './Callout'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
+import { matFrame } from './autoFrame'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
 import { rgbGlow } from './rgbGlow'
@@ -213,10 +214,11 @@ export function Board({ lesson, snap, settings }: BoardProps) {
     prev.current = new Set(placed)
   }, [placedKey, board.parts])
 
-  const [w, d] = board.frame?.size ?? board.size
+  const mat = useMemo(() => matFrame(board), [board])
+  const [w, d] = mat.size
   return (
     <group>
-      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={board.frame?.center} />}
+      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={mat.center} />}
       {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
       {pcb && <Pcb spec={board} color={color} />}
       {board.parts.map((p) => (
