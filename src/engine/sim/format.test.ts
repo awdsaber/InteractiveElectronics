@@ -51,4 +51,11 @@ describe('formatSI', () => {
     expect(formatSI(1590, 'Hz', 3)).toBe('1.59 kHz')
     expect(formatSI(4.7e-6, 'C', 2)).toBe('4.7 µC')
   })
+
+  it('prints unitless readouts (ratios, counts, scaled values) without an SI prefix', () => {
+    expect(formatSI(0.632, '', 3)).toBe('0.632')
+    expect(formatSI(0.25, '', 2)).toBe('0.25')
+    expect(formatSI(4.12, '', 3)).toBe('4.12')
+    expect(formatSI(3, '', 1)).toBe('3')
+  })
 })
