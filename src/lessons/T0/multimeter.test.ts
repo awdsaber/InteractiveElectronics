@@ -7,7 +7,7 @@ import { getLesson } from '../index'
 const L = getLesson('multimeter') as Lesson
 const FRAME = 1 / 60
 // readout indices
-const [METER, AMMETER, BURDEN, MID] = [0, 1, 2, 3]
+const [METER, AMMETER, BURDEN, MID, TRUE_I] = [0, 1, 2, 3, 4]
 
 const runFor = async (b: Bench, sec: number) => {
   for (let i = 0; i < Math.round(sec / FRAME); i++) await b.frame(FRAME)
@@ -17,9 +17,11 @@ const within = (v: number, target: number, tol = 0.02) => {
   expect(v).toBeGreaterThan(target * (1 - tol))
   expect(v).toBeLessThan(target * (1 + tol))
 }
-async function powered(): Promise<Bench> {
+/** powered, with the voltmeter leads on the midpoint unless told otherwise (they start lifted) */
+async function powered(leadsOn = true): Promise<Bench> {
   const b = createBench(L)
   b.dispatch('power')
+  if (leadsOn) b.setTweak('SW_VM.closed', 1)
   await runFor(b, 0.3)
   return b
 }
@@ -27,32 +29,39 @@ async function powered(): Promise<Bench> {
 describe('T0 multimeter', () => {
   it('validates, and the readouts are in the order this test assumes', () => {
     expect(validateLesson(L)).toEqual([])
-    expect(L.readouts.map((r) => r.label)).toEqual(['METER READS', 'AMMETER', 'BURDEN', 'MIDPOINT'])
+    expect(L.readouts.map((r) => r.label)).toEqual(['METER READS', 'AMMETER', 'BURDEN', 'MIDPOINT', 'TRUE (NO METER)'])
     expect(L.powerElementId).toBe('SW_OUT')
     expect(L.powerLabel).toBe('Output ON')
     expect(L.circuit.elements.find((e) => e.id === 'R_FUSE')?.type).toBe('FUSE')
   })
 
-  it('10 MΩ meter on a 1 MΩ / 1 MΩ divider reads 4.76 V (true 5.00 V); ammeter 204.9 mA, burden 0.37 V', async () => {
+  it('first view: leads lifted, so MIDPOINT shows the true 5.00 V and the reference current is 212.8 mA', async () => {
     const b = createBench(L)
     expect(b.snapshot().status).toBe('READY')
+    expect(Math.abs(b.snapshot().values[TRUE_I])).toBeLessThan(1e-6) // the reference branch is gated off until power
     b.dispatch('power')
     const s = await runFor(b, 0.5)
     expect(s.status).toBe('POWERED')
-    within(s.values[METER], 4.762, 0.005)
-    within(s.values[MID], 4.762, 0.005)
+    within(s.values[MID], 5, 0.005) // the closed output switch (0.05 Ω) sags the 10 V a little
+    expect(Math.abs(s.values[METER])).toBeLessThan(0.1) // only the 1 GΩ open-switch leakage
+    within(s.values[TRUE_I], 0.2128, 0.002)
     within(s.values[AMMETER], 0.2049, 0.005)
     within(s.values[BURDEN], 0.369, 0.01)
-    expect(s.assembly.burns).toEqual([])
+    expect(s.statusLine.text).toMatch(/sits at 4\.9\d V with the voltmeter leads off/)
     b.dispose()
   })
 
-  it('lifting the leads: the meter reads 0 and the midpoint is the unloaded 5.00 V', async () => {
-    const b = await powered()
-    b.setTweak('SW_VM.closed', 0)
+  it('attaching the leads drops MIDPOINT from 5.00 V to 4.76 V, and the meter reads it', async () => {
+    const b = await powered(false)
+    const before = b.snapshot().values[MID]
+    b.setTweak('SW_VM.closed', 1)
     const s = await runFor(b, 0.3)
-    within(s.values[MID], 5, 0.005) // the closed output switch (0.05 Ω) sags the 10 V a little
-    expect(Math.abs(s.values[METER])).toBeLessThan(0.1) // only the 1 GΩ open-switch leakage
+    within(before, 5, 0.005)
+    within(s.values[MID], 4.762, 0.005)
+    within(s.values[METER], 4.762, 0.005)
+    expect(before - s.values[MID]).toBeGreaterThan(0.2)
+    expect(s.assembly.burns).toEqual([])
+    expect(s.statusLine.text).toMatch(/LEADS ON/)
     b.dispose()
   })
 
@@ -77,13 +86,17 @@ describe('T0 multimeter', () => {
     b.dispose()
   })
 
-  it('burden: 1.8 Ω reads 3.7 % low on 47 Ω, and drops 1.8 mV per mA (90 mV at 50 mA)', async () => {
+  it('burden: the 1.8 Ω meter reads 3.7 % under the true current on 47 Ω, 1.8 mV per mA', async () => {
     const b = await powered()
-    const s = b.snapshot()
-    within(s.values[AMMETER] / (10 / 47.01), 0.963, 0.003)
-    within(s.values[BURDEN] / s.values[AMMETER], 1.8, 0.01)
+    let s = b.snapshot()
+    within(s.values[AMMETER] / s.values[TRUE_I], 0.963, 0.003)
+    within(s.values[BURDEN] / s.values[AMMETER], 1.8e-3 / 1e-3, 0.01)
+    // quiz 2: at 50 mA the burden is 90 mV (47 Ω + 1.8 Ω loop: load 198 Ω for 50 mA)
+    b.setTweak('R3.value', 10 / 0.05 - 1.81)
+    s = await runFor(b, 0.3)
+    within(s.values[AMMETER], 0.05, 0.005)
+    within(s.values[BURDEN], 0.09, 0.01)
     b.dispose()
-    expect(1.8e-3 * 50).toBeCloseTo(0.09, 6)
   })
 
   it('F1 analog meter (200 kΩ): reads 1.43 V instead of 5 V', async () => {
@@ -95,16 +108,21 @@ describe('T0 multimeter', () => {
     b.dispose()
   })
 
-  it('F2 ammeter across the supply: ~5.5 A, the 0.44 A fuse blows, the current meter goes dead but the volts still work', async () => {
+  it('F2 ammeter across the supply: about 5.4 A, the 0.44 A fuse blows, the current meter goes dead but the volts still work', async () => {
     const b = await powered()
     b.dispatch('break:amps-across-supply')
     const s = await runFor(b, 0.5)
     expect(s.assembly.burns.map((x) => x.elementId)).toEqual(['R_FUSE'])
     expect(s.assembly.burns[0].reason).toBe('blown')
-    within(s.assembly.burns[0].value, 5.5, 0.03) // the current when it blew: 10 V / (1.8 Ω + the closed switch)
+    within(s.assembly.burns[0].value, 5.4, 0.05) // the current when it blew: 10 V / (1.8 Ω + switch and supply resistance)
     expect(s.assembly.burns[0].limit).toBe(0.44)
     expect(Math.abs(s.values[AMMETER])).toBeLessThan(1e-4)
     within(s.values[METER], 4.762, 0.01)
+    expect(s.values[BURDEN]).toBeGreaterThan(9)
+    expect(s.statusLine.text).toMatch(/R_FUSE.*blew/)
+    b.dispatch('repair')
+    const r = await runFor(b, 0.3)
+    within(r.values[AMMETER], 0.2049, 0.005) // a fresh fuse is fitted
     b.dispose()
   })
 
@@ -124,12 +142,13 @@ describe('T0 multimeter', () => {
     b.dispose()
   })
 
-  it("the curriculum's quiz arithmetic is right", () => {
-    expect((5 * 10) / 10.05).toBeCloseTo(4.975, 3)
+  it("the curriculum's quiz answers are the right options", () => {
     expect(L.quiz).toHaveLength(4)
-    for (const q of L.quiz) expect(q.options[q.answer]).toBeTruthy()
-    expect(L.quiz[0].options[L.quiz[0].answer]).toBe('4.98 V')
-    expect(L.quiz[1].options[L.quiz[1].answer]).toBe('90 mV')
-    expect(L.quiz[2].options[L.quiz[2].answer]).toMatch(/series/)
+    expect(L.quiz.map((q) => q.options[q.answer])).toEqual([
+      '4.98 V',
+      '90 mV',
+      'in series with the resistor',
+      'To protect the meter when it is accidentally connected across a voltage in current mode',
+    ])
   })
 })

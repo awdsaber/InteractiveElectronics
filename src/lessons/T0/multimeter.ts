@@ -9,9 +9,9 @@ import { BENCH_Y, bbHole, between, jumper } from '../layout'
 
 const BB: [number, number] = [-0.5, -1.5]
 const PSU_AT: [number, number] = [-4.6, 2.8]
-const VM_AT: [number, number] = [4.8, -3.0]
-const AM_AT: [number, number] = [4.8, 1.6]
-const DMM_SCALE = 0.45
+const VM_AT: [number, number] = [5.2, -3.6]
+const AM_AT: [number, number] = [5.2, 2.2]
+const DMM_SCALE = 0.38
 
 // divider: R1 (node v → mid) and R2 (mid → ground rail), both along the breadboard; load R3 beside it
 const r1L = bbHole(BB, 6, 'g')
@@ -49,11 +49,12 @@ export const lesson: LessonDef = {
   track: 'T0',
   title: 'The Multimeter',
   subtitle: 'Measuring without meddling',
-  tagline: 'A 10 MΩ meter across the bottom of a 1 MΩ / 1 MΩ divider on 10 V reads 4.76 V, where the true value is 5.00 V.',
+  tagline: 'Touch a 10 MΩ meter to the middle of a 1 MΩ / 1 MΩ divider and its 5.00 V sags to 4.76 V: the meter itself is a load.',
 
   board: {
     name: 'DMM-07',
     size: [14, 9],
+    frame: { size: [12.4, 10.2], center: [1.0, -0.9] }, // divider, load and both meters, stacked so no wire crosses an LCD
     base: 'breadboard-only',
     parts: [
       {
@@ -106,7 +107,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'VOLTMETER',
         role: 'Handheld DMM on a DC volts range: 10 MΩ input resistance, in parallel with the part under test. Reads METER READS.',
-        params: { readout: 0, autoUnit: true, title: 'VOLTMETER', scale: DMM_SCALE, callout: [-1.0, 1.5, 0.6] },
+        params: { readout: 0, autoUnit: true, title: 'VOLTMETER · V', mode: 'V', scale: DMM_SCALE, callout: [-1.0, 1.5, 0.6] },
         circuitIds: ['R_VM', 'SW_VM'],
       },
       {
@@ -116,7 +117,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'AMMETER',
         role: 'The same meter on its mA range: a 1.8 Ω shunt (1.8 mV per mA) and a 0.44 A fuse, in series with the load. Reads AMMETER.',
-        params: { readout: 1, autoUnit: true, title: 'AMMETER', scale: DMM_SCALE, callout: [-1.0, 1.5, 0.6] },
+        params: { readout: 1, autoUnit: true, title: 'AMMETER · mA', mode: 'A', scale: DMM_SCALE, callout: [-1.0, 1.5, 0.6] },
         circuitIds: ['R_SH', 'R_FUSE'],
       },
       { id: 'w-plus', kind: 'wire', ...withCallout(wPlus, [0, 0.5, 0.2]), mount: 'offboard', label: 'SUPPLY +', role: 'Supply + to the divider and the ammeter.' },
@@ -138,12 +139,15 @@ export const lesson: LessonDef = {
       { id: 'R1', type: 'R', nodes: ['v', 'mid'], value: 1e6, rating: R_RATING, partId: 'r1' },
       { id: 'R2', type: 'R', nodes: ['mid', '0'], value: 1e6, rating: R_RATING, partId: 'r2' },
       // the voltmeter: leads on the midpoint, then 10 MΩ input resistance to ground
-      { id: 'SW_VM', type: 'SW', nodes: ['mid', 'vm'], closed: true, partId: 'vmeter' },
+      { id: 'SW_VM', type: 'SW', nodes: ['mid', 'vm'], closed: false, partId: 'vmeter' },
       { id: 'R_VM', type: 'R', nodes: ['vm', '0'], value: 1e7, partId: 'vmeter' },
       // the ammeter on its mA range: shunt (+ leads) 1.7 Ω, then the 0.44 A fast fuse (0.1 Ω cold)
       { id: 'R_SH', type: 'R', nodes: ['v', 'sh'], value: 1.7, partId: 'ameter' },
       { id: 'R_FUSE', type: 'FUSE', nodes: ['sh', 'f'], iRated: 0.44, i2t: 0.1, r: 0.1, partId: 'ameter' },
       { id: 'R3', type: 'R', nodes: ['f', '0'], value: 47, rating: { maxP: 5 }, partId: 'r3' },
+      // reference only (no 3D part): the same 47 Ω on an ideal 10 V with no meter, so "what it would be" is a sim result
+      { id: 'V_REF', type: 'V', nodes: ['ref', '0'], value: 10 },
+      { id: 'R_REF', type: 'R', nodes: ['ref', '0'], value: 47 },
     ],
   },
   powerElementId: 'SW_OUT',
@@ -154,18 +158,22 @@ export const lesson: LessonDef = {
     { label: 'AMMETER', source: { kind: 'current', elementId: 'R_SH' }, unit: 'A', floor: 1e-5 },
     { label: 'BURDEN', source: { kind: 'voltage', node: 'v', ref: 'f' }, unit: 'V' },
     { label: 'MIDPOINT', source: { kind: 'voltage', node: 'mid' }, unit: 'V' },
+    // what the load would draw with no meter in the loop: an isolated reference branch (output-gate behaviour)
+    { label: 'TRUE (NO METER)', source: { kind: 'current', elementId: 'R_REF' }, unit: 'A' },
   ],
+  behaviors: [{ id: 'output-gate', instance: 'gate', params: { elements: 'V_REF' } }],
 
   tweaks: [
     { label: 'Meter input resistance', elementId: 'R_VM', key: 'value', min: 10000, max: 10000000, log: true, unit: 'Ω' },
     { label: 'Leads on midpoint', elementId: 'SW_VM', key: 'closed', kind: 'toggle', min: 0, max: 1, step: 1, unit: '' },
+    { label: 'Load resistance (R3)', elementId: 'R3', key: 'value', min: 33, max: 1000, log: true, unit: 'Ω' },
     { label: 'Upper divider resistor (R1)', elementId: 'R1', key: 'value', min: 1000, max: 1000000, log: true, unit: 'Ω' },
     { label: 'Lower divider resistor (R2)', elementId: 'R2', key: 'value', min: 1000, max: 1000000, log: true, unit: 'Ω' },
   ],
 
   statusLines: [
-    { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: the meter reads {0} where the divider really sits at 5.00 V; the ammeter reads {1} with {2} of burden' },
-    { when: { kind: 'above', readout: 2, value: 5 }, text: 'FUSE BLOWN: the mA-jack fuse is open and now drops all of {2}. The ammeter reads nothing; the volts range still works' },
+    { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: the divider sits at {3} with the voltmeter leads off. Switch LEADS ON MIDPOINT on and watch it sag. The ammeter reads {1} where {4} would flow with no meter in the loop ({2} of burden)' },
+    { when: { kind: 'above', readout: 0, value: 1 }, text: 'LEADS ON: the meter reads {0}, but the divider sat at 5.00 V before you touched it. The meter\'s 10 MΩ is in parallel with R2. Ammeter {1} vs {4} with no meter' },
   ],
 
   failures: [
@@ -180,7 +188,7 @@ export const lesson: LessonDef = {
       id: 'amps-across-supply',
       label: 'Measure with the lead in the mA jack, across the supply',
       explain:
-        'In mA mode the meter is a 1.8 Ω shunt in series with a fuse. Put straight across a 10 V supply it is nearly a short: 10 / 1.8 ≈ 5.5 A, over twelve times the 0.44 A fuse rating. The fuse melts in milliseconds and opens: it is there for exactly this mistake, and this supply has no current limit, so it is the only protection. The meter stays dead on its current ranges until the fuse is replaced. On high-energy circuits only a high-breaking-capacity fuse stops this becoming an explosion.',
+        'In mA mode the meter is a 1.8 Ω shunt in series with a fuse. Put straight across a 10 V supply it is nearly a short: 10 / 1.8 ≈ 5.4 A (the supply and switch resistance trim it), over twelve times the 0.44 A fuse rating. The fuse melts in milliseconds and opens: it is there for exactly this mistake, and this supply has no current limit, so it is the only protection. The meter stays dead on its current ranges until the fuse is replaced. On high-energy circuits only a high-breaking-capacity fuse stops this becoming an explosion.',
       patches: [{ op: 'short', a: 'f', b: '0' }],
     },
     {
@@ -197,7 +205,7 @@ export const lesson: LessonDef = {
 
 **Voltmeter loading.** Seen from the midpoint, the divider is a 5 V source behind R1 ∥ R2 = 500 kΩ (its Thévenin equivalent). The meter's 10 MΩ input forms a second divider with that:
 
-V_read = 5 × 10M / (10M + 0.5M) = **4.76 V**, an error of −4.8%. Toggle LEADS ON MIDPOINT off and MIDPOINT jumps back to 5.00 V (the lifted meter reads nothing).
+V_read = 5 × 10M / (10M + 0.5M) = **4.76 V**, an error of −4.8%. The leads start lifted, so MIDPOINT shows the true 5.00 V; switch LEADS ON MIDPOINT on and it sags to 4.76 V (switch it off and it jumps back).
 
 Rule of thumb: the meter must be at least 100× the source resistance for a 1% error. A 10 MΩ input (the usual figure on a handheld meter's DC volts ranges) is excellent on a 10 kΩ divider and poor on a 1 MΩ one. Slide both divider resistors down to 1 kΩ and the loading error almost vanishes.
 
@@ -207,7 +215,7 @@ I = 10 / (47 + 1.8) = **204.9 mA** instead of 212.8 mA (−3.7%), and the meter 
 
 Low-resistance loads suffer most. Use the 10 A range (lower burden) or measure the voltage across a known shunt resistor instead.
 
-**The fuse.** The current jack is protected by a fast-blow fuse. The 0.44 A rating here is a typical figure for handheld meters (cheaper ones fit 200 mA fuses). Carry 205 mA all day and it does nothing; put the meter across the supply and 5.5 A melts it in milliseconds.`,
+**The fuse.** The current jack is protected by a fast-blow fuse. The 0.44 A rating here is a typical figure for handheld meters (cheaper ones fit 200 mA fuses). Carry 205 mA all day and it does nothing; put the meter across the supply and about 5.4 A melts it in milliseconds.`,
 
   mechanicalAnalogy: `A voltmeter is a pressure gauge with a tiny bleed: it taps off a trickle of flow to read pressure, which is fine on a stiff pump but noticeable on a weak, restricted source. An ammeter is an in-line flowmeter that adds its own pressure drop.
 
