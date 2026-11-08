@@ -141,3 +141,4 @@ The fraction of the energy that reaches the load is η = R_load / (R_load + r): 
 - `R_LOAD` is rated 10 W, not 5 W: at 10 Ω the load carries 0.783² × 10 = 6.1 W, which would burn a 5 W part before the "10 Ω sags to 7.8 V" figure could be shown. A 10 W cement part still burns at the 13.5 W of F3.
 - The engine's closed switch has 0.05 Ω of contact resistance, so the loop is 1.55 Ω: F3 reads about 13.1 W and F1 about 53 W.
 - No screw terminal part is drawn; the load is a resistor in the breadboard.
+- Review round 1: `R_LOAD` also has an illustrative thermal rating (rth 15 °C/W, tauTh 6 s, tMax 150 °C) so a slow sweep through 1.5 Ω survives and shows the power peak, while parking there (13 W) burns it in about 6 s; a LOAD TEMP readout shows it. The load is drawn as a larger off-board module block, and after F3's burn the meter reads the open-circuit 9.00 V.

@@ -4,28 +4,30 @@
 // (R_INT), both drawn as the one PP3 part. The slide switch SW1 connects a power resistor; the
 // multimeter reads the terminal voltage, the only point you can actually reach.
 import type { LessonDef } from '../../engine/types'
-import { BENCH_Y, bbHole, between, jumper } from '../layout'
+import { BENCH_Y, bbHole, jumper } from '../layout'
 
-const BB: [number, number] = [1.2, 0.9]
-const BAT_AT: [number, number] = [-5.0, -1.2]
-const METER_AT: [number, number] = [-5.2, 2.2]
+const BB: [number, number] = [0.6, 1.0]
+const BAT_AT: [number, number] = [-3.9, -2.3]
+const METER_AT: [number, number] = [-4.4, 2.5]
+const LOAD_AT: [number, number] = [5.6, -1.0]
 const METER_SCALE = 0.3
 
-const swPos = bbHole(BB, 8, 'f')
-const rlLeft = bbHole(BB, 15, 'f')
-const rlRight = bbHole(BB, 19, 'f')
+const swPos = bbHole(BB, 8, 'e')
 
 /** the PP3's snaps, facing the breadboard (battery turned 180°): round (+) and hex (−) */
 const snapPlus: [number, number, number] = [BAT_AT[0] + 2.55, BENCH_Y + 0.88, BAT_AT[1] + 0.5]
 const snapMinus: [number, number, number] = [BAT_AT[0] + 2.55, BENCH_Y + 0.88, BAT_AT[1] - 0.5]
 
-const wBatPlus = jumper(snapPlus, bbHole(BB, 5, 'j'), 'red', 0.5)
-const wBatMinus = jumper(snapMinus, bbHole(BB, 3, '-b'), 'black', 0.5)
-const wSwToLoad = jumper(bbHole(BB, 8, 'j'), bbHole(BB, 15, 'j'), 'orange', 0.35)
-const wLoadGnd = jumper(bbHole(BB, 19, 'j'), bbHole(BB, 21, '-b'), 'black', 0.25)
+const wBatPlus = jumper(snapPlus, bbHole(BB, 5, 'a'), 'red', 0.5)
+const wBatMinus = jumper(snapMinus, bbHole(BB, 3, '-t'), 'black', 0.5)
+/** the load's two ends: terminals along the module's front edge */
+const loadEnd = (x: number): [number, number, number] => [LOAD_AT[0] + x, BENCH_Y + 0.4, LOAD_AT[1] + 0.8]
+const wSwToLoad = jumper(bbHole(BB, 8, 'a'), loadEnd(-1.2), 'orange', 0.5)
+const wLoadGnd = jumper(loadEnd(1.2), bbHole(BB, 24, '-t'), 'black', 0.5)
 
 /** R_LOAD: a 100 Ω, 10 W cement/wirewound power resistor */
-const LOAD_RATING = { maxP: 10, maxV: 500 }
+/** thermal numbers are illustrative: 10 W at 70 C ambient, a ceramic body that cooks past 13 W within a few seconds */
+const LOAD_RATING = { maxP: 10, maxV: 500, rth: 15, tauTh: 6, tMax: 150 }
 
 export const lesson: LessonDef = {
   id: 'batteries',
@@ -37,6 +39,7 @@ export const lesson: LessonDef = {
   board: {
     name: 'CELL-06',
     size: [14, 8.6],
+    frame: { size: [12, 7.6], center: [0.8, -1.5] },
     base: 'breadboard-only',
     parts: [
       {
@@ -63,18 +66,18 @@ export const lesson: LessonDef = {
       },
       {
         id: 'rl',
-        kind: 'resistor',
-        pos: between(rlLeft, rlRight),
-        mount: 'tht',
+        kind: 'module',
+        pos: [LOAD_AT[0], BENCH_Y, LOAD_AT[1]],
+        mount: 'offboard',
         label: 'LOAD',
         role: 'The test load: 100 Ω, 10 W power resistor. Slide the load resistance down to ask the battery for more current.',
-        params: { ohms: 100, callout: [0.2, 2.1, -0.4] },
+        params: { title: '100R 10W', color: '#d9cfae', w: 3.2, d: 1.5, pins: 0, chip: 'none', callout: [0, 1.4, -0.4] },
         circuitIds: ['R_LOAD'],
       },
       {
         id: 'amm',
         kind: 'testpoint',
-        pos: bbHole(BB, 11, 'f'),
+        pos: bbHole(BB, 11, 'e'),
         mount: 'tht',
         label: 'AMMETER',
         role: 'Series current-sense point: the CURRENT reading is the current through here.',
@@ -114,6 +117,7 @@ export const lesson: LessonDef = {
     { label: 'CURRENT', source: { kind: 'current', elementId: 'P_I' }, unit: 'A' },
     { label: 'LOAD POWER', source: { kind: 'power', elementId: 'R_LOAD' }, unit: 'W' },
     { label: 'INTERNAL LOSS', source: { kind: 'power', elementId: 'R_INT' }, unit: 'W', warnAbove: 5 },
+    { label: 'LOAD TEMP', source: { kind: 'extra', key: 'R_LOAD.tj' }, unit: '°C', digits: 3, warnAbove: 100 },
   ],
 
   tweaks: [
@@ -149,7 +153,7 @@ export const lesson: LessonDef = {
       id: 'max-power',
       label: 'Chase maximum power',
       explain:
-        'The load power peaks when R_load = r: P = (9/3)² × 1.5 = 13.5 W, with 3 A flowing and 4.5 V at the terminals. But the battery wastes the same 13.5 W internally (50 % efficiency), and the load is over its 10 W rating, so it burns.',
+        'The load power peaks when R_load = r: P = (9/3)² × 1.5 = 13.5 W, with 3 A flowing and 4.5 V at the terminals. But the battery wastes the same 13.5 W internally (50 % efficiency), and the load is over its 10 W rating, so its temperature climbs past 150 °C within a few seconds and it burns open. With no load current left, the meter then shows the full 9.00 V of the open-circuit EMF: a battery that is not delivering anything shows no sag.',
       patches: [{ op: 'set', elementId: 'R_LOAD', key: 'value', value: 1.5 }],
     },
   ],
@@ -167,7 +171,9 @@ The fraction of the energy that reaches the load is η = R_load / (R_load + r): 
 
 **Energy.** A PP3 alkaline holds very roughly 500 to 600 mAh at light drain, so E ≈ 9 V × 0.5 Ah ≈ 4.5 Wh. Four AA alkalines (about 2.5 Ah each at 1.5 V, depending on the brand and the drain) store more than three times that. Capacity shrinks at high currents, because r converts more of the chemistry's energy into heat.
 
-**Chemistry cheat sheet.** Alkaline is 1.5 V per cell, not rechargeable. NiMH is 1.2 V and rechargeable. A Li-ion/LiPo cell is 3.7 V nominal, 4.2 V full, and shouldn't go below about 3.0 V.`,
+**Chemistry cheat sheet.** Alkaline is 1.5 V per cell, not rechargeable. NiMH is 1.2 V and rechargeable. A Li-ion/LiPo cell is 3.7 V nominal, 4.2 V full, and shouldn't go below about 3.0 V.
+
+**Try it.** Slide the load resistance slowly down through 1.5 Ω and watch LOAD POWER climb, peak at about 13 W, then fall again while INTERNAL LOSS catches up. Park there and LOAD TEMP runs away: the load is over its 10 W rating.`,
 
   mechanicalAnalogy: `A battery is like a pump feeding through a narrow internal passage. At zero flow the outlet shows the full pump pressure. As flow rises, the passage drops pressure in proportion, so the delivered pressure sags along a straight line. The slope of that line is the internal resistance.
 

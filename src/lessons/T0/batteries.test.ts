@@ -100,6 +100,24 @@ describe('T0 batteries lesson', () => {
     b.dispose()
   })
 
+  it('a slow sweep from 10 Ω down to 1 Ω shows the peak at about 1.5 Ω and the load survives it', async () => {
+    const b = build({ tweaks: { 'R_LOAD.value': 10 } })
+    let best = { r: 0, p: 0 }
+    let s = b.snapshot()
+    // 6 s sweep, geometric from 10 Ω to 1 Ω
+    for (let i = 0; i <= 360; i++) {
+      const r = 10 * Math.pow(0.1, i / 360)
+      b.setTweak('R_LOAD.value', r)
+      s = await frames(b, 1)
+      if (s.values[LOAD_P] > best.p) best = { r, p: s.values[LOAD_P] }
+    }
+    expect(best.r).toBeGreaterThan(1.3)
+    expect(best.r).toBeLessThan(1.8)
+    near(best.p, 13.1, 0.05)
+    expect(s.assembly.burns).toEqual([])
+    b.dispose()
+  })
+
   it('F3 chase maximum power: 3 A, 4.5 V, 13.5 W in the load, which is over its rating and burns', async () => {
     const b = build()
     await frames(b, 10)
@@ -108,7 +126,7 @@ describe('T0 batteries lesson', () => {
     near(s.values[CURRENT], 3, 0.04)
     near(s.values[TERM], 4.5, 0.03)
     near(s.values[LOAD_P], 13.5, 0.05)
-    for (let i = 0; i < 120 && !s.assembly.burns.length; i++) s = await frames(b, 1)
+    for (let i = 0; i < 900 && !s.assembly.burns.length; i++) s = await frames(b, 1)
     expect(s.assembly.burns[0]).toMatchObject({ elementId: 'R_LOAD' })
     expect(s.partBurnt.rl).toBe(true)
     b.dispose()
