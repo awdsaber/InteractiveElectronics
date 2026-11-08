@@ -6,7 +6,7 @@
 
 - **Lesson id:** `breadboard` · **Track:** T0 Foundations
 - **Prerequisites:** `charge-voltage-current`, `ohms-law`
-- **Power element:** `SW_PWR` (powerLabel: "Press module power button")
+- **Power element:** `SW_PWR` (powerLabel: "Connect USB power")
 
 ## Learning goals
 
@@ -23,10 +23,10 @@ Board: `PROTO-08`, size 17 × 6, base `breadboard-only`.
 |---|---|---|---|---|---|
 | bb | `breadboard` (830-point) | `offboard` | BREADBOARD | Every 5-hole strip is one node; the rails run along the edges. | `W_RAIL` |
 | pwr | `module` (title "MB102-style 5 V/3.3 V") | `module` | RAILS | Plug-on supply module feeding the rails from USB. | `V_USB`, `SW_PWR` |
-| r1 | `resistor` (330 Ω, 1/4 W) | `tht` | LIMIT | Sets the LED current; spans row 10 to row 15. | `R1` |
-| led1 | `led` (5 mm red) | `tht` | LED | Indicator; spans row 15 to row 20. | `LED1` |
-| j1 | `wire` (red) | `offboard` | JUMPER | + rail to row 10. | `W1` |
-| j2 | `wire` (black) | `offboard` | RETURN | Row 20 to − rail. | `W2` |
+| r1 | `resistor` (330 Ω, 1/4 W) | `tht` | LIMIT | Sets the LED current; spans strip 10 to strip 15. | `R1` |
+| led1 | `led` (5 mm red) | `tht` | LED | Indicator; spans strip 15 to strip 16. | `LED1` |
+| j1 | `wire` (red) | `offboard` | JUMPER | + rail to strip 10. | `W1` |
+| j2 | `wire` (black) | `offboard` | RETURN | Strip 16 to − rail. | `W2` |
 
 ## Circuit
 
@@ -34,20 +34,22 @@ Board: `PROTO-08`, size 17 × 6, base `breadboard-only`.
 |---|---|---|---|---|---|
 | `V_USB` | V | `usb`, `0` | 5.0 V, rInternal 0.1 Ω | — | USB 5 V via module |
 | `SW_PWR` | SW | `usb`, `rail+` | closed: false | maxI 0.7 A | **power element**; module push switch |
-| `W1` | R | `rail+`, `row10` | 0.02 Ω | maxI 1 A | jumper + two contacts |
-| `R1` | R | `row10`, `row15` | 330 Ω | maxP 0.25 W | |
-| `LED1` | LED | `row15`, `row20` | color: red | maxI 0.03 A, maxV 5 V | 20 mA continuous |
-| `W2` | R | `row20`, `rail-` | 0.02 Ω | maxI 1 A | |
+| `W1` | R | `rail+`, `col10` | 0.02 Ω | maxI 1 A | jumper + two contacts |
+| `R1` | R | `col10`, `col15` | 330 Ω | maxP 0.25 W | |
+| `LED1` | LED | `col15`, `col16` | color: red | maxI 0.03 A, maxV 5.5 V (sim) | 20 mA continuous |
+| `W2` | R | `col16`, `rail-` | 0.02 Ω | maxI 1 A | |
 | `W_RAIL` | R | `rail-`, `0` | 0.02 Ω | maxI 1 A | − rail back to the module's ground |
 
 Expected: I ≈ (5 − 1.8)/330 ≈ 9.7 mA.
+
+> **SIM NOTE:** nodes are named after strips (`col10`, `col15`, `col16`); the LED spans strips 15 to 16 (a 5 mm LED cannot stretch 5 holes). A fifth readout, R1 CURRENT, shows the 15.2 mA of F2. The − rail's far half is reached through a visible blue bridge jumper, which is `W_RAIL` (F3 removes it). Failures swap in extra parts (`r1-bad`, `led-bad`, `j1-wrong`). The supply module sits in front of the board.
 
 ## Readouts
 
 | label | source | unit |
 |---|---|---|
 | LED CURRENT | `{kind:'current', elementId:'LED1'}` | A |
-| ROW 15 | `{kind:'voltage', node:'row15'}` | V |
+| STRIP 15 | `{kind:'voltage', node:'row15'}` | V |
 | + RAIL | `{kind:'voltage', node:'rail+'}` | V |
 | − RAIL | `{kind:'voltage', node:'rail-'}` | V |
 
@@ -61,7 +63,7 @@ Expected: I ≈ (5 − 1.8)/330 ≈ 9.7 mA.
 
 ### F1: Both resistor legs pushed into row 10
 - **Patch:** `{op:'remove', elementId:'R1'}` (the resistor now connects row 10 to itself, so nothing reaches row 15)
-- **Sim shows:** LED CURRENT 0, ROW 15 at ~0 V.
+- **Sim shows:** LED CURRENT 0, STRIP 15 at ~0 V.
 - **Why:** a part whose two legs share a strip is shorted on itself and bridges nothing, so the series path is open.
 
 ### F2: LED legs in the same strip
@@ -118,7 +120,7 @@ I = (5.0 V − 1.8 V) / 330 Ω ≈ **9.7 mA**, and P_R = I²R = 0.0097² × 330 
    - 29 Ω
    - 210 Ω
    - 500 Ω
-   - 290 Ω (use 270 or 330 Ω)
+   - 290 Ω
    - **Answer:** 3. *Why:* R = (5 − 2.1)/0.010 = 290 Ω. The nearest standard values are 270 Ω and 330 Ω.
 
 3. **On this board the LED's legs end up in the same strip. What current flows through the 330 Ω resistor?**
