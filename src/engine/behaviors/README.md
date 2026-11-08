@@ -54,6 +54,7 @@ The instance name defaults to the id, and two instances of one behavior need dif
 |---|---|---|
 | `mcu-supply` | `supplyNode` ('5v'), `bor` (2.7 V), `hyst` (0.05 V), `fClk` (16 MHz) | `vcc`, `warn` (rail below the clock's speed grade), `held` (brown-out reset), `resets`, `fmax` (MHz). Holds the MCU below `bor`, restarts the sketch above `bor + hyst`. |
 | `serial-plotter` | — | every `name:value` on a Serial line (Arduino Serial Plotter format), as `<instance>.<name>`; bare numbers as `v1`, `v2`… |
+| `coulomb-counter` | `element` ('P_I') | `coulombs` (signed net charge past the element since power-on, I·dt, so reversed current counts down), `electronsPerSec` (signed I/e; 0 below 0.1 µA), `electronsE15` (same, ×10¹⁵: the readout formatter can't print 7.5e16). Restarts at power-off, repair, strip and reset. |
 | `pot-knob` | `pot` (a POT element id), `turn` (0–100 %) | `turn`. Sets the POT's wiper, so a tweak `behavior:<instance>.turn` with unit '%' reads "50 %". |
 
 ## Rules
