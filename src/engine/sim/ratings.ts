@@ -91,7 +91,20 @@ function peakV(s: Solution, e: Entry): number {
   for (const p of s.phases) v = Math.max(v, Math.abs(vOf(p.solution, e.va) - vOf(p.solution, e.vb)))
   return v
 }
-/** rated current squared: Σ w·i² over the PWM states (RMS heating), else i² */
+/**
+ * The current compared with maxI: on a switched PWM solution an LED or a PIN (junction / bond-wire
+ * limits) takes the instantaneous peak over the pieces; everything else (resistors, wiring, fuses)
+ * the RMS √(Σ w·i²), which is what heats it. Without pieces, |i|.
+ */
+function ratedI(s: Solution, e: Entry): number {
+  if (s.phases && e.peakI) {
+    let v = 0
+    for (const p of s.phases) v = Math.max(v, Math.abs(e.iKey ? xOf(p.solution, e.id, e.iKey) : curOf(p.solution, e.id)))
+    return v
+  }
+  return Math.sqrt(i2(s, e))
+}
+/** rated current squared: Σ w·i² over the PWM pieces (RMS heating), else i² */
 function i2(s: Solution, e: Entry): number {
   const one = (x: Solution) => (e.iKey ? xOf(x, e.id, e.iKey) : curOf(x, e.id))
   if (!s.phases) {
@@ -124,6 +137,8 @@ interface Entry {
   iKey: string | null
   kTj: string
   ocReason: BurnEvent['reason']
+  /** maxI is an instantaneous limit (LED, PIN), not a heating one */
+  peakI: boolean
 }
 
 const PLANS = new WeakMap<Netlist, Entry[]>()
@@ -168,6 +183,7 @@ function plan(netlist: Netlist): Entry[] {
       iKey: el.type === 'OPAMP' || el.type === 'REG' ? `${id}.iout` : null,
       kTj: `${id}.tj`,
       ocReason: el.type === 'PIN' ? 'pin-overcurrent' : 'overcurrent',
+      peakI: el.type === 'PIN' || el.type === 'LED',
     })
   }
   PLANS.set(netlist, p)
@@ -215,8 +231,9 @@ function nextTj(prev: number, r: Rating, p: number, dt: number): number {
  * without materialising the lazy maps) and caches its per-element plan per netlist object.
  * `state` is mutated (timers, temperatures, already-burnt set). At most one event per element.
  *
- * On a duty-weighted PWM step (solution.phases) maxV takes the highest |V| over the switch states,
- * maxI and fuse melting use the RMS current √(Σ w·i²), and power is the blended mean Σ w·p.
+ * On a switched PWM solution (solution.phases) maxV takes the highest |V| over the pieces; maxI
+ * takes the peak for LEDs and PINs and the RMS √(Σ w·i²) for everything else; fuse melting uses
+ * Σ w·i², and power is the time average Σ w·p.
  *
  * `instantOnly` is for extra samples inside a frame (edge substeps): it fires only the instant
  * limit (maxV over-voltage) and leaves lastT, heat, running means, fuse melt and timers untouched,
@@ -284,10 +301,10 @@ export function checkRatings(
     }
 
     if (r.maxI !== undefined) {
-      const ii = i2(s, e)
-      let value = Math.sqrt(ii)
+      const ii = ratedI(s, e)
+      let value = ii
       if (r.rmsWindow) {
-        ps.meanI2 = mean(ps.meanI2, ii, dt, r.rmsWindow)
+        ps.meanI2 = mean(ps.meanI2, e.peakI ? ii * ii : i2(s, e), dt, r.rmsWindow)
         value = Math.sqrt(ps.meanI2)
       }
       if (value > r.maxI) {

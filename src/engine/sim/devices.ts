@@ -255,6 +255,22 @@ export interface Dev {
   xk: string[]
 }
 
+/** one cached linear matrix (see Compiled.linSlots) */
+export interface LinSlot {
+  A: Float64Array
+  rf: Int32Array
+  rl: Int32Array
+  cl: Int32Array
+  ok: boolean
+  mode: string
+  dt: number
+  gmin: number
+  scale: number
+  trap: boolean
+  tag: number
+  used: number
+}
+
 export interface Compiled {
   /** k -> node name (internal nodes are named `${id}#…`) */
   nodeNames: NodeId[]
@@ -282,18 +298,20 @@ export interface Compiled {
   /** devices whose stamps don't depend on the iterate, and the rest */
   linDevs: Dev[]
   nlDevs: Dev[]
-  /** cached matrix (with gmin) and extents of the linear devices, valid for linMode/linDt/linGmin/linScale */
+  /** cached matrix (with gmin) and extents of the linear devices: the active slot of linSlots */
   Alin: Float64Array
   blin: Float64Array
   rfLin: Int32Array
   rlLin: Int32Array
   clLin: Int32Array
+  /** false drops every cached linear matrix (set after anything changes the linear stamps) */
   linValid: boolean
-  linMode: string
-  linDt: number
-  linGmin: number
-  linScale: number
-  linTrap: boolean
+  /** a few linear matrices keyed by step size and friends, so alternating PWM pieces don't restamp */
+  linSlots: LinSlot[]
+  linCur: LinSlot | null
+  /** caller's extra cache key (the PWM state when a pin changes the matrix); -1 = none */
+  linTag: number
+  linClock: number
   /** `lu` holds the factorisation of Alin (only meaningful for fully linear circuits) */
   luValid: boolean
 }
@@ -659,11 +677,10 @@ export function compile(netlist: Netlist): Compiled {
     rlLin: new Int32Array(size),
     clLin: new Int32Array(size),
     linValid: false,
-    linMode: '',
-    linDt: 0,
-    linGmin: 0,
-    linScale: 0,
-    linTrap: false,
+    linSlots: [],
+    linCur: null,
+    linTag: -1,
+    linClock: 0,
     luValid: false,
   }
   partition(c)

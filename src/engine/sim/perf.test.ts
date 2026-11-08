@@ -23,8 +23,8 @@ function chain(nonlinear: boolean, pwm = false): Element[] {
   return els
 }
 
-function msPerFrame(nonlinear: boolean, pwm = false): number {
-  const sim = createTransient({ elements: chain(nonlinear, pwm) }, 1e-4)
+function msPerFrame(nonlinear: boolean, pwm = false, dt = 1e-4): number {
+  const sim = createTransient({ elements: chain(nonlinear, pwm) }, dt)
   if (pwm) sim.setPin(9, { mode: 'OUTPUT', level: 0.5 })
   for (let i = 0; i < 600; i++) sim.step() // warm up the JIT
   let best = Infinity
@@ -75,8 +75,14 @@ describe.skipIf(ON_CI)('transient performance (60-stage chain, 30 steps per fram
   it('LED chain stays well under budget', () => {
     expect(msPerFrame(true)).toBeLessThan(8)
   })
-  it('LED chain on a 50 % PWM pin (two switch states per step) costs at most about 2x', () => {
+  // Switched PWM really swings the chain every edge, so Newton works like it would on a 490 Hz
+  // square-wave source (measured: 1.6 / 2.8 / 5.1 ms at dt = 0.1 / 1 / 10 ms, against 1.4 / 3.2 /
+  // 2.4 ms for a square-wave V source and ≈ 0.5 ms for the chain at DC; dt = 10 ms resolves 5 periods)
+  it('LED chain on a switching 50 % PWM pin (490 Hz) stays under budget at dt = 0.1 ms', () => {
     expect(msPerFrame(true, true)).toBeLessThan(16)
+  })
+  it('... and at dt = 1 ms (an edge in most steps)', () => {
+    expect(msPerFrame(true, true, 1e-3)).toBeLessThan(30)
   })
   it('linear RC chain on a PWM pin keeps the single averaged solve', () => {
     expect(msPerFrame(false, true)).toBeLessThan(5)
