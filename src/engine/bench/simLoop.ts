@@ -217,7 +217,10 @@ function initialTweaks(l: Lesson, behaviors: ResolvedBehavior[]): Record<string,
     if (t.elementId.startsWith('behavior:')) {
       v = behaviors.find((b) => `behavior:${b.instance}` === t.elementId)?.params[t.key]
     } else {
-      v = (l.circuit.elements.find((e) => e.id === t.elementId) as Record<string, unknown> | undefined)?.[t.key]
+      // dotted keys ('wave.freq', 'rating.maxP') read the nested field
+      v = t.key
+        .split('.')
+        .reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), l.circuit.elements.find((e) => e.id === t.elementId))
     }
     out[tweakKey(t)] = typeof v === 'number' ? v : typeof v === 'boolean' ? Number(v) : t.min
   }

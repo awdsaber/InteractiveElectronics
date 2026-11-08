@@ -36,6 +36,17 @@ describe('lessonSchema: X4 fields', () => {
     expect(v({ tweaks: [{ ...tw, link: [{ elementId: 'behavior:none', key: 'x' }] }] })).toEqual(['tweaks.0.link.0: no behavior instance "none"'])
   })
 
+  it('a V source with a `wave` takes dotted wave keys (wave.freq, wave.amp …); others do not', () => {
+    const n = base.circuit.elements[0].nodes[0]
+    const circuit = {
+      elements: [...base.circuit.elements, { id: 'VW', type: 'V' as const, nodes: [n, '0'] as [string, string], value: 0, wave: { kind: 'sine' as const, amp: 1, freq: 50 } }],
+    }
+    const tw = { label: 'f', elementId: 'VW', key: 'wave.freq', min: 10, max: 1000, unit: 'Hz' }
+    expect(v({ circuit, tweaks: [tw, { ...tw, key: 'wave.amp' }, { ...tw, key: 'wave.offset' }] })).toEqual([])
+    expect(v({ circuit, tweaks: [{ ...tw, key: 'wave.zz' }] })).toEqual(['tweaks.0: V "VW" has no key "wave.zz"'])
+    expect(v({ circuit, tweaks: [{ ...tw, elementId: R1 }] })).toEqual([`tweaks.0: R "${R1}" has no key "wave.freq"`])
+  })
+
   it('derived readouts and peak-hold', () => {
     const r = base.readouts[0]
     expect(v({ readouts: [r, r, { label: 'S', source: { kind: 'derived', op: 'sum', of: [0, 1] }, unit: 'A', peak: true }] })).toEqual([])
