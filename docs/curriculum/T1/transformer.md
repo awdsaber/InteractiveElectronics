@@ -9,6 +9,8 @@
 - **Power element:** `SW_MAINS` (powerLabel: "Plug in the adapter")
 - **Transient:** yes
 
+> **As built (M3):** the lesson runs a low-voltage bench instead: a 12 V rms 50 Hz AC source into a 4:1 step-down (12 V : 3 V, 5 VA) via XFMR with lm = 2 H, a 6 Ω load, a scope on both windings and RMS readouts from the `ac-meter` behavior. See `docs/decisions.md`.
+>
 > **Safety framing.** The learner never touches mains. The bench uses a sealed plug-in **12 V AC, 1 A** transformer adapter (output is AC, not DC), so everything on the bench is low voltage. The 230 V primary appears only as a calculated readout.
 
 ## Learning goals
@@ -73,13 +75,13 @@ Behavior `ideal-transformer` (turns ratio n = N_p/N_s = 230/13.5 = 17.0) publish
 
 ### F2: Overload: 6 Ω instead of 12 Ω
 - **Patch:** `{op:'set', elementId:'R_LOAD', key:'value', value:6}`
-- **Sim shows:** current ≈ 1.8 A RMS, V_load sags to ≈ 10.7 V, COPPER LOSS ≈ 4.7 W; the 1.6 A fuse eventually opens.
+- **Sim shows:** current ≈ 1.8 A RMS, V_load sags to ≈ 10.7 V, COPPER LOSS ≈ 5.1 W (1.78² × 1.6 Ω); the 1.6 A fuse eventually opens.
 - **Why:** I = 13.5/7.6 = 1.78 A. Copper loss goes with I², so 3.2× the rated loss heats the windings well beyond design.
 
 ### F3: Unload it
 - **Patch:** `{op:'set', elementId:'R_LOAD', key:'value', value:1000}`
 - **Sim shows:** SECONDARY RMS ≈ 13.5 V; "12 V" is nowhere to be seen.
-- **Why:** a transformer's nameplate voltage applies at rated load. Small units regulate poorly (here 12.5%), so off-load voltage runs high. Downstream parts must be rated for it.
+- **Why:** a transformer's nameplate voltage applies at rated load. Small units regulate poorly (here 13%: (13.5 − 11.9)/11.9), so off-load voltage runs high. Downstream parts must be rated for it.
 
 ## Meet the board
 
