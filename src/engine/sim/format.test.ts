@@ -8,6 +8,11 @@ describe('formatSI', () => {
     expect(formatSI(1e-6, 'A')).toBe('1.0 µA')
   })
 
+  it('counts steps without prefixes', () => {
+    expect(formatSI(0, 'steps', 1)).toBe('0 steps')
+    expect(formatSI(6380, 'steps', 1)).toBe('6380 steps')
+  })
+
   it('keeps integer mantissas without exponent notation', () => {
     expect(formatSI(220, 'Ω')).toBe('220 Ω')
     expect(formatSI(47, 'Ω')).toBe('47 Ω')

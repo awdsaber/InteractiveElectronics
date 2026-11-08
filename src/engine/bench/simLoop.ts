@@ -77,6 +77,13 @@ export interface BenchOptions {
   tweaks?: Record<string, number>
   /** scope ring capacity, samples (default SCOPE_SAMPLES) */
   scopeSamples?: number
+  /**
+   * wall-clock budget for one frame's transient steps, ms: stepping stops once it is spent and the
+   * snapshot reports `capped` (default: none, so headless runs are deterministic; the app uses 8)
+   */
+  stepBudgetMs?: number
+  /** clock for the step budget, ms (default performance.now) */
+  now?: () => number
 }
 
 /** a strip-chart signal: a lesson readout index, or an inline readout (any source) */
@@ -221,6 +228,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const reg = opts.registry ?? defaultRegistry
   const hz = opts.snapshotHz ?? 15
   let speed = opts.speed ?? 1
+  const budget = opts.stepBudgetMs ?? Infinity
+  const now = opts.now ?? (() => globalThis.performance?.now() ?? Date.now())
   let code = opts.code ?? lesson.sketch?.code ?? ''
 
   let asm = initialAssembly(lesson)
@@ -229,6 +238,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   // ── behaviors ──
   const instances: { def: Behavior; r: ResolvedBehavior; ctx: BehaviorContext }[] = []
   const published: Record<string, number> = {}
+  /** `published` as it was when this frame's behavior pass began: ctx.read() lags exactly one tick in any order */
+  const readView: Record<string, number> = {}
   const events: BehaviorEvent[] = []
   const live: Record<string, number | boolean> = {} // `${id}\u0000${key}` → value set by behaviors
   let liveDirty = false
@@ -329,6 +340,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
    * behavior setParam) keep the transient state and its last solution.
    */
   function rebuild(structural = true): void {
+    behaviorOverrides()
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
@@ -362,13 +374,23 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const mcuMicros = () => mcu?.timeMicros ?? 0
   function applyPin(pin: number, st: PinState): void {
     const prev = simPins[pin]
-    if (dynamic && (!prev || prev.mode !== st.mode || prev.level !== st.level)) {
+    const changed =
+      !prev ||
+      prev.mode !== st.mode ||
+      prev.level !== st.level ||
+      prev.toneHz !== st.toneHz ||
+      prev.servoDeg !== st.servoDeg
+    if (dynamic && changed) {
       pinsChangedAt ??= mcuMicros()
       peekCache = null
     }
-    simPins[pin] = { ...st }
+    const next = { ...st }
+    simPins[pin] = next
     if (sim) sim.setPin(pin, st)
     dcDirty = true
+    // every change the circuit sees (sketch writes, floats on hold / stop / upload, release), MCU-timed.
+    // Each behavior gets its own copy so none can mutate the bench's pin state.
+    if (changed) for (const inst of instances) inst.def.onPin?.(inst.ctx, pin, { ...next }, mcuMicros())
   }
   /** a node voltage for an MCU read: re-solved when a pin changed since the last transient step */
   function readV(node: string, ref = '0'): number {
@@ -485,6 +507,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       publish(key, value) {
         published[`${r.instance}.${key}`] = value
       },
+      read: (key) => readView[key],
       setParam(elementId, key, value) {
         const k = `${elementId}\u0000${key}`
         if (live[k] === value) return
@@ -494,14 +517,15 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       setMotorLoad(elementId, torque) {
         ctx.setParam(elementId, 'load', torque)
       },
-      burn(elementId, reason) {
+      burn(elementId, reason, detail) {
         const el = netlist.elements.find((e) => e.id === elementId)
         if (!el || asm.burns.some((b) => b.elementId === elementId)) return
         const s = solution()
         const rating = effectiveRating(el)
-        const value = reason === 'overpower' ? (s?.power[elementId] ?? 0) : (s?.current[elementId] ?? 0)
-        const limit = (reason === 'overpower' ? rating?.maxP : reason === 'overvoltage' ? rating?.maxV : rating?.maxI) ?? 0
-        pendingBurns.push({ elementId, partId: el.partId, reason, value, limit, t })
+        // a behavior that knows what killed the part (a modelled spike, a rule) says so in `detail`
+        const value = detail?.value ?? (reason === 'overpower' ? (s?.power[elementId] ?? 0) : (s?.current[elementId] ?? 0))
+        const limit = detail?.limit ?? (reason === 'overpower' ? rating?.maxP : reason === 'overvoltage' ? rating?.maxV : rating?.maxI) ?? 0
+        pendingBurns.push({ elementId, partId: el.partId, reason, value, limit, t, ...(detail?.note ? { note: detail.note } : {}) })
       },
       events: {
         push(e) {
@@ -554,6 +578,20 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
   const pendingBurns: BurnEvent[] = []
 
+  /** active failures' `set` patches on `behavior:<instance>` override that instance's params */
+  function behaviorOverrides(): void {
+    for (const inst of instances) {
+      const id = `behavior:${inst.r.instance}`
+      let over: Record<string, number | string | boolean> | null = null
+      for (const fid of asm.failures) {
+        for (const p of lesson.failures.find((f) => f.id === fid)?.patches ?? []) {
+          if (p.op === 'set' && p.elementId === id) (over ??= {})[p.key] = p.value
+        }
+      }
+      inst.ctx.params = over ? { ...inst.r.params, ...over } : inst.r.params
+    }
+  }
+
   // ── actions ──
   function lifecycle(ev: BehaviorLifecycleEvent): void {
     for (const inst of instances) inst.def.onEvent?.(inst.ctx, ev)
@@ -581,6 +619,12 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     if ((!wasOn && isOn) || a === 'repair' || a === 'strip') peaks.reset()
     if (!wasOn && isOn) lifecycle('power-on')
     if (wasOn && !isOn) {
+      // the strip chart's trace breaks across the unpowered gap instead of joining over it
+      if (chartSignals.length) {
+        chartRow.fill(NaN)
+        chart.push(t, chartRow)
+        chartLastT = t
+      }
       clearPublished()
       lifecycle('power-off')
     }
@@ -827,7 +871,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     realClock += rdt
     if (dynamic && sim) {
       // steps owed this frame: ⌈simDt/dt⌉, or in slow motion (under one step a frame) one step each
-      // time a whole dt of sim time has built up; capped by stepsPerFrame (default 30 × speed)
+      // time a whole dt of sim time has built up; capped by stepsPerFrame (default: a whole
+      // MAX_FRAME of sim time at this speed) and by the wall-clock step budget
       let need: number
       if (simDt >= dt) {
         need = Math.ceil(simDt / dt - 1e-9)
@@ -837,19 +882,36 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         need = owed >= dt * (1 - 1e-9) ? 1 : 0
         if (need) owed = Math.max(0, owed - dt)
       }
-      const cap = lesson.sim?.stepsPerFrame ?? Math.ceil(30 * Math.max(1, speed))
+      const cap = lesson.sim?.stepsPerFrame ?? Math.ceil((Math.max(1, speed) * MAX_FRAME) / dt - 1e-9)
       const n = Math.min(cap, need)
       if (n < need) cappedAt = realClock
-      for (let k = 0; k < n; k++) {
+      const deadline = budget === Infinity ? Infinity : now() + budget
+      let k = 0
+      for (; k < n; k++) {
         const sol = sim.step()
         // a split switching step: µs events (an inductive kick) only exist inside it
+        let burnt = false
         for (const sub of sim.substeps) {
-          subBurns.push(...checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true }))
+          const bs = checkRatings(netlist, sub.solution, sub.t, ratings, { instantOnly: true })
+          if (bs.length) {
+            subBurns.push(...bs)
+            burnt = true
+          }
           sample(sub.t, sub.solution)
         }
         sample(sim.t, sol)
+        // a part just failed: apply it before simulating on, so the instruments show the failed circuit
+        if (burnt) {
+          k++
+          break
+        }
+        if (k + 1 < n && deadline !== Infinity && now() > deadline) {
+          k++
+          cappedAt = realClock
+          break
+        }
       }
-      if (n > 0) {
+      if (k > 0) {
         t = sim.t
         stale = false
         pinsChangedAt = null
@@ -882,6 +944,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     // behaviors
     const s = solution()
     const pw = mcuPowered(lesson, asm)
+    for (const k in readView) if (!(k in published)) delete readView[k]
+    for (const k in published) readView[k] = published[k]
     for (const inst of instances) {
       const c = inst.ctx
       c.t = t
@@ -948,7 +1012,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       tweaks[key] = tw && tw.kind && tw.kind !== 'slider' ? snapTweak(tw, value) : value
       applyBehaviorTweaks()
       const touchesCircuit = tw ? tweakTargets(tw).some((g) => !g.elementId.startsWith('behavior:')) : !key.startsWith('behavior:')
+      // rebuild re-applies failure overrides of behavior params; a params-only change does it here
       if (touchesCircuit) rebuild(false)
+      else behaviorOverrides()
       emit()
     },
     tweakValues: () => ({ ...tweaks }),

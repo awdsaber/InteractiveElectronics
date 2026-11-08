@@ -13,6 +13,7 @@ export const behavior: Behavior = {
   init(ctx) {},                 // once, when the bench is created
   tick(ctx, dt) {},             // every animation frame while powered; dt = sim seconds covered
   onEvent(ctx, ev) {},          // 'power-on' | 'power-off' | 'upload' | 'repair' | 'strip' | 'break'
+  onPin(ctx, pin, state, tMicros) {}, // every pin change (writes and floats), MCU time in µs (see a4988.ts)
   onSerial(ctx, line) {},       // each complete line the sketch prints with Serial
   reset(ctx) {},                // after repair and strip: forget internal state and latched faults
   dispose(ctx) {},              // lesson switch: release timers, devices, listeners
@@ -33,16 +34,18 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `v(node, ref?)` | A node voltage. |
 | `pins` | The pin states the circuit currently sees. |
 | `publish(key, value)` | Exposes a value as `<instance>.<key>` for `{kind:'behavior', key}` readouts. Values are cleared on power-off and strip. |
+| `read?(key)` | Another behavior's published value by its full key `<instance>.<key>` (undefined when unset), e.g. a robot's body pitch feeding `imu-mpu6050`. It reads a snapshot taken when the frame's behavior pass begins, so it lags exactly one tick whatever the behavior order (and a behavior reading its own key sees last tick's value). |
 | `setParam(id, key, value)` | Changes an element parameter live (sensor resistance, switch state). It keeps the transient state, and it is cheap when the value is unchanged, so calling it every tick is fine. |
 | `setMotorLoad(id, torque)` | Sets a MOTOR's shaft load in N·m. |
-| `burn(id, reason)` | Fails a part as if a rating had been exceeded (shows smoke, and FAULT). |
+| `burn(id, reason, detail?)` | Fails a part as if a rating had been exceeded (shows smoke, and FAULT). `detail: { value, limit }` sets the numbers in the FAULT text when the element's rating doesn't describe what killed it; `detail.note` replaces the text after the part name (e.g. `'failed: …'`). |
+| `onPin` (hook, not a member) | Called for every change of a pin's state, with the MCU's µs timestamp: sketch writes (synchronously inside the MCU's advance, so pulse trains faster than a frame, like STEP at 1/16 microstepping, arrive edge by edge), floats on hold / stop / upload (mode `INPUT`, level 0) and the re-drive on release. Queue them in preallocated arrays and integrate in `tick` up to `mcu.timeMicros`. Don't call `ctx.v` in it: the solution is the last frame's. After `mcu.reset()` or an upload the MCU clock restarts at 0, and the floats carry the old run's time (see `a4988.ts`). |
 | `events.push({t, channel, kind, data})` | Timeline events for instruments (logic analyser, scope markers). |
 | `mcu.hold(reason)` / `mcu.release()` | Brown-out: hold freezes the sketch and floats its pins; release resumes from the MCU's own time and does not replay the hold. Call `mcu.reset()` after release for a real brown-out reset. |
 | `mcu.reset()` | Restarts the uploaded sketch from `setup()`. |
 | `mcu.injectEdge(pin, level, tMicros)` | A timestamped input edge (encoders, echo pulses), with ISRs firing at that time. |
 | `mcu.serialIn(text)` | Bytes for `Serial.read()`. |
 | `mcu.serialOut(line)` | A line on the serial monitor from outside the sketch (the ESP32 ROM bootloader). A held MCU prints nothing of its own. |
-| `mcu.attachI2c(addr, dev)` / `mcu.attachSpi(cs, dev)` | Bus devices (`I2cDevice` / `SpiDevice` in `src/engine/mcu`). Safe to call before upload. An I2C device's optional `ack()` returning false NACKs its address (wrong address jumper, dead bus). |
+| `mcu.attachI2c(addr, dev)` / `mcu.attachSpi(cs, dev)` | Bus devices (`I2cDevice` / `SpiDevice` in `src/engine/mcu`). Safe to call before upload. An I2C device's optional `ack()` returning false NACKs its address (wrong address jumper, dead bus). `ack()` must be side-effect free: it may be called more than once per transaction. |
 | `mcu.timeMicros`, `mcu.running` | MCU clock and state. |
 
 ## Shared behaviors
@@ -57,3 +60,4 @@ The instance name defaults to the id, and two instances of one behavior need dif
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).
 - Model at the level that teaches the concept. Use real datasheet numbers, and say less rather than invent.
 - `validateLesson` rejects unknown behavior ids, duplicate instances, and behavior readouts or tweaks that name an unknown instance.
+- A failure can override a behavior param while it is active: `{ op: 'set', elementId: 'behavior:<instance>', key, value }` (tweaks keep their value underneath and return on repair). The bench swaps `ctx.params` for a merged object while such a failure is active, so read `ctx.params` each tick and never cache the params object.
