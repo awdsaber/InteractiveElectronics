@@ -579,6 +579,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     instances.push({ def, r, ctx })
   }
   const pendingBurns: BurnEvent[] = []
+  /** the instances that watch every instantaneous solve (Behavior.onStep) */
+  const steppers = instances.filter((i) => !!i.def.onStep)
 
   /** active failures' `set` patches on `behavior:<instance>` override that instance's params */
   function behaviorOverrides(): void {
@@ -908,7 +910,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         }
         // instruments and peak-hold see instantaneous states (each edge substep, each PWM piece),
         // never the time-averaged solution step() returns for the readouts
-        for (const p of sim.instants) sample(p.t, p.solution)
+        for (const p of sim.instants) {
+          sample(p.t, p.solution)
+          for (let j = 0; j < steppers.length; j++) steppers[j].def.onStep!(steppers[j].ctx, p.t, p.solution)
+        }
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
         if (burnt) {
           k++
