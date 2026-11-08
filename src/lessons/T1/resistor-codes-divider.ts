@@ -17,8 +17,8 @@ import type { LessonDef } from '../../engine/types'
 import { BENCH_Y, bbHole, between, jumper } from '../layout'
 
 const BB: [number, number] = [0.6, 1.0]
-const BAT_AT: [number, number] = [-1.4, -3.9]
-const DMM_AT: [number, number] = [4.0, -3.9]
+const BAT_AT: [number, number] = [-1.8, -3.9]
+const DMM_AT: [number, number] = [3.4, -3.9]
 const DMM_SCALE = 0.45
 
 // the battery and the meter sit side by side behind the breadboard; (+) is the round snap, (−) the hex one
@@ -63,7 +63,7 @@ export const lesson: LessonDef = {
   board: {
     name: 'DIV-09',
     size: [14, 8],
-    frame: { size: [10.6, 5.6], center: [1.0, -1.6] }, // the circuit, battery and meter; the empty front of the breadboard is cropped
+    frame: { size: [6.6, 3.9], center: [0.9, -0.9] }, // tight on the resistors so the bands read; the battery and meter sit at the edge
     base: 'breadboard-only',
     parts: [
       { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', role: 'Holds the divider; each 5-hole strip is one electrical node.' },
@@ -132,7 +132,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'METER',
         role: 'Voltmeter on the output node: reads V OUT.',
-        params: { scale: DMM_SCALE, readout: 0, unit: 'V', title: 'VOLTMETER', callout: [-0.6, 1.2, 1.8] },
+        params: { scale: DMM_SCALE, readout: 0, unit: 'V', autoUnit: true, title: 'VOLTMETER', callout: [-0.6, 1.2, 1.8] },
       },
       { id: 'w-plus', kind: 'wire', ...wPlus, mount: 'offboard', role: 'Battery + to the switch.' },
       { id: 'w-minus', kind: 'wire', ...wMinus, mount: 'offboard', role: 'Battery − to the ground rail.' },
@@ -161,7 +161,7 @@ export const lesson: LessonDef = {
   readouts: [
     { label: 'V OUT', source: { kind: 'voltage', node: 'out' }, unit: 'V' },
     { label: 'DIVIDER I', source: { kind: 'current', elementId: 'R1' }, unit: 'A' },
-    { label: 'LOAD I', source: { kind: 'current', elementId: 'R_LOAD' }, unit: 'A' },
+    { label: 'LOAD I', source: { kind: 'current', elementId: 'R_LOAD' }, unit: 'A', floor: 1e-7 },
   ],
 
   tweaks: [
@@ -199,12 +199,15 @@ export const lesson: LessonDef = {
       id: 'misread-band',
       label: 'Misread band: yellow-violet-orange (47 kΩ) fitted',
       explain:
-        'Orange as the multiplier means ×1000, so the part is 47 kΩ, not 4.7 kΩ: V = 9 × 47/57 = 7.42 V instead of 2.88 V. One band is a factor of ten. Measure a part before you fit it.',
-      patches: [{ op: 'set', elementId: 'R2', key: 'value', value: 47000 }],
+        'Orange as the multiplier means ×1000, so the part is 47 kΩ, not 4.7 kΩ: with no load attached, V = 9 × 47/57 = 7.42 V instead of 2.88 V. One band is a factor of ten. Measure a part before you fit it.',
+      patches: [
+        { op: 'set', elementId: 'SW_LOAD', key: 'closed', value: false },
+        { op: 'set', elementId: 'R2', key: 'value', value: 47000 },
+      ],
     },
   ],
 
-  meet: `**Colour code.** The first two bands (three on 1 % parts) are digits: black 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9. The next band is the power-of-ten multiplier, and the last, set slightly apart, is tolerance (gold ±5 %, brown ±1 %). Slide the R2 control and watch its bands repaint.
+  meet: `**Colour code.** The first two bands (three on 1 % parts) are digits: black 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9. The next band is the power-of-ten multiplier, and the last, set slightly apart, is tolerance (gold ±5 %, brown ±1 %). Slide the R2 control and watch its bands repaint, then drag the load resistance down with the load attached and feel V OUT sag.
 
 - Brown-black-orange = 1, 0, ×10³ = **10 kΩ**.
 - Yellow-violet-red = 4, 7, ×10² = **4.7 kΩ**.

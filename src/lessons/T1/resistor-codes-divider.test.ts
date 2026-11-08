@@ -43,6 +43,13 @@ describe('T1 resistor-codes-divider', () => {
     }
   })
 
+  it('the voltmeter auto-ranges (mV on the loaded failures) and LOAD I reads 0 with the switch open', async () => {
+    expect(L.board.parts.find((p) => p.id === 'dmm')!.params!.autoUnit).toBe(true)
+    const b = await powered()
+    expect((await runFor(b, 0.1)).values[ILOAD]).toBe(0)
+    b.dispose()
+  })
+
   it('unloaded: 2.88 V and 0.61 mA; attach 100 kΩ and it sags to 2.79 V', async () => {
     const b = createBench(L)
     expect(b.snapshot().status).toBe('READY')

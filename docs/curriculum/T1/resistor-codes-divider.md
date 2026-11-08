@@ -1,4 +1,4 @@
-﻿# Resistor Codes and Dividers
+# Resistor Codes and Dividers
 
 *From bands to volts*
 
