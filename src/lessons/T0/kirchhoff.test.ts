@@ -6,7 +6,7 @@ import { getLesson } from '../index'
 
 const L = getLesson('kirchhoff') as Lesson
 const FRAME = 1 / 60
-const [NODE_A, I1, I3, I2, R1_DROP] = [0, 1, 2, 3, 4]
+const [NODE_A, I1, I3, I2, R1_DROP, V2_TERM] = [0, 1, 2, 3, 4, 5]
 
 const runFor = async (b: Bench, sec: number) => {
   const t0 = b.t
@@ -33,6 +33,8 @@ describe('kirchhoff lesson', () => {
     for (let i = 0; i < 12; i++) await b.frame(FRAME) // sim time doesn't advance until something is powered
     let s = b.snapshot()
     expect(Math.abs(s.values[NODE_A])).toBeLessThan(0.01)
+    // OFF means both channels disconnected: no floating 9 V / 5 V loop through the east and west arms
+    for (const i of [I1, I3, I2, R1_DROP, V2_TERM]) expect(Math.abs(s.values[i])).toBeLessThan(1e-6)
     b.dispatch('power')
     s = await runFor(b, 0.3)
     expect(s.status).toBe('POWERED')
@@ -112,6 +114,7 @@ describe('kirchhoff lesson', () => {
     b.dispatch('break:supply-wont-sink')
     const s = await runFor(b, 0.3)
     near(s.values[NODE_A], 6.0)
+    near(s.values[V2_TERM], 6.0) // the "5 V" channel's terminal is dragged up to node A
     expect(Math.abs(s.values[I3])).toBeLessThan(1e-6)
     near(s.values[I1], 0.006)
     b.dispose()

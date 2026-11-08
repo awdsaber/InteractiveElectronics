@@ -87,7 +87,7 @@ Two conservation laws solve every circuit:
 - **KCL (charge is conserved):** at any node, current in = current out, so Σ I = 0.
 - **KVL (energy is conserved):** around any closed loop, rises equal drops, so Σ V = 0.
 
-**Node equation.** Call the junction voltage V_a and assume all three arm currents flow *into* node A from their sources, with the sink current flowing out:
+**Node equation.** Call the junction voltage V_a and assume the two source arms flow *into* node A and the sink arm flows *out*:
 
 (9 − V_a)/1k + (5 − V_a)/1k = V_a/1k
 

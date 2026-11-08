@@ -11,10 +11,10 @@ import { BENCH_Y, bbHole, between, jumper } from '../layout'
 //   R3 (EAST)  row c, columns 11 -> 15, fed by the 5 V wire at column 11
 //   R2 (SINK)  row d, columns 15 -> 19, returned to the top ground rail by a wire at column 19
 // An ammeter (PROBE element) sits in series in each arm; its test point is the hole beside each far end.
-const BB: [number, number] = [2.5, 0.9]
-const PSU_AT: [number, number] = [-4.4, -2.4]
+const BB: [number, number] = [-0.6, 2.4]
+const PSU_AT: [number, number] = [-2.7, -1.9]
 const TERM_Y = BENCH_Y + 0.16 // the supply's top face
-const METER_AT: [number, number] = [-3.9, 3.0]
+const METER_AT: [number, number] = [0.6, -2.3]
 
 const COL_NODE = 15
 const COL_R1 = 9
@@ -52,7 +52,8 @@ export const lesson: LessonDef = {
 
   board: {
     name: 'KCL-05',
-    size: [11, 7.2],
+    size: [10, 6],
+    frame: { size: [6.2, 6.2], center: [-1.3, -0.4] },
     base: 'breadboard-only',
     parts: [
       {
@@ -79,11 +80,11 @@ export const lesson: LessonDef = {
         id: 'meter',
         kind: 'multimeter',
         pos: [METER_AT[0], BENCH_Y, METER_AT[1]],
-        rot: 90,
+        rot: 0,
         mount: 'offboard',
-        label: 'NODE A',
+        label: 'METER',
         role: 'Bench meter on node A: V = (9 + 5)/3 = 4.667 V.',
-        params: { scale: 0.34, unit: 'V', readout: 0, title: 'NODE A', callout: [0, 1.2, 0] },
+        params: { scale: 0.27, unit: 'V', readout: 0, title: 'NODE A', callout: [0, 1.2, 0] },
       },
       { id: 'bb', kind: 'breadboard', pos: BB, mount: 'offboard', label: 'BREADBOARD', role: 'Holds the three arms; column 15 (rows a to e) is node A.' },
       {
@@ -115,6 +116,15 @@ export const lesson: LessonDef = {
         role: 'Arm from node A to ground: 1 kΩ, 1/4 W. Takes everything the other two bring.',
         params: { ohms: 1000, callout: [0.2, 1.8, 0.6] },
         circuitIds: ['R2'],
+      },
+      {
+        id: 'node-a',
+        kind: 'testpoint',
+        pos: bbHole(BB, COL_NODE, 'b'),
+        mount: 'tht',
+        label: 'NODE A',
+        role: 'Column 15, rows a to e: the one shared point where all three arms meet.',
+        params: { color: 'green', callout: [0, 1.6, -0.5] },
       },
       {
         id: 'tp1',
@@ -174,6 +184,7 @@ export const lesson: LessonDef = {
   },
   powerElementId: 'SW_OUT',
   powerLabel: 'Output ON',
+  behaviors: [{ id: 'output-gate', params: { elements: 'V1,V2' } }],
 
   readouts: [
     { label: 'NODE A', source: { kind: 'voltage', node: 'a' }, unit: 'V', digits: 3, floor: 0.005 },
@@ -181,6 +192,7 @@ export const lesson: LessonDef = {
     { label: 'I3 (EAST)', source: { kind: 'current', elementId: 'P3' }, unit: 'A', floor: 0.000005 },
     { label: 'I2 (SINK)', source: { kind: 'current', elementId: 'P2' }, unit: 'A', floor: 0.000005 },
     { label: 'R1 DROP', source: { kind: 'voltage', node: 'v1', ref: 'a' }, unit: 'V', digits: 3 },
+    { label: 'V2 TERMINAL', source: { kind: 'voltage', node: 'v2' }, unit: 'V', digits: 3 },
   ],
 
   tweaks: [
@@ -191,8 +203,8 @@ export const lesson: LessonDef = {
 
   statusLines: [
     { when: { kind: 'state', is: 'POWERED' }, text: 'POWERED: node A sits at {0}. In: {1} + {2}. Out: {3}. KCL closes.' },
-    { when: { kind: 'below', readout: 2, value: -0.00001 }, text: 'REVERSED: I3 is {2}, so the east channel is being pushed BACKWARD (node A is above its voltage)' },
-    { when: { kind: 'below', readout: 1, value: -0.00001 }, text: 'REVERSED: I1 is {1}, so the west channel is being pushed BACKWARD' },
+    { when: { kind: 'below', readout: 2, value: -0.00001 }, text: 'REVERSED: I3 is {2}, so it flows opposite to your assumed arrow: back INTO the east channel' },
+    { when: { kind: 'below', readout: 1, value: -0.00001 }, text: 'REVERSED: I1 is {1}, so it flows opposite to your assumed arrow: back INTO the west channel' },
   ],
 
   failures: [
@@ -236,7 +248,7 @@ export const lesson: LessonDef = {
 - **KCL (charge is conserved):** at any node, current in = current out, so Σ I = 0.
 - **KVL (energy is conserved):** around any closed loop, rises equal drops, so Σ V = 0.
 
-**Node equation.** Call the junction voltage V_a, and assume all three arm currents flow *into* node A from their sources while the sink current flows out:
+**Node equation.** Call the junction voltage V_a, and assume the two source arms flow *into* node A and the sink arm flows *out*:
 
 (9 − V_a)/1k + (5 − V_a)/1k = V_a/1k
 
