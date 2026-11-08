@@ -6,39 +6,38 @@
 import type { LessonDef } from '../../engine/types'
 import { BENCH_Y, bbHole, between, jumper } from '../layout'
 
-// Bench layout: the 9 V battery behind-left, the breadboard centre, the meter in front of it (jacks
-// facing the breadboard).
+// Bench layout: the 9 V battery at the left, the breadboard centre, the meter behind it with its jacks
+// facing the breadboard (rot 0: the LCD reads upright). The circuit sits in rows b-e; both lots of
+// leads (battery and meter) land on row a/b at the back, so no wire crosses a part.
 const BB: [number, number] = [1.2, 0.2]
-const BAT_AT: [number, number] = [-5.4, -1.75]
-const DMM_AT: [number, number] = [1.6, 5.5]
+const BAT_AT: [number, number] = [-6.2, -1.7]
+const DMM_AT: [number, number] = [1.15, -4.9]
 const DMM_SCALE = 0.34
 
-// columns (K shifts the circuit away from the battery): K = switch out / R1 left; K+1 = battery + /
-// switch common; K+4 = R1 right / output node (zener cathode, load top, meter V); K+8 = ground
-// (zener anode, load bottom, battery −, meter COM)
-const K = 10
-const swOut = bbHole(BB, K, 'b')
-const swIn = bbHole(BB, K + 2, 'b')
-const r1Left = bbHole(BB, K, 'd')
-const r1Right = bbHole(BB, K + 4, 'd')
-const zTop = bbHole(BB, K + 4, 'b')
-const zBot = bbHole(BB, K + 8, 'b')
-const rlTop = bbHole(BB, K + 4, 'c')
-const rlBot = bbHole(BB, K + 8, 'c')
+// columns: 9-11 switch (11 = out, 10 = common / battery +); 11 = R1 left; 14 = ground (zener anode,
+// load bottom, battery −, meter COM); 18 = output node (R1 right, zener cathode, load top, meter V)
+const swOut = bbHole(BB, 11, 'c')
+const swIn = bbHole(BB, 9, 'c')
+const r1Left = bbHole(BB, 11, 'e')
+const r1Right = bbHole(BB, 18, 'e')
+const zTop = bbHole(BB, 18, 'c') // cathode (banded end)
+const zBot = bbHole(BB, 14, 'c')
+const rlTop = bbHole(BB, 18, 'd')
+const rlBot = bbHole(BB, 14, 'd')
 
 // the 9 V battery faces +x (rot 180): its snaps sit on the end nearest the breadboard, + on the front side
 const SNAP_Y = BENCH_Y + 0.875
 const batPlus: [number, number, number] = [BAT_AT[0] + 2.62, SNAP_Y, BAT_AT[1] + 0.5]
 const batMinus: [number, number, number] = [BAT_AT[0] + 2.62, SNAP_Y, BAT_AT[1] - 0.5]
 const jackY = BENCH_Y + (1.5 + 0.19) * DMM_SCALE
-// meter turned 180°: its jack row faces the breadboard, the V jack on the left
-const jackV: [number, number, number] = [DMM_AT[0] - 2.0 * DMM_SCALE, jackY, DMM_AT[1] - 5.5 * DMM_SCALE]
-const jackCom: [number, number, number] = [DMM_AT[0], jackY, DMM_AT[1] - 5.5 * DMM_SCALE]
+// meter at rot 0: jack row on its front edge, V on the right
+const jackV: [number, number, number] = [DMM_AT[0] + 2.0 * DMM_SCALE, jackY, DMM_AT[1] + 5.5 * DMM_SCALE]
+const jackCom: [number, number, number] = [DMM_AT[0], jackY, DMM_AT[1] + 5.5 * DMM_SCALE]
 
-const wPlus = jumper(batPlus, bbHole(BB, K + 1, 'a'), 'red', 0.5)
-const wMinus = jumper(batMinus, bbHole(BB, K + 8, 'a'), 'black', 0.7)
-const wMeterV = jumper(jackV, bbHole(BB, K + 4, 'e'), 'yellow', 0.5)
-const wMeterCom = jumper(jackCom, bbHole(BB, K + 8, 'e'), 'blue', 0.5)
+const wPlus = jumper(batPlus, bbHole(BB, 10, 'a'), 'red', 0.5)
+const wMinus = jumper(batMinus, bbHole(BB, 14, 'b'), 'black', 0.9)
+const wMeterV = jumper(jackV, bbHole(BB, 18, 'a'), 'yellow', 0.5)
+const wMeterCom = jumper(jackCom, bbHole(BB, 14, 'a'), 'blue', 0.5)
 
 const withCallout = (w: ReturnType<typeof jumper>, callout: [number, number, number]) => ({ ...w, params: { ...w.params, callout } })
 
@@ -65,7 +64,7 @@ export const lesson: LessonDef = {
   board: {
     name: 'ZEN-17',
     size: [17, 12],
-    frame: { size: [12.4, 7.6], center: [-1.3, 2.1] }, // battery, breadboard and meter fill the view
+    frame: { size: [10, 6.2], center: [-1.2, -3.0] }, // battery, breadboard and meter fill the view
     base: 'breadboard-only',
     parts: [
       {
@@ -97,14 +96,13 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'DROP',
         role: 'Takes up the difference between the battery and the zener: 120 Ω, 1/4 W (brown-red-brown-gold).',
-        params: { ohms: 120, callout: [-0.4, 1.7, 0.9] },
+        params: { ohms: 120, span: 1.778, callout: [0, 1.6, 1.0] },
         circuitIds: ['R1'],
       },
       {
         id: 'z1',
         kind: 'zener',
         pos: between(zTop, zBot),
-        rot: 180, // band (cathode) toward the output column
         mount: 'tht',
         label: 'CLAMP',
         role: '1N4733A, 5.1 V 1 W zener. Holds the output near 5 V by soaking up whatever current the load does not take. Banded end to the output.',
@@ -116,6 +114,7 @@ export const lesson: LessonDef = {
         id: 'z1rev',
         kind: 'zener',
         pos: between(zTop, zBot),
+        rot: 180,
         mount: 'tht',
         label: 'CLAMP',
         role: 'The zener fitted backwards: banded end to ground, so it is forward-biased and clamps at one diode drop.',
@@ -137,11 +136,10 @@ export const lesson: LessonDef = {
         id: 'dmm',
         kind: 'multimeter',
         pos: [DMM_AT[0], BENCH_Y, DMM_AT[1]],
-        rot: 180,
         mount: 'offboard',
         label: 'METER',
         role: 'Reads the output voltage across the load.',
-        params: { mode: 'V', unit: 'V', readout: 0, scale: DMM_SCALE, title: 'V OUT', callout: [0, 1.4, 0] },
+        params: { mode: 'V', readout: 0, scale: DMM_SCALE, title: 'V OUT', callout: [0, 1.4, 0] },
       },
       { id: 'w-bat-p', kind: 'wire', ...wPlus, mount: 'offboard', role: 'Battery + to the switch.' },
       { id: 'w-bat-n', kind: 'wire', ...wMinus, mount: 'offboard', role: 'Battery − to the ground column.' },
@@ -166,7 +164,7 @@ export const lesson: LessonDef = {
   powerLabel: 'Connect battery',
 
   readouts: [
-    { label: 'V OUT', source: { kind: 'voltage', node: 'z' }, unit: 'V', digits: 4 },
+    { label: 'V OUT', source: { kind: 'voltage', node: 'z' }, unit: 'V' },
     { label: 'ZENER CURRENT', source: { kind: 'current', elementId: 'P_Z' }, unit: 'A' },
     { label: 'LOAD CURRENT', source: { kind: 'current', elementId: 'R_LOAD' }, unit: 'A' },
     { label: 'R1 POWER', source: { kind: 'power', elementId: 'R1' }, unit: 'W' },
@@ -219,12 +217,12 @@ export const lesson: LessonDef = {
 
 **Shunt regulator.** R1 drops the difference, and its current splits between the load and the zener. Press **Connect battery**:
 
-- V OUT ≈ **4.9 V**, a little under the 5.1 V label, because the label is at 49 mA and we run at about 24 mA: 5.1 − 25 mA × 7 Ω ≈ 4.92 V. The label voltage only holds at the test current.
+- V OUT is typically **4.9 V**, a little under the 5.1 V label, because the label is at 49 mA and we run at about 24 mA: 5.1 − 25 mA × 7 Ω ≈ 4.92 V. The label voltage only holds at the test current, and a real part is ±5 % (4.85 to 5.36 V). Near the knee (1 mA) the dynamic resistance is far higher, about 400 Ω, so low-current regulation is poor.
 - I_R1 = (9 − 4.92)/(120 + 1.5) ≈ **33.6 mA** (1.5 Ω is the battery's own resistance)
 - I_load = 4.92/510 ≈ **9.7 mA**
 - I_z = 33.6 − 9.7 ≈ **24 mA**
 
-**Slide the input voltage up from 0.** Up to about 4.5 V the output follows the input like a plain divider. Once the zener breaks down, V OUT flattens: 2 V more input at the top of the range moves the output only about 0.1 V (that is 7 Ω × the extra current).
+**Slide the input voltage up from 0.** Below about 5 V the output follows the input like a plain divider; the zener turns on gradually over the next volt or so (its soft knee) and V OUT flattens once V_in exceeds about 6 V: 2 V more input at the top of the range moves the output only about 0.1 V (that is 7 Ω × the extra current).
 
 **Design equation.** R = (V_in,min − V_z)/(I_load,max + I_z,min). Keep at least about 5 mA through the zener so it stays in breakdown. With I_z,min = 5 mA the 120 Ω part supports loads up to about (9 − 4.79)/121.5 − 5 mA ≈ **29 mA**; below roughly 160 Ω of load, regulation is lost (failure 2).
 
@@ -247,9 +245,9 @@ Zeners near 5–6 V have almost no temperature drift, which is why the first pre
   quiz: [
     {
       q: '12 V in, 5.1 V out, 20 mA load, 5 mA minimum zener current. What series resistor?',
-      options: ['204 Ω', '276 Ω (use 270 Ω)', '345 Ω', '480 Ω'],
+      options: ['204 Ω', '276 Ω', '345 Ω', '480 Ω'],
       answer: 1,
-      why: 'R = (12 − 5.1)/(0.020 + 0.005) = 276 Ω.',
+      why: 'R = (12 − 5.1)/(0.020 + 0.005) = 276 Ω, so fit the nearest standard value, 270 Ω.',
     },
     {
       q: 'With no load, 30 mA flows through a 5.1 V zener. How much does it dissipate?',

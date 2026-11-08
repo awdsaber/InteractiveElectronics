@@ -143,3 +143,4 @@ Zeners near 5–6 V have almost zero temperature coefficient, which made them po
 ## SIM NOTE
 
 - The ZENER element supports `rz` (soft knee): `vz` is the voltage at 5 mA, with slope `rz` above it. Datasheet point 5.1 V at 49 mA, 7 Ω gives vz = 4.79 V. Datasheet check (1N4733A, 1 W DO-41): V_Z 5.1 V at I_ZT 49 mA, Z_ZT 7 Ω; 1 W at a 50 °C lead temperature, derated 6.67 mW/°C (150 °C/W) to a 200 °C junction. The earlier draft's "5.1 V at 22 mA" ignored the 7 Ω slope.
+- Soft knee: Z_ZK is about 400 ohm at 1 mA and the 1N4733A is +-5 % (4.85 to 5.36 V), so 4.9 V out is typical, not exact. Quiz 1 no longer gives away "use 270 ohm" in the option (it is in the explanation).
