@@ -8,8 +8,12 @@ const ON_CI = !!(globalThis as { process?: { env?: Record<string, string | undef
 
 // Regression guard, not a benchmark: budgets are ~10x the measured cost so CI noise
 // doesn't flake. Target in the browser is < 2 ms per frame (30 steps) for this chain.
-function chain(nonlinear: boolean): Element[] {
-  const els: Element[] = [{ id: 'V1', type: 'V', nodes: ['n0', '0'], value: 5 }]
+function chain(nonlinear: boolean, pwm = false): Element[] {
+  const els: Element[] = [
+    pwm
+      ? { id: 'P9', type: 'PIN', nodes: ['n0', '0'], pin: 9, vcc: 5, rOut: 1e-3 }
+      : { id: 'V1', type: 'V', nodes: ['n0', '0'], value: 5 },
+  ]
   for (let k = 0; k < 60; k++) {
     els.push({ id: `R${k}`, type: 'R', nodes: [`n${k}`, `n${k + 1}`], value: 100 })
     if (k % 3 === 0) els.push({ id: `C${k}`, type: 'C', nodes: [`n${k + 1}`, '0'], value: 1e-6 })
@@ -19,8 +23,9 @@ function chain(nonlinear: boolean): Element[] {
   return els
 }
 
-function msPerFrame(nonlinear: boolean): number {
-  const sim = createTransient({ elements: chain(nonlinear) }, 1e-4)
+function msPerFrame(nonlinear: boolean, pwm = false, dt = 1e-4): number {
+  const sim = createTransient({ elements: chain(nonlinear, pwm) }, dt)
+  if (pwm) sim.setPin(9, { mode: 'OUTPUT', level: 0.5 })
   for (let i = 0; i < 600; i++) sim.step() // warm up the JIT
   let best = Infinity
   for (let rep = 0; rep < 5; rep++) {
@@ -69,5 +74,17 @@ describe.skipIf(ON_CI)('transient performance (60-stage chain, 30 steps per fram
   })
   it('LED chain stays well under budget', () => {
     expect(msPerFrame(true)).toBeLessThan(8)
+  })
+  // Switched PWM really swings the chain every edge, so Newton works like it would on a 490 Hz
+  // square-wave source (measured: 1.6 / 2.8 / 5.1 ms at dt = 0.1 / 1 / 10 ms, against 1.4 / 3.2 /
+  // 2.4 ms for a square-wave V source and ≈ 0.5 ms for the chain at DC; dt = 10 ms resolves 5 periods)
+  it('LED chain on a switching 50 % PWM pin (490 Hz) stays under budget at dt = 0.1 ms', () => {
+    expect(msPerFrame(true, true)).toBeLessThan(16)
+  })
+  it('... and at dt = 1 ms (an edge in most steps)', () => {
+    expect(msPerFrame(true, true, 1e-3)).toBeLessThan(30)
+  })
+  it('linear RC chain on a PWM pin keeps the single averaged solve', () => {
+    expect(msPerFrame(false, true)).toBeLessThan(5)
   })
 })

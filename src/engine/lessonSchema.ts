@@ -86,6 +86,7 @@ const readout = z.object({
   digits: z.number().int().min(1).max(6).optional(),
   floor: z.number().nonnegative().optional(),
   peak: z.boolean().optional(),
+  warnAbove: z.number().optional(),
 })
 
 const tweak = z.object({

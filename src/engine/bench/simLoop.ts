@@ -379,6 +379,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       prev.mode !== st.mode ||
       prev.level !== st.level ||
       prev.toneHz !== st.toneHz ||
+      prev.pwmHz !== st.pwmHz ||
       prev.servoDeg !== st.servoDeg
     if (dynamic && changed) {
       pinsChangedAt ??= mcuMicros()
@@ -420,6 +421,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     mcu = new VirtualMcu({
       vcc: sk.vcc,
       board: sk.board,
+      pwmFreq: sk.pwmFreq,
       libraries,
       onPin(pin, st) {
         mcuPins[pin] = { ...st }
@@ -800,7 +802,12 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     const pinWarn = s ? pinWarnings(netlist, s).length > 0 : false
     const tone: ReadoutView['tone'] = status === 'FAULT' || pinWarn ? 'warn' : 'normal'
     const readouts = lesson.readouts.map(
-      (r, i): ReadoutView => ({ label: r.label, value: formatSI(values[i], r.unit, r.digits ?? 3), tone, ...(r.peak ? { peak: true } : {}) }),
+      (r, i): ReadoutView => ({
+        label: r.label,
+        value: formatSI(values[i], r.unit, r.digits ?? 3),
+        tone: tone === 'normal' && r.warnAbove !== undefined && values[i] > r.warnAbove ? 'warn' : tone,
+        ...(r.peak ? { peak: true } : {}),
+      }),
     )
     // a dead GPIO pin doesn't char the whole board module: the status line reports it instead
     const charring = asm.burns.filter((b) => !isThermal(b))
@@ -888,7 +895,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       const deadline = budget === Infinity ? Infinity : now() + budget
       let k = 0
       for (; k < n; k++) {
-        const sol = sim.step()
+        sim.step()
         // a split switching step: µs events (an inductive kick) only exist inside it
         let burnt = false
         for (const sub of sim.substeps) {
@@ -897,9 +904,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
             subBurns.push(...bs)
             burnt = true
           }
-          sample(sub.t, sub.solution)
         }
-        sample(sim.t, sol)
+        // instruments and peak-hold see instantaneous states (each edge substep, each PWM piece),
+        // never the time-averaged solution step() returns for the readouts
+        for (const p of sim.instants) sample(p.t, p.solution)
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
         if (burnt) {
           k++

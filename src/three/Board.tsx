@@ -11,6 +11,7 @@ import { PALETTES, type Settings } from '../ui/types'
 import { BenchBase } from './BenchBase'
 import { Callout, type CalloutTone } from './Callout'
 import { partPosition, partRegistry, type PartRenderState } from './parts'
+import { matFrame } from './autoFrame'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
 import { rgbGlow } from './rgbGlow'
@@ -49,6 +50,10 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
   // render state, not params, so it stays out of the bake key and never rebakes the part.
   const rgb = rgbGlow(p, snap.published)
   if (rgb) glow = rgb.glow
+  // a resistor with a thermal rating (rth/tMax) publishes `<id>.tj`: its body glows orange from
+  // 70 °C (barely warm) to full at 155 °C (the 1/4 W carbon-film limit)
+  const tj = p.kind === 'resistor' && cid ? snap.extra[`${cid}.tj`] : undefined
+  if (tj !== undefined) glow = Math.min(1, Math.max(0, (tj - 42) / 98))
   const s: PartRenderState = {
     visible: placed,
     soldered: !breadboard && snap.assembly.soldered && (p.mount === 'tht' || p.mount === 'smd'),
@@ -59,6 +64,7 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     showLabel: false,
   }
   if (rgb?.color) s.glowColor = rgb.color
+  else if (tj !== undefined) s.glowColor = '#ff6a1f'
   // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id
   if (p.kind === 'button' && typeof p.params?.pressedWhen === 'string') s.value = snap.assembly.failures.includes(p.params.pressedWhen) ? 1 : 0
   if (cid && MOTOR_KINDS.has(p.kind)) s.rpm = snap.extra[`${cid}.rpm`] ?? 0
@@ -78,9 +84,12 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     if (pin && pin.type === 'PIN') s.value = snap.pins[pin.pin]?.servoDeg ?? 90
   }
   if (p.kind === 'potentiometer' && cid) s.value = snap.elementValues[`${cid}.pos`] ?? 0.5
+  // a slide switch that is the lesson's power element sits on while the bench is powered
+  if (p.kind === 'switch-slide' && cid && cid === lesson.powerElementId) s.value = snap.assembly.powered[cid] ? 1 : 0
   if (p.kind === 'multimeter') {
     const i = typeof p.params?.readout === 'number' ? p.params.readout : 0
     s.reading = snap.readouts[i]?.value.split(' ')[0] ?? '----'
+    if (p.params?.autoUnit === true) s.readingUnit = snap.readouts[i]?.value.split(' ')[1] ?? ''
   }
   return s
 }
@@ -91,6 +100,14 @@ export function liveParams(p: PartPlacement, snap: BenchSnapshot): PartPlacement
   if (p.kind === 'resistor' && cid) {
     const ohms = snap.elementValues[`${cid}.value`]
     if (ohms !== undefined && ohms !== p.params?.ohms) return { ...p, params: { ...p.params, ohms: +ohms.toPrecision(3) } }
+  }
+  // an AA pack follows its source: one cell per 1.5 V (a tweak that adds cells adds cells)
+  if (p.kind === 'battery-aa-pack' && cid) {
+    const v = snap.elementValues[`${cid}.value`]
+    if (v !== undefined) {
+      const cells = Math.max(1, Math.min(4, Math.round(Math.abs(v) / 1.5)))
+      if (cells !== p.params?.cells) return { ...p, params: { ...p.params, cells } }
+    }
   }
   if (p.kind === 'module' && p.params?.variant === 'uno') {
     const pin = snap.pins[13]
@@ -197,10 +214,11 @@ export function Board({ lesson, snap, settings }: BoardProps) {
     prev.current = new Set(placed)
   }, [placedKey, board.parts])
 
-  const [w, d] = board.frame?.size ?? board.size
+  const mat = useMemo(() => matFrame(board), [board])
+  const [w, d] = mat.size
   return (
     <group>
-      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={board.frame?.center} />}
+      {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={mat.center} />}
       {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
       {pcb && <Pcb spec={board} color={color} />}
       {board.parts.map((p) => (

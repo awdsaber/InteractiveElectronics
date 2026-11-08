@@ -123,6 +123,64 @@ describe('strip chart', () => {
   })
 })
 
+describe('switched PWM on the instruments', () => {
+  // pin 9 (25 Ω) → 220 Ω → red LED, analogWrite 50 %: the solver cuts each step at the pin's
+  // 490 Hz edges and hands out the time average; the instruments must see the pieces instead
+  const pwmLesson = (): Lesson => ({
+    ...(ledResistor as Lesson),
+    fig: 1,
+    id: 'pwm',
+    behaviors: undefined,
+    statusLines: [],
+    board: { name: 'P', size: [4, 4], parts: [{ id: 'd1', kind: 'led', pos: [0, 0], mount: 'tht', role: 'd', circuitIds: ['D1'] }] },
+    circuit: {
+      elements: [
+        { id: 'V_USB', type: 'V', nodes: ['usb', '0'], value: 5 },
+        { id: 'P9', type: 'PIN', nodes: ['p', '0'], pin: 9, vcc: 5, rOut: 25 },
+        { id: 'R1', type: 'R', nodes: ['p', 'a'], value: 220 },
+        { id: 'D1', type: 'LED', nodes: ['a', '0'], color: 'red' },
+      ],
+    },
+    powerElementId: 'V_USB',
+    sketch: { title: 'PWM', code: 'void setup() {\n  pinMode(9, OUTPUT);\n  analogWrite(9, 128);\n}\nvoid loop() {}\n', pins: { 9: 'P9' }, vcc: 5, board: 'uno' },
+    readouts: [
+      { label: 'PIN', source: { kind: 'voltage', node: 'p' }, unit: 'V' },
+      { label: 'PIN PEAK', source: { kind: 'voltage', node: 'p' }, unit: 'V', peak: true },
+    ],
+    tweaks: [],
+    failures: [],
+    instruments: { scope: { channels: [{ source: { kind: 'voltage', node: 'p' } }] } },
+  })
+
+  it('a 50 % PWM pin shows on the scope as a square wave (≈ 0 and ≈ 4.7 V, nothing at 2.5 V); peak-hold reads the HIGH level', async () => {
+    const b = createBench(pwmLesson())
+    b.dispatch('power')
+    b.upload()
+    for (let i = 0; i < 30; i++) await b.frame(FRAME)
+    const t0 = b.t
+    for (let i = 0; i < 10; i++) await b.frame(FRAME)
+    const r = b.scope
+    let lo = 0
+    let hi = 0
+    let mid = 0
+    for (let k = r.lowerBound(t0); k < r.count; k++) {
+      const v = r.value(0, k)
+      if (v < 0.3) lo++
+      else if (v > 4.4) hi++
+      else mid++
+    }
+    expect(lo).toBeGreaterThan(50)
+    expect(hi).toBeGreaterThan(50)
+    expect(mid).toBe(0)
+    // pieces are pushed at their own end times: rows stay time-ordered and finer than dt
+    for (let k = r.lowerBound(t0) + 1; k < r.count; k++) expect(r.time(k)).toBeGreaterThan(r.time(k - 1))
+    const s = b.snapshot()
+    expect(s.values[0]).toBeGreaterThan(1.8) // the readout stays the meter-like average
+    expect(s.values[0]).toBeLessThan(2.8)
+    expect(s.values[1]).toBeGreaterThan(4.4) // peak-hold saw the HIGH pieces
+  })
+})
+
 describe('strip chart power gaps', () => {
   it('power-off pushes a NaN row so the trace breaks across the gap', async () => {
     const b = createBench(rcLesson({ instruments: { chart: { signals: [1] } } }))

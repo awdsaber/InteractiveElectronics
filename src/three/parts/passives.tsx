@@ -6,7 +6,7 @@ import { BAND_HEX, capacitorCode, parseOhms, resistorBands, smdCode, type BandCo
 import { G, extrudeUp, geo, lathe, stadiumShape } from '../geometry'
 import { InkInstances, InkMesh, type InkInstance } from '../ink'
 import { C } from '../palette'
-import { Block, CylX, CylY, Decal, LeadPath, Leg, Marking, type Vec3 } from './common'
+import { Block, CylX, CylY, Decal, GlowHalo, LeadPath, Leg, Marking, type Vec3 } from './common'
 import { axialSpan, chipSize, electroSize } from './footprints'
 import { num, str, type PartProps } from './types'
 
@@ -59,7 +59,7 @@ function bandsFor(ohms: number, five: boolean, tol: number | undefined): BandCol
   }
 }
 
-function ResistorBody({ part }: PartProps) {
+function ResistorBody({ part, state }: PartProps) {
   const ohms = parseOhms(part.params?.ohms) ?? 220
   const film = str(part, 'film', 'carbon')
   const five = film === 'metal' || num(part, 'bands', 4) === 5
@@ -70,7 +70,14 @@ function ResistorBody({ part }: PartProps) {
   return (
     <group>
       <AxialLeads span={axialSpan(part)} y={y} bodyHalf={0.3} />
-      <InkMesh geometry={resistorBodyGeo()} position={[0, y, 0]} color={part.color ?? (five ? C.resistorBlue : C.resistorTan)} />
+      <InkMesh
+        geometry={resistorBodyGeo()}
+        position={[0, y, 0]}
+        color={part.color ?? (five ? C.resistorBlue : C.resistorTan)}
+        glow={state.glow}
+        glowColor={state.glowColor}
+      />
+      {state.glow > 0.08 && !state.burnt && <GlowHalo p={[0, y, 0]} color={state.glowColor ?? '#ff6a1f'} glow={Math.min(1, state.glow * 1.5)} size={2.0} pool={false} />}
       {bands.map((b, i) => {
         const x = xs[i] ?? 0
         const r = Math.abs(x) > 0.17 ? 0.129 : 0.108
