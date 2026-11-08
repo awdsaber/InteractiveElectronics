@@ -56,6 +56,7 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `serial-plotter` | — | every `name:value` on a Serial line (Arduino Serial Plotter format), as `<instance>.<name>`; bare numbers as `v1`, `v2`… |
 | `coulomb-counter` | `element` ('P_I') | `coulombs` (signed net charge past the element since power-on, I·dt, so reversed current counts down), `electronsPerSec` (signed I/e; 0 below 0.1 µA), `electronsE15` (same, ×10¹⁵: the readout formatter can't print 7.5e16). Restarts at power-off, repair, strip and reset. |
 | `pot-knob` | `pot` (a POT element id), `turn` (0–100 %) | `turn`. Sets the POT's wiper, so a tweak `behavior:<instance>.turn` with unit '%' reads "50 %". |
+| `ac-meter` | `source` ('V_GEN', a V with a `wave`), `a` ('in'), `b` ('out') | `vpp`, `rmsIn`, `rmsOut` (AC part), `gain` (%), `freq`, `period`, `phase` (° of b relative to a). Sine fit at the source's frequency over ≥ 24 frame samples; FREQUENCY is the generator's setting. |
 
 ## Rules
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).

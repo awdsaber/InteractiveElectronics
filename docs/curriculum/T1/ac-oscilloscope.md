@@ -38,40 +38,43 @@ Board: `SCOPE-13`, size 14 × 9, base `mat`.
 | `R1` | R | `in`, `out` | 3300 Ω | maxP 0.25 W | |
 | `C1` | C | `out`, `0` | 1 µF | maxV 63 V | |
 
-Expected at 50 Hz: input ≈ 5.0 V peak (3.54 V RMS); X_C = 3183 Ω; output ≈ 0.69 × input ≈ 2.4 V RMS, lagging by ≈ 46°. The cutoff is f_c = 1/(2π·RC) ≈ 48 Hz (47.5 Hz including the generator's 50 Ω).
+Expected at 50 Hz: input (CH1, after the generator's 50 Ω) ≈ 4.96 V peak (3.51 V RMS, 9.92 Vpp); X_C = 3183 Ω; output ≈ 0.694 × input ≈ 2.44 V RMS, lagging by ≈ 46.0°. CH1 is the filter input, so the CH1-to-CH2 response is R1 and C1 alone: f_c = 1/(2π·RC) = 48.2 Hz. (The 50 Ω only matters against the generator's own EMF, where it would give 47.5 Hz and 46.5°; the scope never sees that node.)
 
 ## Readouts
 
 | label | source | unit |
 |---|---|---|
-| CH1 (in) | `{kind:'voltage', node:'in'}` | V |
-| CH2 (out) | `{kind:'voltage', node:'out'}` | V |
-| IN RMS | `{kind:'behavior', key:'rms.in'}` | V |
-| OUT RMS | `{kind:'behavior', key:'rms.out'}` | V |
-| FREQUENCY | `{kind:'behavior', key:'freq.in'}` | Hz |
-| PHASE | `{kind:'behavior', key:'phase.out'}` | ° |
+| IN Vpp | `{kind:'behavior', key:'ac.vpp'}` | V |
+| IN RMS | `{kind:'behavior', key:'ac.rmsIn'}` | V |
+| OUT RMS | `{kind:'behavior', key:'ac.rmsOut'}` | V |
+| GAIN | `{kind:'behavior', key:'ac.gain'}` | % |
+| FREQUENCY | `{kind:'behavior', key:'ac.freq'}` | Hz |
+| PERIOD | `{kind:'behavior', key:'ac.period'}` | s |
+| PHASE | `{kind:'behavior', key:'ac.phase'}` | ° |
+
+The instantaneous CH1 / CH2 voltages are the scope traces (instrument panel, open by default: 2 V/div, 5 ms/div, rising trigger at 0 V on CH1).
 
 ## Tweaks
 
 | label | elementId | key | min | max | step | log | unit |
 |---|---|---|---|---|---|---|---|
-| Frequency | `V_GEN` | freq | 5 | 500 | — | yes | Hz |
-| Amplitude (peak) | `V_GEN` | amp | 0.5 | 10 | 0.1 | no | V |
+| Frequency | `V_GEN` | wave.freq | 5 | 500 | — | yes | Hz |
+| Amplitude (peak) | `V_GEN` | wave.amp | 0.5 | 10 | 0.1 | no | V |
 | Filter resistor | `R1` | value | 330 | 33000 | — | yes | Ω |
 
 Sweep the frequency: below 10 Hz CH2 tracks CH1 almost exactly. Around 48 Hz it is down to 71% and 45° behind. By 500 Hz it is about a tenth, lagging nearly 90°.
 
 ## Failures
 
-### F1: Add a 5 V DC offset
-- **Patch:** `{op:'set', elementId:'V_GEN', key:'offset', value:5}`
-- **Sim shows:** both traces lift by 5 V. The output's DC level passes at 100% while its AC part is still cut to 69%.
+### F1: Add a 3 V DC offset
+- **Patch:** `{op:'set', elementId:'V_GEN', key:'wave.offset', value:3}` (3 V, not 5 V, so the lifted trace stays on a 2 V/div screen)
+- **Sim shows:** both traces lift by 3 V. The output's DC level passes at 100% while its AC part is still cut to 69%.
 - **Why:** at DC, X_C is infinite, so the capacitor takes no current and the "filter" passes DC untouched. On the scope, AC coupling would hide the offset, and DC coupling shows it.
 
 ### F2: Turn the frequency up to 500 Hz
-- **Patch:** `{op:'set', elementId:'V_GEN', key:'freq', value:500}`
-- **Sim shows:** OUT RMS ≈ 0.34 V and PHASE ≈ −84°.
-- **Why:** X_C = 1/(2π × 500 × 1 µ) = 318 Ω, much smaller than R. |H| = 318/√(3300² + 318²) ≈ 0.096.
+- **Patch:** `{op:'set', elementId:'V_GEN', key:'wave.freq', value:500}`
+- **Sim shows:** OUT RMS ≈ 0.33 V and PHASE ≈ −84.5°.
+- **Why:** X_C = 1/(2π × 500 × 1 µ) = 318 Ω, much smaller than R. |H| = 318/√(3300² + 318²) ≈ 0.096 (0.333 V RMS: 0.096 × 4.93 V peak / √2).
 
 ### F3: Load the generator with 47 Ω
 - **Patch:** `{op:'add', element:{id:'R_X', type:'R', nodes:['in','0'], value:47}}`
@@ -88,7 +91,7 @@ A capacitor's opposition to AC is its **reactance**, X_C = 1/(2πfC). At 50 Hz, 
 
 |H| = X_C / √(R² + X_C²) = 3183 / √(3300² + 3183²) = **0.69**, φ = −arctan(R/X_C) = **−46°**
 
-so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. The cutoff, where |H| = 0.707 and φ = −45°, is f_c = 1/(2πRC) ≈ **48 Hz**.
+so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. The cutoff, where |H| = 0.707 and φ = −45°, is f_c = 1/(2πRC) = **48.2 Hz**.
 
 **Scope basics.**
 
@@ -138,7 +141,7 @@ so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. Th
 
 ## SIM NOTE
 
-- **Sine source:** the engine has only DC `V`. Either add a waveform to `V` (e.g. `wave?: {kind:'sine', amp, freq, offset, phase}`, with tweakable keys `amp`, `freq`, `offset`), or ship a behavior `sine-source` that calls `setParam(V_GEN,'value', offset + amp·sin(2πft))` every tick. The behavior needs per-lesson parameters, which `behaviors: string[]` can't carry today.
-- **Scope view:** readouts are scalars. A two-channel time-trace widget (rolling buffer of node voltages, time/div and volts/div controls, edge trigger) is needed for this lesson to make sense.
-- **Measurement behavior** `ac-meter`: RMS over whole periods, frequency from zero crossings, and phase difference between two nodes. It publishes `rms.in`, `rms.out`, `freq.in` and `phase.out`.
-- **Time step:** 1 ms gives only 20 samples per 50 Hz cycle and 2 at 500 Hz. Use dt ≤ T/100 (≤ 20 µs at 500 Hz), via a per-lesson `dt`.
+- **Sine source (done):** `V.wave` now exists; the lesson uses it. (Original note: the engine had only DC `V`. Either add a waveform to `V` (e.g. `wave?: {kind:'sine', amp, freq, offset, phase}`, with tweakable keys `amp`, `freq`, `offset`), or ship a behavior `sine-source` that calls `setParam(V_GEN,'value', offset + amp·sin(2πft))` every tick.)
+- **Scope view (done):** the instrument panel's scope. (Original note: readouts are scalars. A two-channel time-trace widget (rolling buffer of node voltages, time/div and volts/div controls, edge trigger) was needed for this lesson to make sense.)
+- **Measurement behavior** `ac-meter` (done): a least-squares sine fit at the generator's frequency gives amplitude and phase for two nodes (frame-sampled, so no zero-crossing search); FREQUENCY is the generator's setting, not counted. It publishes `vpp`, `rmsIn`, `rmsOut`, `gain`, `freq`, `period` and `phase`.
+- **Time step:** 1 ms gives only 20 samples per 50 Hz cycle and 2 at 500 Hz. The lesson uses `sim: { dt: 50e-6, speed: 0.1, method: 'trap' }`: 40 points a cycle at 500 Hz, and trapezoidal integration because backward Euler at this dt lags the 500 Hz phase by about 4° too few (−80° against −84.5°).

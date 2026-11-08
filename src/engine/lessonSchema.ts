@@ -27,12 +27,15 @@ const OPTIONAL_KEYS: Record<string, string[]> = {
   FUSE: ['r', 'blown'],
   REG: ['iq'],
 }
+const WAVE_KEYS = ['amp', 'freq', 'offset', 'phase', 'duty']
 const COMMON_KEYS = ['disabled', 'partId']
 const RATING_KEYS = ['maxI', 'maxP', 'maxV', 'failMode', 'rth', 'tauTh', 'tMax', 'rmsWindow']
 
 function hasKey(el: Element, key: string): boolean {
   const [head, sub] = key.split('.', 2)
   if (head === 'rating') return sub !== undefined && RATING_KEYS.includes(sub)
+  // a source waveform's fields ('wave.freq'): the transient sim retunes them live (setParam dotted keys)
+  if (head === 'wave') return el.type === 'V' && !!el.wave && sub !== undefined && WAVE_KEYS.includes(sub)
   if (sub !== undefined) return false
   return key in el || COMMON_KEYS.includes(key) || (OPTIONAL_KEYS[el.type] ?? []).includes(key)
 }
