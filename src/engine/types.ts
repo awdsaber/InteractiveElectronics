@@ -601,7 +601,10 @@ export interface BehaviorContext {
   publish(key: string, value: number): void
   /** a value another behavior published, by its full key `<instance>.<key>` (undefined when unset) */
   read?(key: string): number | undefined
-  /** change a netlist element parameter live (e.g. sensor resistance) */
+  /**
+   * change a netlist element parameter live (e.g. sensor resistance). From tick it applies at the next
+   * frame; from onStep it applies from the next transient step (switch bounce, sub-ms events)
+   */
   setParam(elementId: string, key: string, value: number | boolean): void
   /** shaft load torque on a MOTOR, N·m */
   setMotorLoad(elementId: string, torque: number): void

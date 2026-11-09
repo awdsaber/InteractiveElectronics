@@ -23,7 +23,7 @@ import {
   waveValue,
 } from './devices'
 import { setElementKey } from './failures'
-import { type PwmPins, blendArrays, blendSolutions, pwmEdges, pwmMask, pwmPins, pwmStatePins } from './pwm'
+import { type PwmLayout, type PwmPins, blendArrays, blendSolutions, pwmEdges, pwmMask, pwmPins, pwmStatePins } from './pwm'
 import { type SolveContext, buildSolution, initialGuess, solveCompiled } from './solve'
 
 export interface TransientOptions {
@@ -181,7 +181,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
    * per piece between their edges, each committed before the next. Pieces go to `pieces` (when
    * given). With `commit` false (peek) every committed buffer is restored afterwards.
    */
-  function advance(t0: number, h: number, trapOk: boolean, commit: boolean, pieces: Piece[] | null): Advance {
+  function advance(t0: number, h: number, trapOk: boolean, commit: boolean, pieces: Piece[] | null, lay: PwmLayout): Advance {
     refreshPwm()
     const c = compiled
     const pl = pp
@@ -204,7 +204,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     // piece boundaries: the step ends plus every edge inside, closer than 1 ppm of h merged
     const eb = edgesBuf
     eb.length = 0
-    for (const p of pl.pins) pwmEdges(p, t0, h, eb)
+    for (const p of pl.pins) pwmEdges(p, t0, h, lay, eb)
     eb.sort((u, v) => u - v)
     const eps = h * 1e-6
     if (xSave.length !== x.length) xSave = new Float64Array(x.length)
@@ -228,7 +228,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       const b = e < eb.length ? eb[e] : t1
       if (e < eb.length && (b - a < eps || t1 - b < eps)) continue
       const hk = b - a
-      mask = pwmMask(pl, (a + b) / 2, t0, h)
+      mask = pwmMask(pl, (a + b) / 2, lay)
       let ps = statePins.get(mask)
       if (!ps) {
         ps = pwmStatePins(pl, pins, mask)
@@ -349,7 +349,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       const ta = tk
       tk = k === nSub - 1 ? t0 + dt : tk + h
       const n0 = pieces.length
-      const r = advance(ta, tk - ta, false, true, pieces)
+      const r = advance(ta, tk - ta, false, true, pieces, { origin: t0, hRef: dt })
       sol = r.sol
       if (r.ok) lastGood = sol
       // the substep's instantaneous end state, not a blend of a PWM edge inside it
@@ -408,7 +408,7 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       const tNext = t + dt
       const trapOk = method === 'trap' && !restart && !(squares.length > 0 && edgeIn(t, tNext))
       const pieces: Piece[] = []
-      const r = advance(t, dt, trapOk, true, pieces)
+      const r = advance(t, dt, trapOk, true, pieces, { origin: t, hRef: dt })
       instants = r.ok ? toInstants(pieces) : []
       lastTrap = r.trap
       let sol = r.sol
@@ -456,7 +456,8 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
     peek(h) {
       const lim = new Float64Array(compiled.lim)
       const limSave = new Float64Array(compiled.limSave)
-      const sol = advance(t, Math.max(h, 1e-9), false, false, null).sol
+      // the real PWM edges the next steps would see (same layout), only over h
+      const sol = advance(t, Math.max(h, 1e-9), false, false, null, { origin: t, hRef: dt }).sol
       compiled.lim.set(lim)
       compiled.limSave.set(limSave)
       return sol

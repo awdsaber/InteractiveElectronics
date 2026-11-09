@@ -81,42 +81,48 @@ export function pwmPins(c: Compiled, pins: Record<number, PinState>): PwmPins | 
   return { pins: out, aVaries, tMax, key: out.map((p) => `${p.pin}@${p.period}`).join(',') }
 }
 
-/** periods of `p` inside a step of length h ≥ its period, and their stretched length */
-function stretched(p: PwmPin, h: number): number {
-  const k = Math.min(MAX_PERIODS_PER_STEP, Math.max(1, Math.round(h / p.period)))
-  return h / k
+/**
+ * Where a pin's edges fall: a step of length `hRef` starting at `origin` (the stepper's dt and step
+ * start). With hRef < T the edges sit at multiples of T in sim time; with hRef ≥ T the step holds
+ * k = round(hRef/T) periods (≤ MAX_PERIODS_PER_STEP) of hRef/k each, laid from the origin and
+ * repeating past its end, so a peek or a substep longer or shorter than the step sees the same
+ * edges the step would.
+ */
+export interface PwmLayout {
+  origin: number
+  hRef: number
 }
 
-/** is pin `p` HIGH at time tau, inside a step [t0, t0 + h]? */
-export function pwmHighAt(p: PwmPin, tau: number, t0: number, h: number): boolean {
-  let ph: number
-  if (h >= p.period) ph = (tau - t0) / stretched(p, h)
-  else ph = tau / p.period
+/** the period used for `p` under a layout, and the time its phase counts from */
+function periodOf(p: PwmPin, lay: PwmLayout): { T: number; t0: number } {
+  if (lay.hRef < p.period) return { T: p.period, t0: 0 }
+  const k = Math.min(MAX_PERIODS_PER_STEP, Math.max(1, Math.round(lay.hRef / p.period)))
+  return { T: lay.hRef / k, t0: lay.origin }
+}
+
+/** is pin `p` HIGH at time tau? */
+export function pwmHighAt(p: PwmPin, tau: number, lay: PwmLayout): boolean {
+  const { T, t0 } = periodOf(p, lay)
+  const ph = (tau - t0) / T
   return ph - Math.floor(ph) < p.duty
 }
 
-/** push every edge of `p` in [t0, t0 + h] onto `out` (unsorted, may include the ends) */
-export function pwmEdges(p: PwmPin, t0: number, h: number, out: number[]): void {
-  const t1 = t0 + h
-  if (h >= p.period) {
-    const T = stretched(p, h)
-    const k = Math.round(h / T)
-    for (let n = 0; n < k; n++) out.push(t0 + n * T, t0 + (n + p.duty) * T)
-    return
-  }
-  const T = p.period
-  for (let n = Math.floor(t0 / T); n * T <= t1; n++) {
-    const up = n * T
-    const down = (n + p.duty) * T
-    if (up > t0 && up < t1) out.push(up)
-    if (down > t0 && down < t1) out.push(down)
+/** push every edge of `p` strictly inside (a, a + h) onto `out` (unsorted) */
+export function pwmEdges(p: PwmPin, a: number, h: number, lay: PwmLayout, out: number[]): void {
+  const { T, t0 } = periodOf(p, lay)
+  const b = a + h
+  for (let n = Math.floor((a - t0) / T); t0 + n * T <= b; n++) {
+    const up = t0 + n * T
+    const down = t0 + (n + p.duty) * T
+    if (up > a && up < b) out.push(up)
+    if (down > a && down < b) out.push(down)
   }
 }
 
-/** state mask (bit k = pins[k] HIGH) at time tau of a step [t0, t0 + h] */
-export function pwmMask(pp: PwmPins, tau: number, t0: number, h: number): number {
+/** state mask (bit k = pins[k] HIGH) at time tau */
+export function pwmMask(pp: PwmPins, tau: number, lay: PwmLayout): number {
   let m = 0
-  for (let k = 0; k < pp.pins.length; k++) if (pwmHighAt(pp.pins[k], tau, t0, h)) m |= 1 << k
+  for (let k = 0; k < pp.pins.length; k++) if (pwmHighAt(pp.pins[k], tau, lay)) m |= 1 << k
   return m
 }
 
