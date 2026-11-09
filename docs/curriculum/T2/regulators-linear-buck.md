@@ -19,7 +19,7 @@
 
 ## Board
 
-Board `REG-21`, 20 × 12, base `mat`. One 12 V jack feeds both regulators; each has its own 33 Ω load (100 mA at 3.3 V).
+Board `REG-21`, 18.5 × 9.5, base `mat`. One 12 V jack feeds both regulators; each has its own 33 Ω load (100 mA at 3.3 V).
 
 | id | PartKind | label | role | circuitIds |
 |---|---|---|---|---|
@@ -29,6 +29,7 @@ Board `REG-21`, 20 × 12, base `mat`. One 12 V jack feeds both regulators; each 
 | s1, rl1 | `switch-slide`, `resistor` 33 Ω 3 W | LOAD | linear load | `SW_L`, `R_L1` |
 | ctrl | `ic-dip` (8 pin) | CONTROLLER | stands in for the buck IC's oscillator and error amp (runs the sketch) | `GATE` |
 | rdiv1, rdiv2 | `resistor` 47 k / 10 k | — | Vin sense divider to A0 | `R_DIV1`, `R_DIV2` |
+| rgpu | `resistor` 10 k | — | gate pull-up to Vin: holds the P-FET off before the sketch runs | `R_GPU` |
 | q1 | `mosfet-to220` IRF9540N | SWITCH | P-channel high-side switch | `Q_SW` |
 | d1 | `diode` 1N5819 | DIODE | Schottky catch diode | `D_CATCH` |
 | l1 | `inductor` 22 mH | INDUCTOR | energy store / current smoother | `L_BK` |

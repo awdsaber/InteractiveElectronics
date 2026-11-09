@@ -96,7 +96,7 @@ export const lesson: LessonDef = {
 
   board: {
     name: 'REG-21',
-    size: [20, 12],
+    size: [18.5, 9.5],
     base: 'mat',
     parts: [
       {
@@ -202,6 +202,15 @@ export const lesson: LessonDef = {
         facts: ['P-channel, V_DSS −100 V, I_D −23 A (25 °C case)', 'R_DS(on) 0.117 Ω max at V_GS −10 V', 'V_GS(th) −2 to −4 V', 'V_GS ±20 V max'],
       },
       {
+        id: 'rgpu',
+        kind: 'resistor',
+        pos: [1.2, -1.9],
+        mount: 'tht',
+        role: '10 kΩ gate pull-up from Vin: keeps the P-channel switch off while the controller’s pin floats (power on before the sketch runs). Without it the gate sits at 0 V and the full 12 V reaches the load.',
+        params: { ohms: 10000 },
+        circuitIds: ['R_GPU'],
+      },
+      {
         id: 'd1',
         kind: 'diode',
         pos: [2.6, -0.8],
@@ -267,6 +276,8 @@ export const lesson: LessonDef = {
       { id: 'P_BK', type: 'PROBE', nodes: ['vin', 'bin'] },
       // gate driver: HIGH = Vin (switch off), LOW = ground (switch on)
       { id: 'GATE', type: 'PIN', nodes: ['g', '0'], pin: 9, vcc: 5, vccNode: 'bin', rOut: 10, partId: 'ctrl' },
+      // gate pull-up: holds the P-FET off while the controller's pin floats (before the sketch runs)
+      { id: 'R_GPU', type: 'R', nodes: ['bin', 'g'], value: 10000, partId: 'rgpu' },
       Q_SW,
       D_CATCH,
       { id: 'L_BK', type: 'L', nodes: ['sw', 'vout2'], value: 22e-3, partId: 'l1' },

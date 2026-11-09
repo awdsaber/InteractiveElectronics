@@ -83,6 +83,17 @@ describe('T2 regulators-linear-buck lesson', () => {
     b.dispose()
   })
 
+  it('powered before the sketch runs: the gate pull-up holds the P-FET off, so the buck output stays at 0 V', async () => {
+    const b = createBench(L)
+    b.dispatch('power')
+    const s = await run(b, 1)
+    expect(s.status).toBe('POWERED')
+    expect(Math.abs(s.values[BUCK_OUT])).toBeLessThan(0.05)
+    near(s.values[LIN_OUT], 3.3, 0.01)
+    expect(s.assembly.burns).toEqual([])
+    b.dispose()
+  })
+
   it('the LDO heats with θJA = 90 °C/W toward 25 + 0.93·90 ≈ 109 °C and stays on', async () => {
     const b = build()
     const s = await run(b, 30)
