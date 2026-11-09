@@ -50,11 +50,11 @@ Board: `THERMO BENCH`, size 12 × 7, base `mat`.
 
 ### Behaviors
 
-- **`ntc`**. Parameters: `bathC` 25 (tweak), `r25` 10 000, `bTrue` 3977 (the *actual* part's B; a patch can change it), `delta` 0.007 W/K (dissipation constant in still air, about 7 mW/K for this leaded disc, approximate; still water is several times higher), and `tau` 10 s (thermal time constant in stirred water, illustrative; the datasheet gives the value in air, which is much longer).
-  - Each tick: P_self = `power['ntc']` from the solution. The thermistor temperature relaxes toward T_target = bathC + P_self/δ with time constant τ.
+- **`ntc`**. Parameters: `bathC` 25 (tweak), `r25` 10 000, `bTrue` 3977 (the *actual* part's B; a patch can change it), `delta` 0.0085 W/K (dissipation factor, 8.5 mW/K in still air, Vishay datasheet 29049 "for information only"; stirred water is several times higher), and `tau` 15 s (thermal time constant in still air, same datasheet; the response time in oil is 1.2 s).
+  - Each tick: P_self = `power['ntc']` from the solution. The thermistor temperature relaxes (exact first-order step) toward T_target = bathC + P_self/δ with time constant τ.
   - R = r25 × exp(bTrue × (1/T − 1/298.15)), with T in kelvin. It calls `setParam('ntc','value',R)`.
   - The Beta model is used across the whole range. SIM NOTE: the real part follows its R/T table, which differs by fractions of a kelvin outside 25–85 °C.
-  - **Publishes:** `bath_C`, `ntc_C`, `ntc_ohm`, `self_heat_K` and `p_self_mW`.
+  - **Publishes:** `bath_C`, `ntc_C`, `ntc_ohm`, `self_heat_K` (P/δ), `p_self_mW` and `lag_K`.
 - **`mcu-supply`**, **`serial-plotter`**: see `arduino-uno`.
 
 ## Sketch
@@ -83,7 +83,8 @@ float readTempC() {
   if (raw < 2.0 || raw > 1021.0) {
     return -999.0;                         // short or open: not a temperature
   }
-  float r = R_FIXED * raw / (1023.0 - raw);    // NTC is the bottom leg
+  float x = raw + 0.5;                      // middle of the floor() step
+  float r = R_FIXED * x / (1024.0 - x);     // NTC is the bottom leg
   float invT = 1.0 / T25 + log(r / R25) / BETA;
   return 1.0 / invT - 273.15;
 }
@@ -147,13 +148,13 @@ Try R_FIXED = 3.3 kΩ in the circuit *and* in the code: sensitivity is now highe
 
 ### F2: Thermistor lead breaks
 - **Patch:** `{op:'remove', elementId:'ntc'}`
-- **Sim shows:** A0 rises to 5 V (1023 counts), and the sketch prints `sensor fault` instead of a fake −50 °C.
+- **Sim shows:** A0 rises to 5 V (1023 counts), and the sketch prints `tempC:-999,...,fault:1` instead of a fake −50 °C.
 - **Why:** with the bottom leg open, the divider reads full scale. Without the range check, the Beta equation would turn 1023 counts into a very cold, very wrong number. Always design the fault codes (near 0 and near 1023) out of the valid range.
 
 ### F3: A 1 kΩ resistor fitted instead of 10 kΩ
 - **Patch:** `{op:'set', elementId:'r_fix', key:'value', value:1000}`
 - **Sim shows:** at 25 °C the reading is about **−19 °C**.
-- **Why:** A0 = 5 × 10k/11k ≈ 4.55 V (930 counts). The code assumes 10 kΩ, so it computes R = 10k × 930/93 ≈ 100 kΩ, which the Beta equation maps to −19 °C. The stiffer divider also raises self-heating: I = 5 V / 11 kΩ ≈ 0.45 mA, P ≈ 2.1 mW, ≈ 0.3 K in still air. Any component in the measurement chain must match its value in code.
+- **Why:** A0 = 5 × 10k/11k ≈ 4.55 V (930 counts). The code assumes 10 kΩ, so it computes R = 10k × 930.5/93.5 ≈ 99.5 kΩ, which the Beta equation maps to −19 °C. The stiffer divider also raises self-heating: I = 5 V / 11 kΩ ≈ 0.45 mA, P ≈ 2.1 mW, ≈ 0.24 K in still air (8.5 mW/K). Any component in the measurement chain must match its value in code.
 
 ## Meet the board
 
@@ -161,11 +162,11 @@ An NTC thermistor is a ceramic semiconductor whose resistance falls steeply with
 
 **Beta equation:** R(T) = R25 × exp(B × (1/T − 1/298.15)), with T in kelvin. At 50 °C (323.15 K): exponent = 3977 × (1/323.15 − 1/298.15) = −1.032, so R = 10 kΩ × 0.356 = **3.56 kΩ**.
 
-**Divider:** NTC at the bottom, 10 kΩ on top, 5 V supply. At 25 °C, A0 = 2.50 V, which reads **512**. At 50 °C: 5 × 3.56/(10 + 3.56) = 1.31 V, which reads **269**.
+**Divider:** NTC at the bottom, 10 kΩ on top, 5 V supply. At 25 °C, A0 = 2.50 V, which reads **512**. At 50 °C: 5 × 3.56/(10 + 3.56) = 1.31 V, which reads **268** (counts = floor(1024 V / 5)).
 
 **Sensitivity near 25 °C:** dR/dT = −B/T² × R = −3977/298.15² × 10 kΩ ≈ **−447 Ω/K** (−4.5 %/K). At the midpoint the divider gives dV/dR = 5 × 10k/(20k)² = 125 µV/Ω, so 447 × 125 µV ≈ **56 mV/K**, or about **11 counts per kelvin**. One count is about 0.09 K. The resolution is good, but accuracy is set by the ±5 % R25 tolerance (about ±1.1 K) and the 1 % resistor.
 
-**Self-heating:** the NTC's power peaks when its resistance equals R_fixed: P = V²/(4R) = 25/40 000 = **0.625 mW**. At a dissipation constant of about 7 mW/K, that is about **0.09 K**. That's fine for 10 kΩ, but the error grows fast with stiffer dividers.
+**Self-heating:** the NTC's power peaks when its resistance equals R_fixed: P = V²/(4R) = 25/40 000 = **0.625 mW**. At a dissipation factor of about 8.5 mW/K (datasheet, still air), that is about **0.07 K**. That's fine for 10 kΩ, but the error grows fast with stiffer dividers.
 
 **Choose R_fixed ≈ R_NTC at the temperature you care about most.**
 
@@ -193,14 +194,14 @@ An NTC thermistor is a ceramic semiconductor whose resistance falls steeply with
    - 256
    - 512
    - 1023
-   - **Answer:** 2. *Why:* equal resistances give 2.5 V, and 2.5/5 × 1023 ≈ 512.
+   - **Answer:** 2. *Why:* equal resistances give 2.5 V, and the ATmega328P ADC returns floor(1024 × 2.5/5) = 512.
 
-3. **Peak NTC dissipation in a 10 kΩ/10 kΩ divider on 5 V is 0.625 mW. With δ = 7 mW/K, what is the self-heating?**
-   - 0.009 K
-   - 0.09 K
-   - 0.9 K
-   - 9 K
-   - **Answer:** 1. *Why:* ΔT = P/δ = 0.625 / 7 ≈ 0.09 K.
+3. **Peak NTC dissipation in a 10 kΩ/10 kΩ divider on 5 V is 0.625 mW. With δ = 8.5 mW/K, what is the self-heating?**
+   - 0.007 K
+   - 0.07 K
+   - 0.7 K
+   - 7 K
+   - **Answer:** 1. *Why:* ΔT = P/δ = 0.625 / 8.5 ≈ 0.07 K.
 
 4. **Why does a single-B equation lose accuracy at −20 °C for a part specified as B25/85?**
    - The ADC saturates at low temperature
@@ -215,3 +216,9 @@ An NTC thermistor is a ceramic semiconductor whose resistance falls steeply with
 - Self-heating closes a loop between the solution (the NTC's power) and a netlist parameter (its R). The behavior must be stable with that one-tick lag. τ ≫ dt makes it so.
 - Behavior-param patch `bTrue` and tweak `bathC`.
 - The ADC-to-temperature error budget would benefit from a readout comparing MEASURED with TRUE (the difference). A computed/derived readout type would help.
+
+## Implementation notes (as built)
+
+- Failures built: wrong B, open lead, shorted leads, 1 kΩ fitted. Self-heating is shown with the Fixed resistor tweak (330 Ω at 50 °C gives 0.7 K); the printed value then mismatches the code, as in F3.
+- The bench is DC at 3x speed so the 15 s lag takes 5 s of waiting; the strip chart plots bath, sensor body and measured value.
+- Datasheet source: Vishay NTCLE100E3 (doc 29049, rev. 07-May-2025): 8.5 mW/K and 15 s are for information only; 500 mW at 55 °C.
