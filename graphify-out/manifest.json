@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794224366.9104047,
-    "seen": 1794224535.4952052,
-    "ast_hash": "4e1e9bb1694d57f92a9939dae0851837",
+    "mtime": 1794225171.8733337,
+    "seen": 1794225529.7668304,
+    "ast_hash": "8e298cfaf5d85ebb6fe387c379eb956f",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -810,9 +810,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/power-grounding-emc.md": {
-    "mtime": 1794001682.5991812,
-    "seen": 1794010374.609711,
-    "ast_hash": "6f8ebba47cc14e2a0182fe9c2ab9ca99",
+    "mtime": 1794225171.8713343,
+    "seen": 1794225529.7668304,
+    "ast_hash": "c20037c78ab22a6350d0a8258f7d6abd",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/serial-protocols.md": {
@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794224366.9119403,
-    "seen": 1794224535.4952052,
-    "ast_hash": "7a85900f7e9eefe348b0eaed079e8d14",
+    "mtime": 1794225171.8733337,
+    "seen": 1794225529.7668304,
+    "ast_hash": "6c1572cd08d59c699b1e92d2b798d5db",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
@@ -2154,9 +2154,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/thermal-network.test.ts": {
-    "mtime": 1794223526.8119397,
-    "seen": 1794224535.4942052,
-    "ast_hash": "e86ca1fa6013bf1e0e77c03460ebc048",
+    "mtime": 1794225455.4284625,
+    "seen": 1794225529.7668304,
+    "ast_hash": "26f090854e52ef24b2ef480a3f072fc2",
     "semantic_hash": ""
   },
   "src/engine/behaviors/thermal-network.ts": {
@@ -2259,6 +2259,30 @@
     "mtime": 1794224366.9305577,
     "seen": 1794224535.4952052,
     "ast_hash": "be56c4457774ff657514d0894f2d7264",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/tmp36.test.ts": {
+    "mtime": 1794225171.874332,
+    "seen": 1794225529.7668304,
+    "ast_hash": "ff40b88b577f95a9d1e8265d6d537324",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/tmp36.ts": {
+    "mtime": 1794225171.874332,
+    "seen": 1794225529.7668304,
+    "ast_hash": "a6badaadbc7ed0183103f885026fc6a9",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/power-grounding-emc.test.ts": {
+    "mtime": 1794225171.8753328,
+    "seen": 1794225529.7668304,
+    "ast_hash": "2a0520d47fddcf313613574ede5a84d9",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/power-grounding-emc.ts": {
+    "mtime": 1794225171.8753328,
+    "seen": 1794225529.7668304,
+    "ast_hash": "2aa84bfb027499afebd9e8afd7b7f356",
     "semantic_hash": ""
   },
   "package-lock.json": {
