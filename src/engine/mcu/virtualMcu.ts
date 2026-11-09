@@ -10,7 +10,7 @@
 // while the main program is parked, or, for an edge that arrives while the sketch is running, at the
 // next loop iteration (the loop guard checks `__g.irq`), at the next blocking call, or at interrupts().
 
-import type { PinMode, PinState, Sketch } from '../types'
+import type { BusEvent, BusMonitor, PinMode, PinState, Sketch } from '../types'
 import { ARDUINO_CONSTANTS, CHANGE, DEFAULT, ESP32S3_ANALOG, EXTERNAL, FALLING, INPUT_PULLUP, INTERNAL, LOW, MSBFIRST, OUTPUT, RISING, SPI_MODE0 } from './constants'
 import {
   CharBox,
@@ -285,6 +285,11 @@ export class VirtualMcu {
   private readonly i2c = new Map<number, I2cDevice>()
   private readonly spi = new Map<number, SpiDevice>()
   private csActive = new Map<number, boolean>()
+  /** logic-analyzer taps (they stay across start()) */
+  private readonly monitors: BusMonitor[] = []
+  /** Serial.begin baud, Wire.setClock Hz (bus monitors report them) */
+  private uartBaud = 9600
+  private i2cClock = 100000
   private toneGen = new Map<number, number>()
 
   /** diagnostics emitted so far */
@@ -362,6 +367,8 @@ export class VirtualMcu {
     this.adcBits = this.board === 'esp32s3' ? 12 : 10
     this.aref = DEFAULT
     this.csActive.clear()
+    this.uartBaud = 9600
+    this.i2cClock = 100000
     this.toneGen.clear()
     this.finished = false
     this.running = true
@@ -463,6 +470,34 @@ export class VirtualMcu {
 
   detachSpi(csPin: number): void {
     this.spi.delete(Math.trunc(csPin))
+  }
+
+  /** Listen to the sketch's Serial, Wire and SPI activity (a logic analyzer). Stays across start(). */
+  addBusMonitor(m: BusMonitor): void {
+    if (!this.monitors.includes(m)) this.monitors.push(m)
+  }
+
+  removeBusMonitor(m: BusMonitor): void {
+    const k = this.monitors.indexOf(m)
+    if (k >= 0) this.monitors.splice(k, 1)
+  }
+
+  private busEvent(ev: BusEvent): void {
+    for (const m of this.monitors) m.event?.(ev)
+  }
+
+  /** every monitor lets this I²C address through (none vetoes it as a mangled bus) */
+  private i2cLineOk(addr: number, read: boolean): boolean {
+    for (const m of this.monitors) if (m.i2cOk && !m.i2cOk(addr, read, this.i2cClock)) return false
+    return true
+  }
+
+  /** bytes leaving the UART (what a probe on TX sees), at the begin() baud */
+  private uartOut(text: string): void {
+    if (!this.monitors.length || !text) return
+    const bytes: number[] = []
+    for (let k = 0; k < text.length; k++) bytes.push(text.charCodeAt(k) & 0xff)
+    this.busEvent({ bus: 'uart', t: this.now, baud: this.uartBaud, bytes })
   }
 
   // ── scheduler ──
@@ -970,7 +1005,10 @@ export class VirtualMcu {
       return Number.isFinite(n) ? n : 0
     }
     const serial = {
-      begin: () => undefined,
+      begin: (baud?: unknown) => {
+        const b = Number(baud)
+        if (Number.isFinite(b) && b > 0) mcu.uartBaud = b
+      },
       end: () => undefined,
       flush: () => undefined,
       setTimeout: () => undefined,
@@ -984,9 +1022,21 @@ export class VirtualMcu {
       },
       parseInt: () => parseNumber(false),
       parseFloat: () => parseNumber(true),
-      print: (v: unknown, fmt?: number) => mcu.serialWrite(formatPrint(v, fmt), false),
-      println: (...args: unknown[]) => mcu.serialWrite(args.length ? formatPrint(args[0], args[1] as number | undefined) : '', true),
-      write: (v: unknown) => mcu.serialWrite(typeof v === 'number' ? String.fromCharCode(v) : String(v), false),
+      print: (v: unknown, fmt?: number) => {
+        const text = formatPrint(v, fmt)
+        mcu.uartOut(text)
+        mcu.serialWrite(text, false)
+      },
+      println: (...args: unknown[]) => {
+        const text = args.length ? formatPrint(args[0], args[1] as number | undefined) : ''
+        mcu.uartOut(text + '\r\n') // Arduino's println ends with CR LF on the wire
+        mcu.serialWrite(text, true)
+      },
+      write: (v: unknown) => {
+        const text = typeof v === 'number' ? String.fromCharCode(v) : String(v)
+        mcu.uartOut(text)
+        mcu.serialWrite(text, false)
+      },
     }
 
     // ── Wire: I²C master, delegating to attached devices ──
@@ -1001,7 +1051,10 @@ export class VirtualMcu {
     const wire = {
       begin: () => undefined,
       end: () => undefined,
-      setClock: () => undefined,
+      setClock: (hz: unknown) => {
+        const f = Number(hz)
+        if (Number.isFinite(f) && f > 0) mcu.i2cClock = f
+      },
       beginTransmission: (addr: number) => {
         txAddr = Math.trunc(addr) & 0x7f
         txBuf = []
@@ -1011,18 +1064,27 @@ export class VirtualMcu {
         txBuf.push(...b)
         return b.length
       },
-      endTransmission: () => {
+      endTransmission: (stop?: unknown) => {
         const dev = mcu.i2c.get(txAddr)
         const bytes = txBuf
         txBuf = []
-        if (!dev || dev.ack?.() === false) return 2 // NACK on the address
+        const ok = !!dev && dev.ack?.() !== false && mcu.i2cLineOk(txAddr, false)
+        if (mcu.monitors.length) {
+          mcu.busEvent({ bus: 'i2c', t: mcu.now, clock: mcu.i2cClock, addr: txAddr, read: false, bytes: ok ? [...bytes] : [], addrAck: ok, stop: ok ? stop === undefined || !!stop : true })
+        }
+        if (!ok) return 2 // NACK on the address
         dev.write?.(bytes)
         return 0
       },
-      requestFrom: (addr: number, n: number) => {
-        const dev = mcu.i2c.get(Math.trunc(addr) & 0x7f)
+      requestFrom: (addr: number, n: number, stop?: unknown) => {
+        const a = Math.trunc(addr) & 0x7f
+        const dev = mcu.i2c.get(a)
         const want = Math.max(0, Math.trunc(n))
-        rxBuf = dev && dev.ack?.() !== false ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
+        const ok = !!dev && dev.ack?.() !== false && mcu.i2cLineOk(a, true)
+        rxBuf = ok ? (dev.read?.(want) ?? []).slice(0, want).map((b) => Number(b) & 0xff) : []
+        if (mcu.monitors.length) {
+          mcu.busEvent({ bus: 'i2c', t: mcu.now, clock: mcu.i2cClock, addr: a, read: true, bytes: [...rxBuf], addrAck: ok, stop: ok ? stop === undefined || !!stop : true })
+        }
         return rxBuf.length
       },
       available: () => rxBuf.length,
@@ -1045,6 +1107,7 @@ export class VirtualMcu {
     const xfer = (b: number): number => {
       let out = 0xff // nothing selected: MISO idles high
       for (const [cs, dev] of mcu.spi) if (mcu.csActive.get(cs)) out = Number(dev.transfer(b & 0xff, settings)) & 0xff
+      if (mcu.monitors.length) mcu.busEvent({ bus: 'spi', t: mcu.now, clock: settings.clock, mode: settings.mode & 3, bitOrder: settings.bitOrder, mosi: b & 0xff, miso: out })
       return out
     }
     const spi = {

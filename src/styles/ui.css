@@ -1181,6 +1181,46 @@ input[type='range']:active::-webkit-slider-thumb {
   opacity: 0.4;
   cursor: default;
 }
+/* logic analyzer: lanes + decode row on canvas, decoded text below */
+.la-canvas {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+  background: var(--card);
+  cursor: grab;
+  touch-action: pan-y; /* a horizontal drag pans the trace, a vertical one still scrolls the page */
+}
+.la-canvas:active {
+  cursor: grabbing;
+}
+.la-decoded {
+  margin: 6px 0 0;
+  min-height: 1.5em;
+  font: 500 11.5px var(--mono);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.la-info {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.la-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.la-zoom .chip {
+  min-width: 34px;
+  min-height: 30px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.la-zoom output {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 1000px) {
   .inst-body {
     grid-template-columns: minmax(0, 1fr);

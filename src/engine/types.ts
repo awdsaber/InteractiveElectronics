@@ -504,13 +504,34 @@ export interface ChartDefaults {
   span?: number
 }
 
+/** one logic-analyzer channel: an MCU pin (its bus signal or its level) or a circuit node (thresholded) */
+export interface LogicChannel {
+  pin?: number
+  node?: NodeId
+  label: string
+}
+
+/** a logic analyzer's starting setup; it needs a `logic-analyzer` behavior on the bench, which records the data */
+export interface LogicDefaults {
+  /** 1 to 8 channels, top to bottom */
+  channels: LogicChannel[]
+  /** protocol decoder for the annotation row */
+  decode?: 'uart' | 'i2c' | 'spi'
+  /** UART decode baud (default: the analyzer behavior's laBaud) */
+  baud?: number
+  /** time window shown, seconds (default 2 ms) */
+  span?: number
+}
+
 export interface InstrumentDefaults {
   scope?: ScopeDefaults
   chart?: ChartDefaults
+  /** a logic analyzer tab (timeline + protocol decode), fed by the `logic-analyzer` behavior */
+  logic?: LogicDefaults
   /** the instrument panel starts open (default closed) */
   open?: boolean
   /** which instrument the panel shows first (default: scope when it has one, else chart) */
-  view?: 'scope' | 'chart'
+  view?: 'scope' | 'chart' | 'logic'
 }
 
 /** a bench action a guide step can wait for ('place' = any single part placed by hand) */
@@ -635,6 +656,39 @@ export interface BehaviorEvent {
   data?: unknown
 }
 
+/**
+ * Bus activity a sketch performed (Serial output, Wire transactions, SPI bytes), for a logic analyzer.
+ * `t` is the MCU time (µs) of the call. The calls themselves take no MCU time: a listener lays the
+ * bits out on its own timeline at the bus's real rate.
+ */
+export type BusEvent =
+  | { bus: 'uart'; t: number; baud: number; bytes: number[] }
+  | {
+      bus: 'i2c'
+      t: number
+      /** Wire.setClock, Hz (default 100 kHz) */
+      clock: number
+      addr: number
+      read: boolean
+      /** bytes written (read = false) or received (read = true) */
+      bytes: number[]
+      /** the address was acknowledged */
+      addrAck: boolean
+      /** a STOP ends it (false: endTransmission(false), a repeated START follows) */
+      stop: boolean
+    }
+  | { bus: 'spi'; t: number; clock: number; mode: number; bitOrder: number; mosi: number; miso: number }
+
+/** a listener on the MCU's buses (VirtualMcu.addBusMonitor) */
+export interface BusMonitor {
+  event?(ev: BusEvent): void
+  /**
+   * Called before an I²C address goes out: false = the bus mangles it (edges too slow, line stuck), so
+   * no device sees the transaction and the address is NACKed. Must be side-effect free.
+   */
+  i2cOk?(addr: number, read: boolean, clock: number): boolean
+}
+
 export interface BehaviorMcu {
   /** brown-out: stop the sketch and float every pin until release() */
   hold(reason?: string): void
@@ -649,6 +703,8 @@ export interface BehaviorMcu {
   serialOut(line: string): void
   attachI2c(address: number, device: unknown): void
   attachSpi(csPin: number, device: unknown): void
+  /** listen to the sketch's bus activity (Serial, Wire, SPI); safe to call before upload */
+  tapBus?(monitor: BusMonitor): void
   /** MCU virtual time, µs */
   readonly timeMicros: number
   readonly running: boolean
@@ -719,4 +775,6 @@ export interface Behavior {
   reset?(ctx: BehaviorContext): void
   /** the bench is going away (lesson switch): release anything held */
   dispose?(ctx: BehaviorContext): void
+  /** live data for an instrument panel (e.g. the logic analyzer's capture), read by Bench.behaviorData */
+  expose?(ctx: BehaviorContext): unknown
 }

@@ -131,8 +131,23 @@ const instruments = z.object({
     })
     .optional(),
   chart: z.object({ signals: z.array(z.union([z.number().int(), readout])).min(1).max(6), span: num.positive().optional() }).optional(),
+  logic: z
+    .object({
+      channels: z
+        .array(
+          z
+            .object({ pin: z.number().int().min(0).optional(), node: node.optional(), label: z.string().min(1) })
+            .refine((c) => (c.pin === undefined) !== (c.node === undefined), 'a logic channel names a pin or a node'),
+        )
+        .min(1)
+        .max(8),
+      decode: z.enum(['uart', 'i2c', 'spi']).optional(),
+      baud: num.positive().optional(),
+      span: num.positive().optional(),
+    })
+    .optional(),
   open: z.boolean().optional(),
-  view: z.enum(['scope', 'chart']).optional(),
+  view: z.enum(['scope', 'chart', 'logic']).optional(),
 })
 
 const status = z.enum(['BARE PCB', 'ASSEMBLING', 'READY', 'POWERED', 'RUNNING', 'FAULT'])
@@ -337,6 +352,13 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
     const ch = ins.scope.trigger?.channel ?? 0
     if (ch >= ins.scope.channels.length) errs.push(`instruments.scope.trigger: no channel ${ch}`)
   }
+  if (ins?.logic) {
+    if (!refs.some((r) => r.id === 'logic-analyzer')) errs.push('instruments.logic: needs a "logic-analyzer" behavior to record the buses')
+    ins.logic.channels.forEach((c, i) => {
+      if (c.node !== undefined) node(c.node, `instruments.logic.channels.${i}`)
+    })
+  }
+  if (ins?.view === 'logic' && !ins.logic) errs.push('instruments.view: "logic" needs instruments.logic')
   ins?.chart?.signals.forEach((sig, i) => {
     const where = `instruments.chart.signals.${i}`
     if (typeof sig === 'number') {
