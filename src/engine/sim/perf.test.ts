@@ -62,13 +62,14 @@ function ratingsMs(): number {
   return best
 }
 
-describe.skipIf(ON_CI)('checkRatings performance', () => {
+// wall-clock budgets: parallel agents and builds load this machine, so a slow run retries before failing
+describe.skipIf(ON_CI)('checkRatings performance', { retry: 2 }, () => {
   it('60 rated elements, 30 calls on fresh solutions, under 3 ms (measured ≈0.5 ms; headroom for a loaded machine)', () => {
     expect(ratingsMs()).toBeLessThan(3)
   })
 })
 
-describe.skipIf(ON_CI)('transient performance (60-stage chain, 30 steps per frame)', () => {
+describe.skipIf(ON_CI)('transient performance (60-stage chain, 30 steps per frame)', { retry: 2 }, () => {
   it('linear RC chain stays well under budget', () => {
     expect(msPerFrame(false)).toBeLessThan(5)
   })
