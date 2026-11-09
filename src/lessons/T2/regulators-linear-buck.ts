@@ -397,6 +397,117 @@ export const lesson: LessonDef = {
     chart: { signals: [4, 3], span: 20 },
   },
 
+  guide: [
+    {
+      id: 'meet-the-ldo',
+      title: 'Meet the linear regulator',
+      body: 'Click **U1** to open its inspector. It is an **AMS1117-3.3** in a SOT-223 package: it turns 12 V into 3.3 V by burning the difference as heat.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the flat tabbed SOT-223 chip on the left-hand supply, beside the 12 V jack.',
+      explain: 'A linear regulator is a variable resistor in series with the load, adjusted to hold the output steady. The current passes through it and the dropped voltage becomes heat.',
+    },
+    {
+      id: 'plug-in',
+      title: 'Plug in 12 V',
+      body: 'Press **Plug in 12 V**. The linear side outputs **3.3 V** from a **100 mA** load, but **LINEAR HEAT** is about **0.93 W** and **LINEAR EFF** only about **26 %**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 2, above: 3.2, below: 3.4, holdMs: 300 },
+          { kind: 'readout', index: 3, above: 0.85, below: 1, holdMs: 300 },
+          { kind: 'readout', index: 5, above: 24, below: 28, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'The LDO passes the 100 mA load plus its own few milliamps of quiescent current. It drops 12 − 3.3 = 8.7 V, and 8.7 V × 0.1 A = 0.9 W of heat to deliver 0.33 W: efficiency is Vout / Vin = 27 %. Watch LDO TEMP climb slowly toward 115 °C.',
+    },
+    {
+      id: 'upload',
+      title: 'Start the buck',
+      body: 'Press **Upload**. The sketch ramps the buck up over 50 ms. **BUCK OUT** settles at **3.3 V** with **BUCK EFF** above **80 %**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'readout', index: 7, above: 3.2, below: 3.4, holdMs: 500 },
+          { kind: 'readout', index: 10, above: 80, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'upload' },
+      explain: 'The P-channel MOSFET switches 12 V on and off at 10 kHz and the inductor and capacitor average it. The duty cycle D = Vout / Vin = 3.3 / 12 = 0.28 (BUCK DUTY reads 0.29, the sketch trims for losses). The buck takes 32 mA from the supply for the same 100 mA output, since P in ≈ P out.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Look at the ripple',
+      body: 'Open **Instruments**. **I CAP (RIPPLE)** is the inductor’s triangle of current at 10 kHz, one 100 µs period for every division.',
+      check: { kind: 'instruments' },
+      focus: { control: 'instruments' },
+      explain: 'During each ON interval the supply pushes the inductor current up, during each OFF interval the Schottky diode lets it fall. The capacitor soaks up the triangle’s AC part and leaves a steady DC output.',
+    },
+    {
+      id: 'low-input',
+      title: 'Drop the input to 6 V',
+      body: 'Slide **Input voltage** down to about **6 V**. **LINEAR EFF** doubles to about **52 %**, and **BUCK EFF** rises to about **92 %**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Input voltage', max: 6.5 },
+          { kind: 'readout', index: 5, above: 48, below: 56, holdMs: 300 },
+          { kind: 'readout', index: 10, above: 90, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Input voltage' },
+      hint: 'The slider goes in 0.5 V steps. Anything from 5.5 to 6.5 V works.',
+      explain: 'A linear regulator’s efficiency is simply Vout / Vin, so a smaller step means less waste: 3.3 / 6 = 55 %. The buck’s losses barely depend on the step, so it stays near 90 %. Never use an LDO for a big drop at real current.',
+    },
+    {
+      id: 'hot-ldo',
+      title: 'Break it: ask the LDO for 220 mA',
+      body: 'Slide **Input voltage** back up to **12 V**, then open **Break something** and choose **Ask the LDO for 220 mA**. **LDO TEMP** climbs past **135 °C**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Input voltage', min: 11.5 }, { kind: 'break', failure: 'hot-ldo' }, { kind: 'readout', index: 4, above: 135 }],
+      },
+      focus: { control: 'break' },
+      hint: 'On the minimal pad the junction heads for 200 °C, so it takes a few seconds to cross 135 °C.',
+      explain: 'At 220 mA the LDO drops (12 − 3.3) × 0.22 A ≈ 1.9 W. On a minimal pad that is 90 °C of rise per watt. At 150 °C it shuts itself down and the output goes away. It cools, restarts at about 130 °C, and trips again, so the output flickers.',
+    },
+    {
+      id: 'cool-it',
+      title: 'Give it more copper',
+      body: 'Set **LDO cooling** to **Big copper pour, 46 °C/W**. The junction settles at about **116 °C** and **LINEAR OUT** holds steady at **3.3 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'LDO cooling', max: 46 },
+          { kind: 'readout', index: 4, below: 125, holdMs: 500 },
+          { kind: 'readout', index: 2, above: 3.2, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'tweak:LDO cooling' },
+      hint: 'The temperature has a 4 s time constant, so give it several seconds to cool down below 125 °C.',
+      explain: 'Junction temperature is ambient plus power times thermal resistance: 25 + 1.97 W × 46 °C/W = 116 °C, which is under the 150 °C shutdown. Better copper helps, but the real fix at this current is a buck: it would lose about 0.2 W.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use dropout, efficiency and the buck duty cycle.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `**Linear regulator (LDO).** Inside the AMS1117 a reference, an error amplifier and a pass transistor form a feedback loop, like the op-amp lesson. The pass transistor drops whatever voltage is left over. Every amp of output is an amp of input (plus about 5 mA for the chip itself), so:
 
 P_loss = (V_in − V_out)·I = (12 − 3.3) × 0.1 = **0.87 W**, plus 12 V × 5 mA = **0.93 W**; efficiency ≈ 3.3/12 = **27 %**.

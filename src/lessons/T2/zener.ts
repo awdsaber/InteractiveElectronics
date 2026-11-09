@@ -213,6 +213,103 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-zener',
+      title: 'Meet the zener',
+      body: 'Click **Z1** to open its inspector. It is a **1N4733A**: 5.1 V, 1 W. The banded end is the **cathode**, and it faces the output.',
+      check: { kind: 'inspect', part: 'z1' },
+      focus: { part: 'z1' },
+      hint: 'It is the small glass diode on the breadboard, across the output, with a band at one end.',
+      explain: 'Wired in reverse, a zener stops conducting until the voltage across it reaches its breakdown voltage V_Z, then conducts hard and holds that voltage. Forward, it is just a diode, which is why the band must face the right way.',
+    },
+    {
+      id: 'connect',
+      title: 'Connect the battery',
+      body: 'Press **Connect battery**. **V OUT** sits at about **4.9 V** and **ZENER CURRENT** at about **24 mA**, from a 9 V battery through R1 = 120 Ω.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 4.7, below: 5.2, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.018, below: 0.03, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'R1 carries (9 − 4.93) / 120 = 34 mA. The 510 Ω load takes 9.7 mA of it, and the zener sinks the other 24 mA. The zener works by soaking up whatever the load leaves.',
+    },
+    {
+      id: 'low-input',
+      title: 'Starve it',
+      body: 'Slide **Input voltage** down to about **6 V**. **ZENER CURRENT** falls to about **1 mA** and **V OUT** to **4.7 V**: the zener has come off its breakdown.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Input voltage', max: 6.5 },
+          { kind: 'readout', index: 0, above: 4.5, below: 4.9, holdMs: 300 },
+          { kind: 'readout', index: 1, below: 0.003, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Input voltage' },
+      hint: 'The slider goes in steps of 0.1 V. Anything from 4.5 V up to 6.5 V works, but not much lower or the output collapses too.',
+      explain: 'With so little input the zener has almost no current to sink, so it has left breakdown and stopped regulating: V OUT just follows the input through the divider that R1 and the load make. A zener regulator needs the input comfortably above V_Z.',
+    },
+    {
+      id: 'ten-volts',
+      title: 'Feed it 10 V',
+      body: 'Slide **Input voltage** up to **10 V**. The input rose by 4 V, but **V OUT** is still about **5 V**, and **ZENER CURRENT** soaks the extra, about **31 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Input voltage', min: 9.5, max: 10.5 },
+          { kind: 'readout', index: 0, above: 4.9, below: 5.2, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.026, below: 0.04, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Input voltage' },
+      explain: 'The zener’s 7 Ω dynamic resistance makes V OUT rise a little (tens of millivolts) while the input rises volts. The extra current has to go somewhere, and R1 gets hotter: R1 POWER is now about 0.2 W of its 1/4 W rating.',
+    },
+    {
+      id: 'heavy-load',
+      title: 'Ask for too much',
+      body: 'Slide **Load resistance** down to about **100 Ω**. The load wants 50 mA but R1 can supply only about 40 mA, so the zener has nothing to sink and **V OUT** sags below **4.7 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load resistance', min: 80, max: 130 },
+          { kind: 'readout', index: 0, below: 4.7, holdMs: 300 },
+          { kind: 'readout', index: 1, below: 0.003, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Load resistance' },
+      explain: 'A zener can only absorb a surplus of current. It cannot make up a shortfall. Once the load takes everything R1 can pass, the regulator is just a divider, 10 × 100 / 220 = 4.5 V, and the output follows the input again.',
+    },
+    {
+      id: 'adapter-15v',
+      title: 'Break it: a 15 V adapter',
+      body: 'Open **Break something** and choose **Plug in a 15 V adapter**. **R1 POWER** jumps past **0.5 W** and **R1 TEMP** climbs fast.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'adapter-15v' }, { kind: 'readout', index: 5, above: 100 }] },
+      focus: { control: 'break' },
+      hint: 'R1 TEMP rises toward 155 °C, the failure point of a 1/4 W carbon film resistor. Give it a few seconds.',
+      explain: 'R1 drops about 10 V and passes about 80 mA: P = (15 − 5.1)² / 120 ≈ 0.8 W in a 1/4 W part. The zener, at about 0.4 W of its 1 W, was fine. The series resistor is the weak link, and when it burns open the output falls to 0.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use the series resistor equation and the zener’s power.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `A zener is a diode built to break down in reverse at a precise voltage: **5.1 V** for the 1N4733A, measured at its 49 mA test current. In breakdown the voltage barely moves as current changes. That steepness is its **dynamic resistance**, about **7 Ω** here: 10 mA more current raises the voltage by only 70 mV. So the zener can hold a node steady by sinking whatever current the load does not take.
 
 **Shunt regulator.** R1 drops the difference, and its current splits between the load and the zener. Press **Connect battery**:

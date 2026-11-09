@@ -297,6 +297,104 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-mosfet',
+      title: 'Meet the MOSFET',
+      body: 'Click **Q1** to open its inspector. It is a logic-level N-channel MOSFET, an **IRLZ44N**: its on-resistance is specified at a gate voltage of **5 V**.',
+      check: { kind: 'inspect', part: 'q1' },
+      focus: { part: 'q1' },
+      hint: 'It is the black TO-220 part with a metal tab, standing on the board.',
+      explain: 'A MOSFET is voltage controlled: the gate draws no steady current, only the charge to fill its capacitance. Gate above the threshold and the channel conducts. A "logic-level" part is built to be fully on at 5 V, or even 3.3 V.',
+    },
+    {
+      id: 'power',
+      title: 'Plug in',
+      body: 'Press **Plug USB**. The Uno powers up and the heater’s 12 V supply is live. The gate is still pulled to 0 V, so **LOAD CURRENT** is 0 and **V DS** sits at the full **12 V**.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 2, above: 11.5, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'With the gate at 0 V the channel is off and the FET stands off the whole 12 V. The pull-down resistor on the gate keeps it off while the Uno is still booting or unplugged.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the sketch',
+      body: 'Press **Upload**. Pin 9 goes HIGH for 3 s, then LOW for 3 s.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'upload' }, { kind: 'status', is: 'RUNNING' }] },
+      focus: { control: 'upload' },
+      explain: 'The sketch sets pin 9 to OUTPUT and toggles it. The pin supplies 5 V into the gate; the gate takes a few nanocoulombs to charge, then no current at all.',
+    },
+    {
+      id: 'on-state',
+      title: 'Read the ON state',
+      body: 'While pin 9 is HIGH, read **LOAD CURRENT** (about **1 A**), **V DS** (about **25 mV**) and **R DS(ON)** (about **25 mΩ**).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'readout', index: 0, above: 0.9, below: 1.05, holdMs: 500 },
+          { kind: 'readout', index: 2, below: 0.05, holdMs: 500 },
+          { kind: 'readout', index: 6, above: 0.02, below: 0.03, holdMs: 500 },
+        ],
+      },
+      focus: { part: 'q1' },
+      hint: 'The readings only show up while pin 9 is HIGH. They stay for 3 s, then go back to the OFF state.',
+      explain: 'The heater is 12 V / 12 Ω = 1 A. The FET drops I × R_DS(on) = 1 A × 25 mΩ = 25 mV and dissipates just 25 mW, so the heater gets 11.7 W of the 12 W. R DS(ON) is simply V DS divided by the load current.',
+    },
+    {
+      id: 'three-volt-three',
+      title: 'Drive it from 3.3 V',
+      body: 'Set **Pin 9 HIGH level** to **3.3 V**, like a 3.3 V board. The gate gets less drive, so **R DS(ON)** doubles to about **50 mΩ**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Pin 9 HIGH level', max: 3.3 },
+          { kind: 'readout', index: 2, above: 0.04, below: 0.06, holdMs: 500 },
+          { kind: 'readout', index: 6, above: 0.04, below: 0.06, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'tweak:Pin 9 HIGH level' },
+      hint: 'The readings need pin 9 HIGH, so they appear within 3 s of the change.',
+      explain: 'R_DS(on) = 1 / (k·(V_GS − V_th)), so a gate of 3.3 V against 5 V cuts the overdrive from 3.4 V to 1.8 V and doubles the resistance. It still works here: the FET passes 1 A and dissipates 50 mW. The lesson is to read R_DS(on) at the gate voltage you will actually have.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Watch the gate',
+      body: 'Open **Instruments**. The scope shows **GATE** against **V DS** across a turn-on. The 2 V line marks the **maximum** gate threshold.',
+      check: { kind: 'instruments' },
+      focus: { control: 'instruments' },
+      explain: 'The gate is a capacitor (about 1.7 nF here), charged through the gate resistor, so its edge has a finite slope: time constant R_G·C_iss. Raise the gate resistor to watch it slow down. V DS falls only when the gate crosses the threshold.',
+    },
+    {
+      id: 'wrong-fet',
+      title: 'Break it: the wrong FET',
+      body: 'Open **Break something** and choose **Plain IRFZ44N on a 3.3 V pin**. The gate reaches about **3.3 V**, yet **LOAD CURRENT** falls to **0**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'break', failure: 'wrong-fet-3v3' },
+          { kind: 'readout', index: 1, above: 3, below: 3.4, holdMs: 300 },
+          { kind: 'readout', index: 0, below: 0.05, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'break' },
+      hint: 'Wait for pin 9 to go HIGH, within 3 s of the break.',
+      explain: 'A standard IRFZ44N has a threshold of 2 to 4 V, and its R_DS(on) is only specified at 10 V. This sample sits at 3.5 V, so a 3.3 V gate never turns it on, and V DS stays at 12 V. Pick MOSFETs by R_DS(on) at your gate voltage, not by name.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use I²R and the gate threshold.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `A MOSFET's gate is insulated from its channel by a thin oxide layer. Apply V_GS above the threshold and an N-channel forms between drain and source; its resistance R_DS(on) falls the harder you drive the gate. At DC the gate draws essentially **no current**. It charges and discharges like a capacitor (the IRLZ44N's C_iss is about 1.7 nF), so current flows only during the edge. Raise the **Gate resistor** tweak and watch the gate trace on the scope slow down.
 
 **Thresholds mislead.** V_GS(th) is where the part *begins* to conduct, at 250 µA. For the IRLZ44N it is 1–2 V. What matters is R_DS(on) at your gate voltage: this logic-level part is specified at ≤ **25 mΩ at 5 V** and 35 mΩ at 4 V, so an Uno drives it fully on. A plain IRFZ44N has V_GS(th) 2–4 V and is rated only at 10 V, so it is **not** logic-level.
