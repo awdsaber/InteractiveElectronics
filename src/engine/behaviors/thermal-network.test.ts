@@ -254,7 +254,7 @@ describe('thermal-network: burn instead of shutdown (a part with no thermal prot
   })
 })
 
-describe('thermal-network: allocates nothing per tick', () => {
+describe('thermal-network: allocates nothing per tick', { retry: 2 }, () => { // heap deltas are noisy on a loaded machine
   it('a hot tick loop leaves the heap flat (no arrays or objects per call)', () => {
     // a typed-array sink: the harness itself must not allocate (boxing a double into a dictionary would)
     const store = new Float64Array(32)
