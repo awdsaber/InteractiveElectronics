@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794218483.2563746,
-    "seen": 1794221944.8615339,
-    "ast_hash": "88dd965807889e494841af235956c533",
+    "mtime": 1794224366.9224613,
+    "seen": 1794224535.4952052,
+    "ast_hash": "ec603adca0f112ec3745820360c0db18",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794221878.8084998,
-    "seen": 1794221944.8615339,
-    "ast_hash": "b7b3943507dfaa5e9350082e0c8e8ce2",
+    "mtime": 1794224366.9104047,
+    "seen": 1794224535.4952052,
+    "ast_hash": "4e1e9bb1694d57f92a9939dae0851837",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -360,9 +360,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794217849.086898,
-    "seen": 1794221944.8615339,
-    "ast_hash": "76e3e90e48d4a8d0ae13b31fab603570",
+    "mtime": 1794224366.9199474,
+    "seen": 1794224535.4942052,
+    "ast_hash": "83853efcabd3bbddd8d4edd757666f46",
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
@@ -384,15 +384,15 @@
     "semantic_hash": ""
   },
   "src/engine/sim/format.test.ts": {
-    "mtime": 1794152673.8994927,
-    "seen": 1794217128.3673193,
-    "ast_hash": "97ae5f2ad8d95156452d72bc18e6b57c",
+    "mtime": 1794223997.3117876,
+    "seen": 1794224535.4942052,
+    "ast_hash": "ab90f260e0cb2d7a5212668ddffeb705",
     "semantic_hash": ""
   },
   "src/engine/sim/format.ts": {
-    "mtime": 1794152682.9026725,
-    "seen": 1794217128.3673193,
-    "ast_hash": "545dee0b4e0923c1b3b9e46dd5aad62e",
+    "mtime": 1794224003.8954542,
+    "seen": 1794224535.4942052,
+    "ast_hash": "a52f1327d470f7a41a4f9e9c9ff4c9a6",
     "semantic_hash": ""
   },
   "src/engine/sim/index.ts": {
@@ -804,9 +804,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pid-motor-control.md": {
-    "mtime": 1794002019.1290822,
-    "seen": 1794010374.609711,
-    "ast_hash": "d3051d8b1c0f4ec8414839ee50761225",
+    "mtime": 1794223989.1259615,
+    "seen": 1794224535.4952052,
+    "ast_hash": "041da04496f3217933c21a8c7ccd6d4c",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/power-grounding-emc.md": {
@@ -816,9 +816,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/serial-protocols.md": {
-    "mtime": 1794002159.5788834,
-    "seen": 1794010374.609711,
-    "ast_hash": "c80437cf001c289d0290f00c833a23f3",
+    "mtime": 1794224366.908899,
+    "seen": 1794224535.4952052,
+    "ast_hash": "096567f967aad04d0ab3eafdf5a9c1be",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/soldering-rework.md": {
@@ -828,9 +828,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/thermal-design.md": {
-    "mtime": 1794001749.661852,
-    "seen": 1794010374.609711,
-    "ast_hash": "efd7eaf0de2ef9932a1693ec1b7e0897",
+    "mtime": 1794223526.8074193,
+    "seen": 1794224535.4952052,
+    "ast_hash": "dbd645857ff59aa7a83d8edbcb8d644e",
     "semantic_hash": ""
   },
   "docs/plans/m1-engine.md": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794218483.2553713,
-    "seen": 1794221944.8615339,
-    "ast_hash": "30271043a44b4d821bed9505d97d63f1",
+    "mtime": 1794224366.9159346,
+    "seen": 1794224535.4942052,
+    "ast_hash": "c0e4d60464e6c902e87343a7fa962479",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794217444.5248623,
-    "seen": 1794217764.9072645,
-    "ast_hash": "e80012e67be2b56c2e21ad77f4c2bb16",
+    "mtime": 1794224366.9169402,
+    "seen": 1794224535.4942052,
+    "ast_hash": "971a63e0503d0dba5660f5f3eafa6092",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -990,15 +990,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794221878.809498,
-    "seen": 1794221944.8615339,
-    "ast_hash": "3041c636e501fbb77019fb3c5983596a",
+    "mtime": 1794224366.9119403,
+    "seen": 1794224535.4952052,
+    "ast_hash": "7a85900f7e9eefe348b0eaed079e8d14",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794217444.5484617,
-    "seen": 1794217764.9082656,
-    "ast_hash": "0865d969dab78155755d6221b56b86bd",
+    "mtime": 1794224366.9240313,
+    "seen": 1794224535.4952052,
+    "ast_hash": "9ac0ee36e1eae8c3d13b006c17e66981",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "src/ui/Instruments.tsx": {
-    "mtime": 1794150237.9803092,
-    "seen": 1794150329.9322805,
-    "ast_hash": "afcc8c1a00b33169144075db91864233",
+    "mtime": 1794224366.9285595,
+    "seen": 1794224535.4952052,
+    "ast_hash": "92565cb75208b191a7fc0ef9e72a3f19",
     "semantic_hash": ""
   },
   "src/ui/RadioSeg.tsx": {
@@ -2097,6 +2097,168 @@
     "mtime": 1794219741.2080102,
     "seen": 1794221944.8615339,
     "ast_hash": "7f74d0c5cacfe3b81780f3aad7770fd9",
+    "semantic_hash": ""
+  },
+  "e2e/logic-analyzer.spec.ts": {
+    "mtime": 1794224366.9109335,
+    "seen": 1794224535.4942052,
+    "ast_hash": "1e0a9554ea6a68e5f5c32e15f039cbc1",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/dyno-load.test.ts": {
+    "mtime": 1794223989.1289637,
+    "seen": 1794224535.4942052,
+    "ast_hash": "4c5bfe4be0ac24701c8ba67aadfc14e5",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/dyno-load.ts": {
+    "mtime": 1794223989.1304748,
+    "seen": 1794224535.4942052,
+    "ast_hash": "e3884142b4f73c348f31aadb528973ac",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/hc595.test.ts": {
+    "mtime": 1794224366.912943,
+    "seen": 1794224535.4942052,
+    "ast_hash": "3c796ee62ecf842a376e603c42256e4e",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/hc595.ts": {
+    "mtime": 1794224366.9139404,
+    "seen": 1794224535.4942052,
+    "ast_hash": "6a5c30fac5f821c2fc33a53538f86bdf",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/logic-analyzer.test.ts": {
+    "mtime": 1794224366.9139404,
+    "seen": 1794224535.4942052,
+    "ast_hash": "18a2bea34764d9b8122321bf92f21905",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/logic-analyzer.ts": {
+    "mtime": 1794224366.91494,
+    "seen": 1794224535.4942052,
+    "ast_hash": "c7f5f9b63615d2348a9ec8a957cf018f",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/pid-tune.test.ts": {
+    "mtime": 1794223989.1310227,
+    "seen": 1794224535.4942052,
+    "ast_hash": "341f8a1edf7318fc7af64e432de4bff3",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/pid-tune.ts": {
+    "mtime": 1794223989.132031,
+    "seen": 1794224535.4942052,
+    "ast_hash": "1d8161e3b160979a7a0de2ad9aae43a2",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/thermal-network.test.ts": {
+    "mtime": 1794223526.8119397,
+    "seen": 1794224535.4942052,
+    "ast_hash": "e86ca1fa6013bf1e0e77c03460ebc048",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/thermal-network.ts": {
+    "mtime": 1794223526.8119397,
+    "seen": 1794224535.4942052,
+    "ast_hash": "bd433f4842ef0f00404adef7e17ba0e4",
+    "semantic_hash": ""
+  },
+  "src/engine/logic/decode.ts": {
+    "mtime": 1794224366.9169402,
+    "seen": 1794224535.4942052,
+    "ast_hash": "2710cd5b8b7b503910f4d9166299ea53",
+    "semantic_hash": ""
+  },
+  "src/engine/logic/logic.test.ts": {
+    "mtime": 1794224366.9179473,
+    "seen": 1794224535.4942052,
+    "ast_hash": "3c6d5fbf4890d1058df5e49c0ba4dc6d",
+    "semantic_hash": ""
+  },
+  "src/engine/logic/synth.ts": {
+    "mtime": 1794224366.9179473,
+    "seen": 1794224535.4942052,
+    "ast_hash": "5a3f906867d54dd291e9ae98f581d8d0",
+    "semantic_hash": ""
+  },
+  "src/engine/logic/trace.ts": {
+    "mtime": 1794224366.9189458,
+    "seen": 1794224535.4942052,
+    "ast_hash": "79dddf8bcb21af5a83406c39755f2519",
+    "semantic_hash": ""
+  },
+  "src/engine/mcu/busMonitor.test.ts": {
+    "mtime": 1794224366.9189458,
+    "seen": 1794224535.4942052,
+    "ast_hash": "76810651a8e5ad9c3376e932ba61e7b0",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pid-motor-control.guide.test.ts": {
+    "mtime": 1794223989.132031,
+    "seen": 1794224535.4952052,
+    "ast_hash": "efcf627381ef79932a39a38bf649f4f8",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pid-motor-control.test.ts": {
+    "mtime": 1794223989.133032,
+    "seen": 1794224535.4952052,
+    "ast_hash": "3448a4b181d34007d888df4182656f4a",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pid-motor-control.ts": {
+    "mtime": 1794223989.1340303,
+    "seen": 1794224535.4952052,
+    "ast_hash": "6ec4d6729afd765645694b5c502d6a73",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/serial-protocols.guide.test.ts": {
+    "mtime": 1794224366.9250376,
+    "seen": 1794224535.4952052,
+    "ast_hash": "1d1cd21c0cbe0e4a0cabef089420499b",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/serial-protocols.test.ts": {
+    "mtime": 1794224366.9250376,
+    "seen": 1794224535.4952052,
+    "ast_hash": "5fd72238cc18ad898d04abfd2c49a650",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/serial-protocols.ts": {
+    "mtime": 1794224366.926044,
+    "seen": 1794224535.4952052,
+    "ast_hash": "b96aa6b2ef439aeaed77cdd1369c7d03",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/thermal-design.test.ts": {
+    "mtime": 1794223526.81294,
+    "seen": 1794224535.4952052,
+    "ast_hash": "f84b3d8ee514e7bd3593c4e80d7ae8e5",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/thermal-design.ts": {
+    "mtime": 1794223526.81394,
+    "seen": 1794224535.4952052,
+    "ast_hash": "1559c7f82352083737d2fac06ead0263",
+    "semantic_hash": ""
+  },
+  "src/ui/LogicAnalyzer.tsx": {
+    "mtime": 1794224366.9295578,
+    "seen": 1794224535.4952052,
+    "ast_hash": "27396e656bd95ce56bcfa62fee10e964",
+    "semantic_hash": ""
+  },
+  "src/ui/logicView.test.ts": {
+    "mtime": 1794224366.9295578,
+    "seen": 1794224535.4952052,
+    "ast_hash": "2ef57d17087bc968d5e9f3dab31bafa4",
+    "semantic_hash": ""
+  },
+  "src/ui/logicView.ts": {
+    "mtime": 1794224366.9305577,
+    "seen": 1794224535.4952052,
+    "ast_hash": "be56c4457774ff657514d0894f2d7264",
     "semantic_hash": ""
   },
   "package-lock.json": {
