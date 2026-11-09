@@ -103,8 +103,8 @@ Digital logic treats a voltage as one of two states: near 0 V is **0**, near V_C
 
 **Thresholds (74HC at 5 V).**
 
-- V_IH ≥ 0.7·V_CC = **3.5 V** counts as a guaranteed 1, and V_IL ≤ 0.3·V_CC = **1.5 V** as a guaranteed 0. Anything in between is undefined.
-- A 3.3 V MCU output therefore isn't a valid 1 for 74HC at 5 V. Use 74HCT (V_IH 2.0 V) instead.
+- Datasheet (TI SN74HC08, 4.5 V, 25 °C): V_IH ≥ **3.15 V** guaranteed 1 and V_IL ≤ **1.35 V** guaranteed 0 (0.7 and 0.3 × V_CC; 1.5 / 0.5 V at 2 V and 4.2 / 1.8 V at 6 V). The datasheet has no 5 V row; on a 5 V rail scale to about 3.5 V and 1.5 V. Anything in between is undefined.
+- A 3.3 V MCU output clears 3.15 V at 4.5 V by only 0.15 V and is below the scaled 3.5 V at 5 V, so the margin is not guaranteed. Use 74HCT (V_IH 2.0 V) instead.
 
 **Universality.** NAND with its inputs tied together is NOT. NAND followed by NOT is AND. Any logic function can be built from NANDs alone.
 
@@ -136,10 +136,10 @@ Digital logic treats a voltage as one of two states: near 0 V is **0**, near V_C
 
 3. **Is 3.3 V a guaranteed logic 1 for a 74HC gate running at 5 V?**
    - Yes, it's above half of V_CC
-   - No, it's below V_IH = 0.7 × 5 = 3.5 V
+   - No, it is below the scaled V_IH of about 3.5 V on a 5 V rail (3.15 V at 4.5 V)
    - Yes, anything above 2 V is high
    - No, 74HC can't run at 5 V
-   - **Answer:** 1. *Why:* 3.3 V falls in the undefined band between 1.5 V and 3.5 V, so use 74HCT.
+   - **Answer:** 1. *Why:* 3.3 V is at best 0.15 V above the datasheet V_IH at 4.5 V and under the scaled 3.5 V at 5 V; use 74HCT.
 
 4. **How do you make an inverter from a 2-input NAND?**
    - Tie one input to ground
@@ -153,3 +153,7 @@ Digital logic treats a voltage as one of two states: near 0 V is **0**, near V_C
 - **Floating inputs:** Gmin (1e-12 S to ground) makes floating nodes sit tidily near 0 V, which hides the most important real-world fault in digital electronics. A behavior `floating-input` (slow random drift plus coupled mains hum on nodes with no DC path other than Gmin), or an engine flag on unconnected high-impedance nodes, would make F1 honest.
 - **Digital IC element:** the 74HC00 on the board isn't simulated. A behavior-driven logic primitive (inputs read as node voltages against V_IH/V_IL; outputs as `V` sources with ≈ 50 Ω output resistance) would allow chip-level logic lessons without discrete transistors. See also `flipflops-counters`.
 - **PMOS conventions:** document whether PMOS `vth` is given as a negative number and how `k` is applied (see `mosfet-switch`).
+
+## AUTHORING NOTE (M4)
+
+The built lesson uses real 74HC chips (LOGIC elements) instead of the discrete MOSFET gate above: a 74HC08/32/00/86 truth-table board, a 74HC04 and a 74HC14 Schmitt inverter on a slow, noisy edge, an `edge-counter` behavior, and failures floating-input (hum through 4 pF, ESD clamps), output-short (about 200 mA vs the 25 mA abs max) and noisy-edge. Datasheet numbers: TI SN74HC08 (SCLS081J) and SN74HC14 (SCLS085L), 4.5 V: VT+ 1.55/2.5/3.13 V, VT- 0.9/1.6/2.45 V, hysteresis 0.4/0.9/2.1 V (min/typ/max); abs max output +-25 mA, VCC/GND +-50 mA; Ci 3 pF typ.
