@@ -8,7 +8,7 @@
 - **fig:** 28. Provisional: sidebar order.
 - **Prerequisites:** `arduino-uno`, T3 `flipflops-counters`
 - **Power element:** `usb_plug` (powerLabel: "Plug USB")
-- **Behaviors:** `tach-gen`, `bounce`, `timerone`, `mcu-supply`, `serial-plotter`
+- **Behaviors:** `tach-gen` (instance `tach`), `irq-bounce` (instance `bounce`), `timerone` (instance `t1`), `mcu-supply`, `serial-plotter`
 - **transient:** true
 
 ## Learning goals
@@ -61,10 +61,10 @@ Board: `IRQ BENCH`, size 12 × 6, base `mat`. Uno R3 on the left, breadboard on 
   - It schedules falling edges at 1/hz intervals with µs timestamps and delivers them to the MCU's pin-3 interrupt queue directly, so frequencies above the 1 kHz sim step still work (SIM NOTE).
   - Each sim step it also sets `tach_sw.closed`, shown for 25 % of each period at rates below 200 Hz so the 3D LED and scope show it.
   - **Floating input:** if `r_pull` is missing, i.e. `d3` has no DC path (SIM NOTE: behaviors need netlist read access), it instead injects random edges at 0–300 Hz to imitate a floating, noise-coupled input.
-  - It models ISR capacity. Each pin-3 ISR costs `isrUs` (default 5 µs: about 4 cycles of hardware entry plus Arduino's dispatch wrapper and the user code; approximate). If edges arrive faster than 1/`isrUs`, the excess is dropped and counted.
-  - Publishes `tach_true_hz` and `tach_dropped`.
-- **`bounce`**. On each button press or release (from the 3D click or the tweak), it emits a burst of 3–12 contact transitions over 0.5–5 ms, with random timing.
-  - The RC filter is computed analytically: from the current values of `r_rc`/`c_rc` (or their absence), it decides which of those transitions cross the AVR input thresholds (VIL 0.3 VCC, VIH 0.6 VCC) and injects only those as pin-2 edges.
+  - It models ISR capacity. Each pin-3 ISR costs `isrUs` (default 5 µs: the ATmega328P datasheet gives a 4-cycle (0.25 µs) minimum interrupt response, then Arduino's dispatch wrapper and the user code; approximate). An edge less than `isrUs` after the last accepted one is dropped and counted, as the AVR's single interrupt flag would merge it into the pending request. The MCU's own clock does not charge the ISR time to `loop()`.
+  - Publishes `tach.true_hz` and `tach.dropped`. Each period carries 1 % random jitter, because a real wheel is never exact and a polling loop on a fixed 1 ms beat would otherwise lock onto one phase of a 2 kHz pulse train.
+- **`irq-bounce`** (instance `bounce`). On each button press or release (from the tweak `behavior:bounce.press`), it emits a burst of contact chatter over 0.5–5 ms, with random timing: a press is closed, then 1–5 open/closed pairs (2–6 closings at the contact); a release is open, then 0–3 closed/open pairs.
+  - The RC filter is computed analytically: from the current values of `r_rc`/`c_rc` (or their absence), it decides which of those transitions cross the AVR input thresholds (VIL 0.3 VCC, VIH 0.6 VCC) and injects only those as pin-2 edges. With the capacitor the pin needs about 32 ms after release to climb back through VIH (and after `pinMode(2, INPUT_PULLUP)` at boot), so a sketch must let the pin settle in `setup()` before it starts debouncing.
   - Also drives `sw_btn.closed` for the visual.
   - Publishes `bounce_edges_last`.
 - **`timerone`**. Exposes the library `Timer1` with `initialize(periodUs)` and `attachInterrupt(fn)`, `detachInterrupt()`, `stop()` and `start()`. It calls `fn` every `periodUs` of virtual time as an interrupt. Publishes `timer1_hz`.
@@ -90,11 +90,14 @@ volatile unsigned long buttonEdges = 0;
 volatile bool ledState = false;
 
 unsigned long presses = 0;      // debounced, counted by polling
+unsigned long polled = 0;       // tach pulses the loop happened to see
+unsigned long lastPolled = 0;
 unsigned long lastPrint = 0;
 unsigned long lastTach = 0;
 unsigned long lastChange = 0;
 int lastRaw = HIGH;
 int stable = HIGH;
+int lastLevel = HIGH;
 
 void onTach() {            // INT1: keep it to a few instructions
   tachCount++;
@@ -118,6 +121,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(2), onButton, FALLING);
   Timer1.initialize(500000);        // 500 000 us = 0.5 s -> LED at 1 Hz
   Timer1.attachInterrupt(onTimer);  // note: TimerOne takes over PWM on 9/10
+  delay(100);                       // the 1 uF fills through the pull-up (about 35 ms)
+  lastRaw = digitalRead(2);         // start the debounce from the settled level
+  stable = lastRaw;
 }
 
 void loop() {
@@ -134,6 +140,13 @@ void loop() {
     }
   }
 
+  // Count the tach by polling too: a falling edge is HIGH then LOW.
+  int level = digitalRead(3);
+  if (level == LOW && lastLevel == HIGH) {
+    polled++;
+  }
+  lastLevel = level;
+
   if (millis() - lastPrint >= 1000) {
     lastPrint += 1000;
     noInterrupts();                 // copy multi-byte volatiles atomically
@@ -146,6 +159,9 @@ void loop() {
     Serial.print(hz);
     Serial.print(",rpm:");
     Serial.print(hz * 60);
+    Serial.print(",poll_hz:");
+    Serial.print(polled - lastPolled);
+    lastPolled = polled;
     Serial.print(",presses:");
     Serial.print(presses);
     Serial.print(",isr_edges:");
@@ -159,43 +175,48 @@ void loop() {
 
 | label | source | unit |
 |---|---|---|
-| TACH (TRUE) | `{kind:'behavior', key:'tach_true_hz'}` | Hz |
+| TACH (TRUE) | `{kind:'behavior', key:'tach.true_hz'}` | Hz |
 | TACH (COUNTED) | `{kind:'behavior', key:'serial.tach_hz'}` | Hz |
+| SHAFT SPEED | `{kind:'behavior', key:'serial.rpm'}` | rpm |
+| TACH (POLLED) | `{kind:'behavior', key:'serial.poll_hz'}` | Hz |
 | PRESSES (DEBOUNCED) | `{kind:'behavior', key:'serial.presses'}` | '' |
 | ISR EDGES (PIN 2) | `{kind:'behavior', key:'serial.isr_edges'}` | '' |
 | PIN 2 | `{kind:'voltage', node:'d2'}` | V |
-| DROPPED EDGES | `{kind:'behavior', key:'tach_dropped'}` | '' |
+| DROPPED EDGES | `{kind:'behavior', key:'tach.dropped'}` | '' |
+| L LED | `{kind:'current', elementId:'led_l'}` | A |
+| EXTRA EDGES | derived diff of ISR EDGES and PRESSES | '' |
 
 ## Tweaks
 
 | label | elementId | key | min | max | step | log | unit |
 |---|---|---|---|---|---|---|---|
-| Wheel speed | `behavior:tach-gen` | hz | 1 | 20000 | — | yes | Hz |
+| Wheel speed | `behavior:tach` | hz | 1 | 20000 | — | yes | Hz |
 | Debounce capacitor | `c_rc` | value | 1e-8 | 1e-5 | — | yes | F |
-| Button | `sw_btn` | closed | 0 | 1 | 1 | no | — |
+| Button | `behavior:bounce` | press (momentary) | 0 | 1 | 1 | no | — |
 
 ## Status lines
 
 | when | text |
 |---|---|
 | state RUNNING | RUNNING: Timer1 toggles L every 0.5 s while the ISRs count pulses. |
-| readout 5 above 0 | Edges are arriving faster than the ISR can finish: counts are being lost. |
+| EXTRA EDGES above 0.5 | MISCOUNTING: the ISR saw more falling edges than debounced presses. |
+| DROPPED EDGES above 0 | Edges are arriving faster than the ISR can finish: counts are being lost. |
 
 ## Failures
 
 ### F1: Remove the debounce capacitor
 - **Patch:** `{op:'remove', elementId:'c_rc'}`
-- **Sim shows:** one press now gives `isr_edges` +3…+12, while `presses` (the polled, 20 ms-debounced count) still goes up by 1.
-- **Why:** a FALLING interrupt fires on every bounce transition. It is fast enough to see each one. The RC (τ = 1 ms on press) used to hide them. Either filter in hardware or ignore re-triggers inside a time window in software.
+- **Sim shows:** one press now gives `isr_edges` +2…+6 (plus up to 3 more on release), while `presses` (the polled, 20 ms-debounced count) still goes up by 1. (The earlier draft said +3…+12: that counted every contact transition, but a FALLING interrupt only fires on the closings.)
+- **Why:** a FALLING interrupt fires on every closing of the chattering contact. It is fast enough to see each one. The RC (τ = 1 ms on press) used to hide them. Either filter in hardware or ignore re-triggers inside a time window in software.
 
 ### F2: Leave out the tach pull-up
 - **Patch:** `{op:'remove', elementId:'r_pull'}`
-- **Sim shows:** with the wheel stopped, `tach_hz` still reads tens to hundreds of Hz of nonsense.
+- **Sim shows:** with the wheel nearly stopped (the slider's minimum is 1 Hz), `tach_hz` still reads about 100 to 150 Hz of nonsense.
 - **Why:** an open-collector (A3144-type) output can only pull low. Without a pull-up the pin floats and picks up mains hum and the switching noise of anything nearby. Every crossing of the threshold is an "edge". Inputs should never float.
 
 ### F3: Spin the wheel at 300 kHz
 - **Patch:** `{op:'set', elementId:'behavior:tach-gen', key:'hz', value:300000}`
-- **Sim shows:** `tach_hz` tops out near 200 kHz and `tach_dropped` climbs. `loop()` slows to a crawl, because nearly all CPU time is spent entering and leaving the ISR.
+- **Sim shows:** `tach_hz` reads about 150 kHz (every second edge is accepted, since the edges are 3.3 µs apart and the ISR needs 5 µs) and `tach.dropped` climbs. The sim does not slow `loop()` down; on a real Uno near this rate nearly all CPU time goes into entering and leaving the ISR and `loop()` crawls.
 - **Why:** each interrupt costs a few µs, so about 1/5 µs = 200 kHz is the ceiling here, before any loop code runs. For high-rate pulses, use a hardware counter. Timer1's T1 input on pin 5 can count external pulses with no CPU cost.
 
 ## Meet the board
@@ -204,7 +225,7 @@ Polling means `loop()` checks a pin whenever it gets around to it. With `delay(3
 
 **Rules for ISRs:** keep them tiny and avoid `Serial`, `delay()` and long maths. Mark the variables they share with the loop as `volatile`. Copy multi-byte values with interrupts briefly off, because the 8-bit AVR reads a 32-bit `unsigned long` in four pieces.
 
-**Timers** are counters clocked from 16 MHz through a prescaler. Timer1 is 16-bit. For a 2 Hz compare interrupt with prescaler 256: 16 000 000 / 256 = 62 500 ticks/s, so OCR1A = 62 500 / 2 − 1 = **31 249**. The longest Timer1 period is 65 536 × 1024 / 16 MHz = **4.19 s**. TimerOne does this arithmetic for you, but it takes over PWM on pins 9 and 10, and so does the Servo library.
+**Timers** are counters clocked from 16 MHz through a prescaler. Timer1 is 16-bit (INT0 and INT1 are PD2 and PD3 on the ATmega328P, which are Arduino pins 2 and 3). For a 2 Hz compare interrupt with prescaler 256: 16 000 000 / 256 = 62 500 ticks/s, so OCR1A = 62 500 / 2 − 1 = **31 249**. The longest Timer1 period is 65 536 × 1024 / 16 MHz = **4.19 s**. TimerOne does this arithmetic for you, but it takes over PWM on pins 9 and 10, and so does the Servo library.
 
 **Bounce:** the button's contacts chatter for roughly 1–5 ms, sometimes longer. With 1 kΩ and 1 µF, the input needs about 1 ms to fall, which swallows the fast chatter.
 

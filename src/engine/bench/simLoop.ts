@@ -584,6 +584,9 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         injectEdge(pin, level, tMicros) {
           mcu?.injectEdge(pin, level, tMicros)
         },
+        schedule(tMicros, fn) {
+          mcu?.schedule(tMicros, fn)
+        },
         serialIn(text) {
           mcu?.serialIn(text)
         },
