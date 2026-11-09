@@ -2,7 +2,9 @@
 
 *Feedback does the work*
 
-> An LM358 with 100 kΩ over 10 kΩ has a gain of exactly 11, so a 0.30 V sensor signal becomes 3.30 V.
+> An LM358 with 100 kΩ over 10 kΩ has a gain of 11 (to within 0.01 % with its 10⁵ open-loop gain), so a 0.30 V sensor signal becomes 3.30 V.
+>
+> **As built (2026-11-09):** the lesson `src/lessons/T2/opamp-basics.ts` departs from the board below. It runs on 5 V with a 100k/100k divider buffered by the LM358's second half as a 2.5 V reference, a 5 Hz sine (2.5 V ± 50 mV) from a generator, and the `opamp-config` behavior switching half A between non-inverting (+11), inverting (−10), buffer and comparator. An enum swaps LM358 (output 5 mV to 3.5 V) for MCP6002 (5 mV to 4.975 V). Failures: no feedback, R_F = 1 MΩ, lost bias. F3 (swapped inputs) is not used: see SIM NOTE.
 
 - **Lesson id:** `opamp-basics` · **Track:** T2 Semiconductors
 - **Prerequisites:** `resistor-codes-divider`, `kirchhoff`
@@ -94,9 +96,9 @@ The input signal comes from a divider: V_in = 5 × 3k/(47k + 3k) = **0.300 V**.
 
 **Real limits (LM358 on 5 V).**
 
-- The output reaches down to about ground but only up to about **V_CC − 1.5 V ≈ 3.5 V**, so gains above 3.5/0.3 ≈ 11.7 clip here.
-- The inputs work from 0 V up to about V_CC − 1.5 V.
-- Gain-bandwidth is ≈ 0.7–1 MHz, so at a gain of 11 the bandwidth is about 60–90 kHz.
+- The output reaches down to about ground (5 mV typ, 20 mV max with RL ≤ 10 kΩ) but is only guaranteed up to **V_CC − 1.5 V ≈ 3.5 V** (TI: swing from the positive rail 1.5 V max at V+ = 5 V, RL ≥ 2 kΩ), so gains above 3.5/0.3 ≈ 11.7 clip here.
+- The inputs work from 0 V up to V_CC − 1.5 V at 25 °C (V_CC − 2 V over temperature).
+- Gain-bandwidth is 0.7 MHz typical in TI's current LM358 datasheet (SLOS068; the newer LM358B is 1.2 MHz, and some second-source LM358 datasheets quote 1 MHz), so at a gain of 11 the bandwidth is about 64 kHz.
 
 **Inverting amplifier** (signal into R_g at the − input, + input at a reference): gain = −R_F/R_G. On a single supply it needs a mid-rail reference.
 
@@ -108,7 +110,7 @@ The input signal comes from a divider: V_in = 5 × 3k/(47k + 3k) = **0.300 V**.
 
 1. Put a 100 nF ceramic capacitor right at the op-amp's supply pin. Long supply leads plus fast edges make amplifiers oscillate.
 2. Tie the unused half of a dual op-amp as a follower to a mid-rail voltage (or ground on single-supply parts whose inputs include ground). Never leave it floating.
-3. On low single supplies, read the "output voltage swing" and "common-mode input range" tables first. If you need the whole rail, use a rail-to-rail part such as the MCP6002.
+3. On low single supplies, read the "output voltage swing" and "common-mode input range" tables first. If you need the whole rail, use a rail-to-rail part such as the MCP6002 (Microchip DS20001733: 1.8–6.0 V supply, output within 25 mV of each rail at RL = 10 kΩ, input VSS − 0.3 V to VDD + 0.3 V, GBWP 1 MHz, 0.6 V/µs).
 
 ## Quiz
 
@@ -142,6 +144,6 @@ The input signal comes from a divider: V_in = 5 × 3k/(47k + 3k) = **0.300 V**.
 
 ## SIM NOTE
 
-- **Positive feedback (F3):** an ideal `OPAMP` with positive feedback has a valid but *unstable* DC solution (output at the input-weighted equilibrium), and Newton-Raphson may happily converge to it. To latch to a rail as real hardware does, the engine needs a dynamic op-amp model in transient (single-pole open-loop response from GBW ≈ 0.7 MHz, plus slew ≈ 0.3 V/µs), or at least a small perturbation followed by transient settling.
+- **Positive feedback (F3):** an ideal `OPAMP` with positive feedback has a valid but *unstable* DC solution (output at the input-weighted equilibrium), and Newton-Raphson does converge to it: tried 2026-11-09, the output followed the input as an amplifier (≈ 1.95–3.05 V) instead of latching, and backward Euler damps the unstable mode at any useful dt, so the failure was dropped rather than faked. To latch to a rail as real hardware does, the engine needs a dynamic op-amp model in transient (single-pole open-loop response from GBW ≈ 0.7 MHz, plus slew ≈ 0.3 V/µs), or at least a small perturbation followed by transient settling.
 - **Rails tied to nodes:** `OPAMP` `vPos`/`vNeg` are fixed numbers. Optional supply-node references (e.g. `vPos: 'vcc'` with a headroom offset) would make output swing follow the actual supply in other lessons (see `regulators-linear-buck`).
-- **Output current limit:** the LM358 sources only ≈ 20–40 mA into a short. An optional `iMax` on `OPAMP` would enable a "short the output" failure.
+- **Output current limit:** the LM358 sources 20 mA min, 30 mA typ (V+ = 15 V) and its short-circuit current is ±40 mA typ. An optional `iMax` on `OPAMP` would enable a "short the output" failure.
