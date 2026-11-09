@@ -270,6 +270,24 @@ describe('tweak kinds', () => {
     expect(b.tweakValues()).toMatchObject({ 'SW.closed': 1, 'R1.value': 10000 })
     expect(b.tweakDefaults()).toMatchObject({ 'SW.closed': 0, 'R1.value': 1000 })
   })
+
+  it('a dotted tweak key starts at the nested value (wave.freq, rating.maxP), not at min', () => {
+    const base = rcLesson()
+    const l = rcLesson({
+      circuit: {
+        elements: [
+          { id: 'V1', type: 'V', nodes: ['in', '0'], value: 0, wave: { kind: 'sine', amp: 1, freq: 1592 } },
+          ...base.circuit.elements.slice(1).map((e) => (e.id === 'R1' ? { ...e, rating: { maxP: 0.25 } } : e)),
+        ],
+      },
+      tweaks: [
+        { label: 'f', elementId: 'V1', key: 'wave.freq', min: 200, max: 10000, log: true, unit: 'Hz' },
+        { label: 'P', elementId: 'R1', key: 'rating.maxP', min: 0.1, max: 2, unit: 'W' },
+      ],
+    })
+    const b = createBench(l)
+    expect(b.tweakDefaults()).toMatchObject({ 'V1.wave.freq': 1592, 'R1.rating.maxP': 0.25 })
+  })
 })
 
 describe('sim speed', () => {

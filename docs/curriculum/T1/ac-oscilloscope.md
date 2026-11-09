@@ -45,8 +45,8 @@ Expected at 50 Hz: input (CH1, after the generator's 50 Ω) ≈ 4.96 V peak (3.5
 | label | source | unit |
 |---|---|---|
 | IN Vpp | `{kind:'behavior', key:'ac.vpp'}` | V |
-| IN RMS | `{kind:'behavior', key:'ac.rmsIn'}` | V |
-| OUT RMS | `{kind:'behavior', key:'ac.rmsOut'}` | V |
+| IN RMS | `{kind:'behavior', key:'ac.acrms'}` | V |
+| OUT RMS | `{kind:'behavior', key:'ac.acrmsB'}` | V |
 | GAIN | `{kind:'behavior', key:'ac.gain'}` | % |
 | FREQUENCY | `{kind:'behavior', key:'ac.freq'}` | Hz |
 | PERIOD | `{kind:'behavior', key:'ac.period'}` | s |
@@ -143,5 +143,5 @@ so CH2 is about 2.4 V RMS and peaks 46/360 × 20 ms ≈ **2.6 ms** after CH1. Th
 
 - **Sine source (done):** `V.wave` now exists; the lesson uses it. (Original note: the engine had only DC `V`. Either add a waveform to `V` (e.g. `wave?: {kind:'sine', amp, freq, offset, phase}`, with tweakable keys `amp`, `freq`, `offset`), or ship a behavior `sine-source` that calls `setParam(V_GEN,'value', offset + amp·sin(2πft))` every tick.)
 - **Scope view (done):** the instrument panel's scope. (Original note: readouts are scalars. A two-channel time-trace widget (rolling buffer of node voltages, time/div and volts/div controls, edge trigger) was needed for this lesson to make sense.)
-- **Measurement behavior** `ac-meter` (done): a least-squares sine fit at the generator's frequency gives amplitude and phase for two nodes (frame-sampled, so no zero-crossing search); FREQUENCY is the generator's setting, not counted. It publishes `vpp`, `rmsIn`, `rmsOut`, `gain`, `freq`, `period` and `phase`.
+- **Measurement behavior** `ac-meter` (done): a least-squares sine fit at the generator's frequency gives amplitude and phase for two nodes (frame-sampled, so no zero-crossing search); FREQUENCY is the generator's setting, not counted. It publishes `vpp`, `acrms`, `acrmsB`, `gainPct`, `freq`, `period` and `phase`.
 - **Time step:** 1 ms gives only 20 samples per 50 Hz cycle and 2 at 500 Hz. The lesson uses `sim: { dt: 50e-6, speed: 0.1, method: 'trap' }`: 40 points a cycle at 500 Hz, and trapezoidal integration because backward Euler at this dt lags the 500 Hz phase by about 4° too few (−80° against −84.5°).

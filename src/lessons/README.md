@@ -47,6 +47,9 @@ export const lesson: LessonDef = {
 
 The template above is a skeleton. `T2/led-resistor.ts` is the complete reference lesson.
 
+## Part inspector and `facts`
+Clicking a part (or its callout pill) opens the part inspector: label, kind, `role`, a turning close-up, the band decode for resistors, live I / V / P / Tj of its `circuitIds` elements and their use of each `rating`. Give a part a `circuitIds` link and a real `rating` and the card fills itself. Optionally add `facts: string[]`, short datasheet lines shown under "Datasheet", e.g. `facts: ['Vf 2.0 V typ. at 20 mA', 'IF 30 mA abs. max']`. Use real datasheet values and name the condition; leave `facts` out rather than guess.
+
 ## Layout helpers (`layout.ts`)
 - `bbHole(bb, col, row)` gives a breadboard hole: columns 1–30, rows a–j, rails '+t' '-t' '-b' '+b'.
 - `between(a, b)` places a 2-lead part. A resistor at rot 0 spans 4 holes; an LED spans 1, with the cathode at −x.

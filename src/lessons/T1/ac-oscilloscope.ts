@@ -127,9 +127,9 @@ export const lesson: LessonDef = {
 
   readouts: [
     { label: 'IN Vpp', source: { kind: 'behavior', key: 'ac.vpp' }, unit: 'V' },
-    { label: 'IN RMS', source: { kind: 'behavior', key: 'ac.rmsIn' }, unit: 'V' },
-    { label: 'OUT RMS', source: { kind: 'behavior', key: 'ac.rmsOut' }, unit: 'V' },
-    { label: 'GAIN', source: { kind: 'behavior', key: 'ac.gain' }, unit: '%' },
+    { label: 'IN RMS', source: { kind: 'behavior', key: 'ac.acrms' }, unit: 'V' },
+    { label: 'OUT RMS', source: { kind: 'behavior', key: 'ac.acrmsB' }, unit: 'V' },
+    { label: 'GAIN', source: { kind: 'behavior', key: 'ac.gainPct' }, unit: '%' },
     { label: 'FREQUENCY', source: { kind: 'behavior', key: 'ac.freq' }, unit: 'Hz' },
     { label: 'PERIOD', source: { kind: 'behavior', key: 'ac.period' }, unit: 's' },
     { label: 'PHASE', source: { kind: 'behavior', key: 'ac.phase' }, unit: '°' },

@@ -16,6 +16,8 @@ export interface CalloutEntry {
   text: string
   tone: CalloutTone
   hidden: boolean
+  /** the board part this tag names: the pill becomes a button that selects it */
+  target?: string
 }
 
 export interface CalloutPlacement {
@@ -68,7 +70,7 @@ export function createCalloutLayer(): CalloutLayer {
   return {
     set(entry) {
       const cur = entries.get(entry.id)
-      if (cur && cur.text === entry.text && cur.tone === entry.tone && cur.hidden === entry.hidden) return
+      if (cur && cur.text === entry.text && cur.tone === entry.tone && cur.hidden === entry.hidden && cur.target === entry.target) return
       entries.set(entry.id, { ...entry })
       changed()
     },

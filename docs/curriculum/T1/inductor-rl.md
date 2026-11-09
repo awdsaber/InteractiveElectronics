@@ -6,7 +6,7 @@
 
 - **Lesson id:** `inductor-rl` · **Track:** T1 Passives
 - **Prerequisites:** `capacitor-rc`
-- **Power element:** `SW1` (powerLabel: "Close the switch")
+- **Power element:** `V_SUP` (powerLabel: "Switch supply on"). `SW1` is a normally-open momentary push button the learner holds (tweak kind `momentary`), so it starts `closed: false`
 - **Transient:** yes
 
 ## Learning goals
@@ -18,13 +18,13 @@
 
 ## Board
 
-Board: `RL-11`, size 12 × 8, base `mat`.
+Board: `RL-11`, base `breadboard-only` (as built; the supply is a module with screw terminals).
 
 | id | PartKind | mount | label | role | circuitIds |
 |---|---|---|---|---|---|
 | pwr | `module` (title "5 V SUPPLY") | `offboard` | SUPPLY | 5 V source. | `V_SUP` |
 | bb | `breadboard` | `offboard` | BREADBOARD | Holds the parts. | — |
-| sw1 | `switch-slide` (miniature, 0.5 A / 50 V DC class) | `tht` | SWITCH | Makes and breaks the coil current. | `SW1` |
+| sw1 | `button` (miniature, 0.5 A / 50 V DC class) | `tht` | SWITCH | Makes and breaks the coil current. | `SW1` |
 | l1 | `inductor` (1 H iron-core choke, ≈ 18 Ω DCR) | `offboard` | CHOKE | Stores energy in its magnetic field. | `L1`, `R_DCR` |
 | r1 | `resistor` (82 Ω, 1/2 W) | `tht` | LIMIT | Sets the final current with the winding resistance. | `R1` |
 | d1 | `diode` (1N4007) | `tht` | FLYBACK | Gives the coil current somewhere to go when the switch opens. | `D1` |
@@ -35,7 +35,7 @@ Board: `RL-11`, size 12 × 8, base `mat`.
 | id | type | nodes | value / params | rating | notes |
 |---|---|---|---|---|---|
 | `V_SUP` | V | `sup`, `0` | 5.0 V, rInternal 0.05 Ω | — | |
-| `SW1` | SW | `sup`, `a` | closed: false | maxV 50 V, maxI 0.5 A | **power element** |
+| `SW1` | SW | `sup`, `a` | closed: false, vBreak 330 V | maxV 50 V, maxI 0.5 A, failMode short | momentary push button; 330 V = the air breakdown minimum |
 | `L1` | L | `a`, `b` | 1.0 H, i0 0 | maxI 0.1 A | generic choke; rating stands in for its thermal/saturation limit |
 | `R_DCR` | R | `b`, `c` | 18 Ω | — | the choke's winding resistance (`partId: l1`) |
 | `R1` | R | `c`, `0` | 82 Ω | maxP 0.5 W | |
@@ -57,18 +57,18 @@ Expected: I_final = 5/100.1 ≈ 50 mA; τ = 10 ms; P(R1) = 0.205 W; switch sees 
 | label | elementId | key | min | max | step | log | unit |
 |---|---|---|---|---|---|---|---|
 | Inductance | `L1` | value | 0.1 | 2 | 0.1 | no | H |
-| Series resistor | `R1` | value | 22 | 470 | — | yes | Ω |
+| Series resistor | `R1` | value | 47 | 470 | — | yes | Ω |
 
 ## Failures
 
 ### F1: Remove the flyback diode, then open the switch
 - **Patch:** `{op:'remove', elementId:'D1'}`
-- **Sim shows:** at turn-off, ACROSS SWITCH spikes far past 50 V; SW1 fails on overvoltage.
+- **Sim shows:** at turn-off, ACROSS SWITCH clamps at SW1 vBreak, 330 V, far past 50 V; SW1 fails on overvoltage (contacts weld, so the coil is stuck on).
 - **Why:** the coil insists on keeping its 50 mA flowing, and the only path is the opening switch. v = L·di/dt becomes enormous. In reality the gap arcs (pitting the contacts), or a transistor switch avalanches and dies.
 
 ### F2: Fit the flyback diode backwards
 - **Patches:** `{op:'remove', elementId:'D1'}`, `{op:'add', element:{id:'D1', type:'D', nodes:['a','0'], rating:{maxI:1, maxV:1000}}}`
-- **Sim shows:** when the switch closes, amps flow through D1 straight across the supply; D1 burns after 300 ms.
+- **Sim shows:** when you press the button, about 40 A flows through D1 straight across the supply (only 0.05 Ω of source and the diode drop limit it); SW1 (0.5 A) and D1 (1 A) both burn after 300 ms.
 - **Why:** reversed, the diode is forward-biased directly across 5 V, so it is a short circuit with a 0.7 V drop.
 
 ### F3: Too little series resistance
@@ -90,7 +90,7 @@ The current heads for 5/100 = **50 mA**. At t = 0 it rises at di/dt = V/L = 5 A/
 
 **Interrupting it.** Suppose a switch broke the 50 mA in 1 µs. Then v = L·Δi/Δt = 1 × 0.05 / 10⁻⁶ = **50 000 V** in principle. In practice the voltage only rises until something breaks down, and that something is usually your switch.
 
-**Flyback diode.** D1 sits reverse-biased while the switch is closed. When it opens, the coil current turns through D1 and decays with τ ≈ 10 ms, so the coil's top only swings to about −0.7 V. The switch sees just 5.7 V. Its cathode must face the supply's positive side.
+**Flyback diode.** D1 sits reverse-biased while the switch is closed. When it opens, the coil current turns through D1 and decays with τ = L/R = 10 ms (a bit faster in practice: the diode's fixed 0.7 V drop brings it to zero in about 21 ms), so the coil's top only swings to about −0.7 V. The switch sees just 5.7 V. Its cathode must face the supply's positive side.
 
 ## For mechanical engineers
 

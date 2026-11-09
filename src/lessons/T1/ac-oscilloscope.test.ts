@@ -112,13 +112,13 @@ describe('T1 ac-oscilloscope', () => {
 
   it('sweep: 5 Hz tracks (≈ −5°), 500 Hz is down to ~0.09 and lags ~−85° (OUT RMS 0.33 V)', async () => {
     const lo = powered({ tweaks: { 'V_GEN.wave.freq': 5 } })
-    let s = await run(lo, 1.5)
+    let s = await run(lo, 6)
     near(s.values[GAIN], 100 / Math.hypot(1, 2 * Math.PI * 5 * R * C), 0.03) // 99.5 %
     near(s.values[PHASE], -(Math.atan(2 * Math.PI * 5 * R * C) * 180) / Math.PI, 0.05)
     lo.dispose()
 
     const hi = powered({ tweaks: { 'V_GEN.wave.freq': 500 } })
-    s = await run(hi, 0.1)
+    s = await run(hi, 0.6)
     near(s.values[FREQ], 500, 0.01)
     near(s.values[OUT_RMS], 0.333, 0.05)
     near(s.values[PHASE], -84.5, 0.05)
