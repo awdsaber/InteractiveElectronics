@@ -65,4 +65,11 @@ describe('formatSI', () => {
     expect(formatSI(4.12, '', 3)).toBe('4.12')
     expect(formatSI(3, '', 1)).toBe('3')
   })
+
+  it('shows tiny no-prefix values (float dust at rest) as zero, not 20 decimals', () => {
+    expect(formatSI(-1e-16, 'rpm', 2)).toBe('0.0 rpm')
+    expect(formatSI(3e-9, '%', 3)).toBe('0.00 %')
+    expect(formatSI(2e-12, '', 3)).toBe('0.00')
+    expect(formatSI(0.004, 'rpm', 2)).toBe('0.0040 rpm') // still shown: above the dust floor
+  })
 })

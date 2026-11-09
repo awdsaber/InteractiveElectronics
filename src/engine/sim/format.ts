@@ -35,7 +35,8 @@ const join = (num: string, prefix: string, unit: string) => `${num} ${prefix}${u
  */
 export function formatSI(value: number, unit: string, digits = 2): string {
   if (!Number.isFinite(value)) return join('—', '', unit)
-  if (NO_PREFIX.has(unit)) return join(fixed(value, digits), '', unit)
+  // no-prefix units have no µ/n/p to absorb float dust (−1e-16 rpm at rest): below 1e-6 it is zero
+  if (NO_PREFIX.has(unit)) return join(fixed(Math.abs(value) < 1e-6 ? 0 : value, digits), '', unit)
   if (value === 0) return join(fixed(0, digits), '', unit)
 
   const abs = Math.abs(value)
