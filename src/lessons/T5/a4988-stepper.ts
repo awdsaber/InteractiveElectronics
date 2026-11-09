@@ -436,6 +436,104 @@ In full step θ sits on 45° + k·90°, so each coil carries **70.7 %** of I_tri
     'Disable the outputs (EN HIGH) when holding torque isn\'t needed. A motor holding at 1 A per coil dissipates 2 × 1² × 1.5 = 3 W in the windings, plus the driver\'s share, even while standing still.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-driver',
+      title: 'Meet the driver',
+      body: 'Click the **A4988** chip to open its inspector. It is a microstepping driver with a chopper: it measures coil current across a sense resistor and switches the 12 V to hold it at a limit.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the small chip on the red carrier board, next to the trimmer.',
+      explain: 'A stepper coil is a 1.5 Ω resistor and an inductor: 12 V alone would push far too much current. The chopper turns the voltage on and off to hold the current at a set limit.',
+    },
+    {
+      id: 'power',
+      title: 'Switch on 12 V',
+      body: 'Press **Switch on 12 V**. The motor supply comes up and the coils hold the shaft at its home position.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }] },
+      focus: { control: 'power' },
+      explain: 'With no step pulses the driver still energises both coils. The shaft is locked, which is why a stepper is warm even when idle.',
+    },
+    {
+      id: 'read-vref',
+      title: 'Read the current limit',
+      body: 'Click the **VREF** trimmer to open its inspector. **VREF** reads about **0.54 V** and **CURRENT LIMIT** about **1.0 A**: 0.544 / (8 × 0.068 Ω). Each coil holds **0.707 A**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'inspect', part: 'pot' },
+          { kind: 'readout', index: 0, above: 0.5, below: 0.6, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.95, below: 1.05, holdMs: 300 },
+          { kind: 'readout', index: 2, above: 0.6, below: 0.8, holdMs: 300 },
+        ],
+      },
+      focus: { part: 'pot' },
+      hint: 'The brass screw on the board is the trimmer.',
+      explain: 'The A4988 trips its chopper when the sense voltage reaches Vref / 8, so I_trip = Vref / (8 × R_sense). In full-step hold both coils are at 70.7 % (the sine of 45°), so each carries 1.0 × 0.707 A.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the sketch',
+      body: 'Press **Upload sketch**. The sketch sets the MS pins for **1/16 microstepping** (3200 steps per turn) and sends step pulses on pin 3.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'pin', pin: 11, level: 1 },
+        ],
+      },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered.',
+      explain: 'MS1, MS2 and MS3 all HIGH select 1/16 step: 200 full steps × 16 = 3200 pulses per turn, 0.1125° each. A DIR pulse high or low picks the direction.',
+    },
+    {
+      id: 'spin-up',
+      title: 'Watch it reach 120 rpm',
+      body: 'The first turn ramps the step rate from 20 rpm to **120 rpm**. **SHAFT SPEED** climbs above **80 rpm**.',
+      check: { kind: 'readout', index: 4, above: 80, holdMs: 200 },
+      hint: 'Wait for the ramp: the motor speeds up over the first quarter of the turn.',
+      explain: 'At 120 rpm in 1/16 step the sketch sends 120 / 60 × 3200 = 6400 steps per second. The ramp matters: a stepper that is asked to start at full speed misses steps because the rotor cannot accelerate that fast.',
+    },
+    {
+      id: 'overload',
+      title: 'Overload the shaft',
+      body: 'Slide **Load torque** above **0.3 N·m**. The holding torque at 1 A is about 0.235 N·m, so **SKIPPED STEPS** starts counting.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load torque', min: 0.3 },
+          { kind: 'readout', index: 5, above: 0.5 },
+        ],
+      },
+      focus: { control: 'tweak:Load torque' },
+      hint: 'The slider runs to 0.4 N·m. It takes a second or two for a step to be missed.',
+      explain: 'A stepper has no feedback: if the load exceeds the torque the coil current can produce, the rotor slips a step, and the sketch never finds out. This is why a stepper needs a margin of torque, or an encoder.',
+    },
+    {
+      id: 'no-limit',
+      title: 'Break it: no current limit',
+      body: 'Open **Break something** and choose **No current limit**. Vref hits the stop at 4.95 V, asking for 9 A, and the **OVERCURRENT LATCH** reads **1**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-current-limit' }, { kind: 'readout', index: 8, above: 0.5 }] },
+      focus: { control: 'break' },
+      explain: 'I_trip = 4.95 / (8 × 0.068) = 9.1 A, higher than a coil can ever reach at 12 V (about 5.5 A). The genuine A4988 notices a coil past 2.1 A, latches the outputs off and the shaft goes limp. It needs ENABLE toggled or the 12 V cycled.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The trimmer is back at 1.0 A.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: current limit, microstepping and torque.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'On a board with R_s = 0.068 Ω, what Vref sets a 1.2 A limit?',

@@ -480,6 +480,101 @@ export const lesson: LessonDef = {
     'Many 5 V modules (HC-SR04, some relay boards) accept 3.3 V as a valid HIGH input but send back 5 V outputs. Divide every line that goes into the S3. Lines that go out to them usually work as they are.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-module',
+      title: 'Meet the module',
+      body: 'Click the silver **WROOM-1** module to open its inspector. It holds the ESP32-S3 chip, the flash and the WiFi antenna, and everything on the chip runs at **3.3 V**.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the large metal-shielded rectangle in the middle of the DevKitC-1.',
+      explain: 'The big difference from the Uno: the pins are 3.3 V logic. A 5 V signal on a GPIO pin is out of spec, which the later steps show on the bench.',
+    },
+    {
+      id: 'power',
+      title: 'Plug in USB-C',
+      body: 'Press **Plug USB-C**. The on-board LDO makes the **3V3 RAIL**, which should read about **3.3 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 3.2, below: 3.4, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'The 5 V from the cable goes through a 3.3 V regulator. The module averages about 100 mA on WiFi and peaks higher during transmit bursts, so a weak 3.3 V rail browns out.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the WiFi sketch',
+      body: 'Press **Upload sketch**. The sketch blinks the RGB LED amber while it connects to WiFi, then cycles colours. **WIFI RSSI** reads about **-55 dBm** once it is online.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'readout', index: 5, above: -70, below: -40, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'upload' },
+      hint: 'Connecting takes about 1.5 s. The sketch prints dots to the serial monitor until it has an IP.',
+      explain: 'The WiFi stack runs on core 0 while loop() runs on core 1, so the sketch keeps reading the pot while the radio works. RSSI is a power in dBm, so more negative means a weaker link.',
+    },
+    {
+      id: 'pot-full',
+      title: 'Turn the pot to full',
+      body: 'Slide **Pot position** to the top. The 12-bit ADC reads **4095** and the sketch drives the **GPIO5 LED** at full duty: **8.6 mA** = (3.3 − 1.8) / (150 + 25).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Pot position', min: 0.97 },
+          { kind: 'readout', index: 3, above: 0.0075, below: 0.0095, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:Pot position' },
+      explain: 'The ESP32-S3 ADC has 12 bits (4096 counts over about 3.3 V, roughly 0.8 mV each) against the Uno\'s 10. The LED current is lower than on the Uno because 3.3 V leaves less over the resistor.',
+    },
+    {
+      id: 'divider',
+      title: 'Detune the 5 V divider',
+      body: 'A 5 V signal reaches GPIO4 through a 10 kΩ / 20 kΩ divider: 5 × 20 / 30 = **3.33 V**. Slide **Divider bottom** up to about **30 kΩ** and **GPIO4** rises above **3.6 V**: 5 × 30 / 40 = 3.75 V.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Divider bottom', min: 28000 },
+          { kind: 'readout', index: 2, above: 3.6, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Divider bottom' },
+      hint: 'The 5 V signal alternates, 1 s high and 1 s low. Wait for a high half.',
+      explain: 'The absolute maximum on any pin is V_DD + 0.3 V = 3.6 V. The status line warns: the internal ESD clamp diode is conducting. It is built to absorb a static zap, not a steady current.',
+    },
+    {
+      id: 'direct-5v',
+      title: 'Break it: 5 V straight into GPIO4',
+      body: 'Open **Break something** and choose **Wire a 5 V signal straight into GPIO4**. The divider is bypassed.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'direct-5v' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'The clamp burns after about 300 ms of the signal being high.',
+      explain: 'GPIO4 is held near 4.2 V by the ESD diode into the 3.3 V rail, carrying about (5 − 4.2) / 100 Ω = 8 mA. The diode burns short and GPIO4 reads HIGH forever. Use a divider, a level shifter or an open-drain output pulled up to 3.3 V.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. GPIO4 reads the signal again.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: 3.3 V logic, the ADC and the divider.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'You divide a 5 V signal with a 10 kΩ top resistor. Which bottom resistor gives about 3.3 V?',

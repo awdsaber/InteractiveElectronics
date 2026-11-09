@@ -479,6 +479,89 @@ From the datasheet (typical): source side **1.35 V** and sink side **1.2 V** at 
     'Some clone modules fit "M7" (1N4007-class) rectifiers as the flyback diodes. Their reverse recovery is microseconds, far beyond the datasheet\'s trr ≤ 200 ns, so at every PWM edge they conduct backwards for a moment and the bridge and diodes run hot. Swap them for Schottkys (SS14, 1N5819) or ultrafast diodes (UF4007).',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-bridge',
+      title: 'Meet the bridge',
+      body: 'Click the black **L298N** package to open its inspector. It is a dual full bridge built from bipolar transistors, rated for **2 A** per channel.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the tall chip bolted to the heatsink.',
+      explain: 'Bipolar outputs saturate with a fixed voltage drop instead of a resistance, so the L298N loses about 1.4 V plus a small resistive part in the bridge. That is the whole story of this lesson.',
+    },
+    {
+      id: 'both-supplies',
+      title: 'Connect both supplies',
+      body: 'Press **Plug USB** for the Uno, then **Connect battery** for the motor. **BATTERY Vs** should read about **7.4 V**, a 2S Li-ion pack.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 7.0, below: 7.8, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      hint: 'There are two power buttons at the top of the bench, one for each supply.',
+      explain: 'Vs and the Uno\'s USB 5 V are separate supplies tied together by one common ground wire.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the duty-step sketch',
+      body: 'Press **Upload sketch**. The sketch steps the PWM duty on ENA through 0, 20, 40, 60, 80 and 100 %, three seconds each. The motor starts turning at the 20 % step.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'upload' }, { kind: 'status', is: 'RUNNING' }, { kind: 'pin', pin: 5, level: 1 }] },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered.',
+      explain: 'IN1 and IN2 pick the direction, ENA gets the PWM. With EN low the outputs are off and the motor coasts.',
+    },
+    {
+      id: 'bridge-drop',
+      title: 'Find the missing volts',
+      body: 'Wait for the motor to start. **BRIDGE DROP** reads more than **1.4 V**: the battery says 7.4 V but the motor sees less. The difference is heat in the L298.',
+      check: { kind: 'readout', index: 2, above: 1.4, holdMs: 300 },
+      hint: 'It shows when the 20 % step begins, about 3 s after the upload.',
+      explain: 'The datasheet gives the saturation drops of the source and sink transistors, which add to about 1.4 V plus a resistive part (here 1.15 Ω × I). At 190 rpm and 0.15 A that is about 1.6 V, close to a fifth of a 7.4 V pack.',
+    },
+    {
+      id: 'load',
+      title: 'Load the wheel',
+      body: 'Slide **Load torque (motor shaft)** up to about **0.005 N·m**. At 1 A the bridge drops about **2.5 V** and **BRIDGE HEAT** passes **1.8 W**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load torque (motor shaft)', min: 0.004 },
+          { kind: 'readout', index: 4, above: 1.8, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Load torque (motor shaft)' },
+      hint: 'Heat only rises while the motor is being driven, so wait for the next duty step. The efficiency readout falls toward 60 %.',
+      explain: 'P = (1.4 + 1.15 I) × I plus the supply\'s 50 mA quiescent × 7.4 V: about 2.9 W at 1 A, for an efficiency near 62 %. The rest of the battery\'s power is turned into heat in the package, which is what the heatsink is for.',
+    },
+    {
+      id: 'no-flyback',
+      title: 'Break it: remove the flyback diodes',
+      body: 'Open **Break something** and choose **Remove the flyback diodes**. The L298 has no internal diodes, and the next PWM edge asks the motor inductance to push its current somewhere.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-flyback' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'The output transistors fail at the first PWM off edge. Wait for the duty to step.',
+      explain: 'An inductor cannot change its current at once. When the outputs turn off with 0.5 A flowing, the motor\'s 0.5 mH makes the output voltage jump above the 50 V absolute maximum until it finds a path. The fast diodes (trr ≤ 200 ns) give it one.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The diodes are back.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: bridge drop, heat and flyback diodes.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A 7.4 V pack, the motor drawing 1 A, and a typical L298 total drop of 2.55 V. What voltage reaches the motor?',

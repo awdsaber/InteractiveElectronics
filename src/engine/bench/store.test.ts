@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultLessonId, lessons } from '../../lessons'
 import { DEFAULT_SETTINGS, asCode, asGuideSaves, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
 
+/** a copy of a real lesson with no guide, registered once, so the test survives every lesson getting a guide */
+function guidelessLessonId(): string {
+  const id = 'guideless-copy'
+  if (!lessons.some((l) => l.id === id)) lessons.push({ ...lessons[0], id, guide: undefined })
+  return id
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
@@ -160,7 +167,7 @@ describe('guided steps in the store', () => {
     useStore.getState().setGuideMode('guided')
     // the inspector is still open on r1, so the step passes as soon as the guide resumes
     expect(useStore.getState().guide?.current).toBe(1)
-    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
+    useStore.getState().selectLesson(guidelessLessonId())
     expect(useStore.getState().guide).toBeNull()
     expect(useStore.getState().guideMode).toBe('free')
   })
