@@ -134,6 +134,87 @@ export const lesson: LessonDef = {
   subtitle: 'Never miss an edge',
   tagline: 'An Uno answers a pin change within a few microseconds, but delay(1000) leaves the loop blind for a million of them: interrupts let the hardware do the watching.',
 
+  guide: [
+    {
+      id: 'meet-the-uno',
+      title: 'Find the interrupt pins',
+      body: 'Click the **UNO** (or its callout) to open the part inspector. Its datasheet lines say INT0 is pin 2 and INT1 is pin 3: the only two pins that can interrupt.',
+      check: { kind: 'inspect', part: 'uno' },
+      focus: { part: 'uno' },
+      hint: 'Click the blue board, or the UNO tag above it.',
+      explain: 'The tach sits on pin 3 (INT1) and the button on pin 2 (INT0). Timer1 needs no pin: it is inside the chip.',
+    },
+    {
+      id: 'power-on',
+      title: 'Plug in USB',
+      body: 'Press **Plug USB**. Nothing runs yet: there is no sketch.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }] },
+      focus: { control: 'power' },
+      hint: 'The blue button at the top left of the bench.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the sketch',
+      body: 'Press **Upload sketch**. The ISRs count the wheel and the button while Timer1 blinks the yellow L LED every 0.5 s.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'upload' }, { kind: 'status', is: 'RUNNING' }] },
+      focus: { control: 'upload' },
+    },
+    {
+      id: 'read-rpm',
+      title: 'Read the wheel speed',
+      body: 'The wheel makes **50 pulses per second**, one per turn. Wait for **SHAFT SPEED** to read about **3000 rpm** (50 × 60).',
+      check: { kind: 'readout', index: 2, above: 2700, below: 3300, holdMs: 300 },
+      hint: 'The serial line prints once a second, so give it a couple of seconds.',
+      explain: 'rpm = pulses per second × 60 for one pulse per revolution. The ISR only did tachCount++, and loop() did the maths.',
+    },
+    {
+      id: 'isr-vs-polling',
+      title: 'Spin it up to 2 kHz',
+      body: 'Slide **Wheel speed** to about **2 kHz**. Each pulse now lasts only 125 µs. **TACH (COUNTED)**, the ISR, keeps up; **TACH (POLLED)** collapses.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Wheel speed', min: 1500, max: 2600 },
+          { kind: 'readout', index: 1, above: 1800, below: 2200, holdMs: 300 },
+          { kind: 'readout', index: 3, below: 800, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Wheel speed' },
+      hint: 'The slider is logarithmic: 2 kHz is about 77 % of the way along.',
+      explain: 'loop() looks at the pin about once a millisecond, so it only catches a pulse that happens to be there at that instant. The interrupt answers the edge itself.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Open the scope',
+      body: 'Turn on **Instruments**. CH1 shows the tach pulses on pin 3. CH2 waits for the button on pin 2, with the 1.5 V and 3.0 V input thresholds marked.',
+      check: { kind: 'instruments' },
+      focus: { control: 'instruments' },
+    },
+    {
+      id: 'remove-cap',
+      title: 'Take out the debounce capacitor, then press',
+      body: 'Open **Break something** and pick **Remove the debounce capacitor**. Then hold **BUTTON (hold)** for a moment. **EXTRA EDGES** goes above 0: the ISR saw more edges than the one real press.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'break', failure: 'no-debounce-cap' },
+          { kind: 'readout', index: 9, above: 0.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'break' },
+      hint: 'The ISR line prints once a second, so wait a moment after you let go.',
+      explain: 'The contact chatters for a few ms, and an interrupt is fast enough to see every closing. The 1 kΩ + 1 µF filter used to hide them. The 20 ms polled debounce still counted one press.',
+    },
+    {
+      id: 'repair',
+      title: 'Put the capacitor back',
+      body: 'Open **Break something** and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    { id: 'quiz', title: 'Check yourself', body: 'Answer the questions below.', check: { kind: 'quiz' }, focus: { control: 'quiz' } },
+  ],
+
   board: {
     name: 'IRQ BENCH',
     size: [18, 11],
