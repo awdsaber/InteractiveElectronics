@@ -747,7 +747,7 @@ describe('per-board semantics', () => {
       1,
       { board: 'uno', readAnalog: (p) => (p === 14 ? 0.55 : 2.5) },
     )
-    expect(lines).toEqual(['113', '512', '512'])
+    expect(lines).toEqual(['112', '512', '512']) // floor(0.55·1024/5 = 112.64), the datasheet transfer
   })
 
   it('esp32s3: 12-bit ADC, A0 is GPIO1, analogReadResolution', async () => {

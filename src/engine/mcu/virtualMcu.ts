@@ -853,7 +853,8 @@ export class VirtualMcu {
       else if (this.aref === EXTERNAL) ref = this.opts.readAref ? this.opts.readAref() : this.opts.vcc
     }
     if (!(ref > 0)) return max
-    return constrain(Math.round((v / ref) * max), 0, max)
+    // datasheet transfer: code = floor(V · 2^bits / Vref), clamped (2.50 V of 5 V is 512, not 511)
+    return constrain(Math.floor((v / ref) * (max + 1)), 0, max)
   }
 
   private analogReference(mode: number): void {
