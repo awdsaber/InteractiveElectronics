@@ -59,6 +59,7 @@ function lessonWith(): Lesson {
   return {
     ...ledResistor,
     fig: 1,
+    guide: undefined, // its steps name the lesson's own tweak, replaced here
     behaviors: ['writer', { id: 'reader', params: { k: 1 } }],
     tweaks: [{ label: 'k', elementId: 'behavior:reader', key: 'k', min: 0, max: 10, unit: '' }],
     failures: [

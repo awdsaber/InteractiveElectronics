@@ -228,11 +228,13 @@ export interface BoardProps {
   settings: Settings
   /** the inspected part (selection brackets) */
   selected?: string | null
+  /** the part the active guide step points at (guide brackets) */
+  guideFocus?: string | null
   /** click a part to inspect it; without this the parts are not pickable */
   onSelect?: (id: string) => void
 }
 
-export function Board({ lesson, snap, settings, selected = null, onSelect }: BoardProps) {
+export function Board({ lesson, snap, settings, selected = null, guideFocus = null, onSelect }: BoardProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const groups = useRef(new Map<string, Group>())
   const gl = useThree((s) => s.gl)
@@ -293,6 +295,9 @@ export function Board({ lesson, snap, settings, selected = null, onSelect }: Boa
           onGroup={onGroup}
         />
       ))}
+      {guideFocus && guideFocus !== selected && guideFocus !== hovered && (
+        <PartHighlight key={`g-${guideFocus}`} object={() => groups.current.get(guideFocus)} mode="guide" />
+      )}
       {hovered && hovered !== selected && <PartHighlight key={`h-${hovered}`} object={groups.current.get(hovered)} mode="hover" />}
       {selected && <PartHighlight key={`s-${selected}`} object={groups.current.get(selected)} mode="selected" />}
     </group>

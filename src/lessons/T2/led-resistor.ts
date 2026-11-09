@@ -179,6 +179,81 @@ Polarity: the long leg is the anode (+). The short leg and the flat on the rim m
     "For more than a few LEDs, drive them through a transistor or a dedicated constant-current driver, and keep the MCU's 200 mA package limit in mind.",
   ],
 
+  guide: [
+    {
+      id: 'meet-the-resistor',
+      title: 'Meet the resistor',
+      body: 'Click the resistor labelled **LIMIT** on the breadboard to open its inspector. Read its bands: **red-red-brown** is 220 Ω.',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'It is the small striped part between the yellow pin-13 wire and the LED. You can also click its LIMIT tag.',
+      explain: 'Red (2), red (2), brown (×10): 22 × 10 = 220 Ω. It sits in series with the LED, so every milliamp through the LED also passes through it.',
+    },
+    {
+      id: 'plug-usb',
+      title: 'Plug in USB',
+      body: 'Press **Plug USB**. The Uno gets 5 V, but no sketch is running yet, so pin 13 is still an input. Notice that **LED CURRENT** stays at 0.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }] },
+      focus: { control: 'power' },
+      explain: 'Power alone lights nothing: an input pin is high-impedance and sources no current. The sketch has to make pin 13 an OUTPUT.',
+    },
+    {
+      id: 'upload-blink',
+      title: 'Upload Blink',
+      body: 'Press **Upload sketch**. Blink sets pin 13 HIGH for 500 ms, then LOW for 500 ms. Watch the LED and the **PIN 13** readout switch between 5 V and 0 V.',
+      check: { kind: 'pin', pin: 13, level: 1 },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered. The sketch is in the editor under the bench.',
+    },
+    {
+      id: 'read-13-ma',
+      title: 'Read about 13 mA',
+      body: 'While pin 13 is HIGH, **LED CURRENT** reads about **13 mA**. KVL gives it: (5 − 1.8) / (25 + 220) = 13 mA.',
+      check: { kind: 'readout', index: 0, above: 0.011, below: 0.016, holdMs: 250 },
+      hint: 'The reading drops to 0 mA every other half-second, when pin 13 is LOW. Wait for a HIGH half.',
+      explain: "13 mA is safely under the LED's 20 mA continuous rating and the pin's 40 mA absolute maximum. The 25 Ω is the pin's own output resistance.",
+    },
+    {
+      id: 'dim-it',
+      title: 'Fit 1 kΩ instead',
+      body: 'Slide **Series resistor** up to about **1 kΩ** (at least 900 Ω). The LED dims: with 1 kΩ in series it gets (5 − 1.8) / 1025 ≈ **3 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Series resistor', min: 900 },
+          { kind: 'readout', index: 0, above: 0.002, below: 0.0045, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:Series resistor' },
+      hint: 'The slider is logarithmic: 1 kΩ is about four-fifths of the way along.',
+      explain: 'About five times the resistance, about a fifth of the current: once V_f is taken off, the current goes as 1/R. A modern indicator LED is still clearly visible at 2–5 mA.',
+    },
+    {
+      id: 'break-it',
+      title: 'Break it: leave the resistor out',
+      body: "Open **Break something** and choose **Leave the resistor out**. A jumper replaces the resistor, so only the pin's 25 Ω limits the current now.",
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-resistor' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'The LED only burns while pin 13 is HIGH, so it can take up to half a second.',
+      explain: "About (5 − 2) / 25 ≈ 120 mA flows: four times the LED's 30 mA maximum and three times the pin's 40 mA absolute maximum. Both parts are destroyed.",
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The LED blinks again.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+      explain: "Repair is the bench's undo. On a real Uno that pin, and often the ATmega328P, would stay damaged: fit the resistor before you power up.",
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the four questions in **Check yourself** below. Each one is a resistor calculation you just saw on the bench.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What resistor gives a green LED (V_f = 2.1 V) 15 mA from 5 V, ignoring pin resistance?',

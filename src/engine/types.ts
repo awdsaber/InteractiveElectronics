@@ -513,6 +513,71 @@ export interface InstrumentDefaults {
   view?: 'scope' | 'chart'
 }
 
+/** a bench action a guide step can wait for ('place' = any single part placed by hand) */
+export type GuideAction = 'strip' | 'pick-place' | 'place' | 'place-all' | 'solder' | 'power' | 'upload' | 'explode' | 'repair'
+
+/**
+ * A guide step's completion condition: plain data, no code. Event kinds (action, break, inspect,
+ * instruments, quiz, manual) count only what happened since the step became active; state kinds
+ * (status, tweak, readout, pin) look at the bench now.
+ */
+export type GuideCheck =
+  /** that bench button was used at least once since the step became active */
+  | { kind: 'action'; action: GuideAction }
+  /** the bench status is this right now */
+  | { kind: 'status'; is: BenchStatus }
+  /** that failure was triggered since the step became active (or is active now) */
+  | { kind: 'break'; failure: string }
+  /** a tweak (by its label, or `${elementId}.${key}`) sits inside min..max (inclusive) */
+  | { kind: 'tweak'; target: string; min?: number; max?: number }
+  /** readout `index` (SI base units) is above / below the bound, continuously for holdMs (default 0) */
+  | { kind: 'readout'; index: number; above?: number; below?: number; holdMs?: number }
+  /** a sketch pin is driven as OUTPUT at this level (PWM rounds to the nearer level) */
+  | { kind: 'pin'; pin: number; level: 0 | 1 }
+  /** the part inspector was opened on this board part (or is open on it now) */
+  | { kind: 'inspect'; part: string }
+  /** the instrument panel was opened (or is open now) */
+  | { kind: 'instruments' }
+  /** the quiz was finished since the step became active */
+  | { kind: 'quiz' }
+  | { kind: 'all'; of: GuideCheck[] }
+  | { kind: 'any'; of: GuideCheck[] }
+  /** an "I've done this" button: for observe-only steps the bench can't detect */
+  | { kind: 'manual' }
+
+/**
+ * What the guide points at: a bench control and/or a board part. Controls: the bench buttons
+ * ('strip', 'pick-place', 'place', 'solder', 'power', 'upload', 'explode', 'break'), 'instruments'
+ * (the toggle), 'quiz', 'code' (the sketch editor), or `tweak:<label>` (a tweak control).
+ */
+export type GuideControl =
+  | 'strip'
+  | 'pick-place'
+  | 'place'
+  | 'solder'
+  | 'power'
+  | 'upload'
+  | 'explode'
+  | 'break'
+  | 'instruments'
+  | 'quiz'
+  | 'code'
+  | `tweak:${string}`
+
+export interface GuideStep {
+  /** unique within the lesson (kebab-case); progress is saved by it */
+  id: string
+  title: string
+  /** short markdown: what to do and what to notice */
+  body: string
+  check: GuideCheck
+  /** markdown, offered after about 20 s on the step (or on request) */
+  hint?: string
+  focus?: { part?: string; control?: GuideControl }
+  /** markdown shown once the step is done: why the bench did what it did */
+  explain?: string
+}
+
 export interface Lesson {
   id: string
   fig: number
@@ -544,6 +609,8 @@ export interface Lesson {
   sim?: SimSettings
   /** defaults for the instrument panel (scope, strip chart); the learner can change channels */
   instruments?: InstrumentDefaults
+  /** guided steps (see src/lessons/README.md, "Guided steps"); without one the lesson is free explore */
+  guide?: GuideStep[]
 }
 
 export type BehaviorRef = string | { id: string; instance?: string; params?: Record<string, number | string | boolean> }

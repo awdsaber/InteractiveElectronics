@@ -33,12 +33,12 @@ export function BenchActions(p: BenchActionsProps) {
 
   return (
     <div className="bench-actions" role="toolbar" aria-label="Bench actions">
-      <button type="button" className="pill" onClick={fire('strip')} disabled={bare}>
+      <button type="button" className="pill" data-guide="strip" onClick={fire('strip')} disabled={bare}>
         <span className="num">1</span>
         {bb ? 'Clear the breadboard' : 'Strip to bare PCB'}
       </button>
       {!bb && (
-        <button type="button" className="pill" onClick={fire('pick-place')} disabled={p.smdPlaced}>
+        <button type="button" className="pill" data-guide="pick-place" onClick={fire('pick-place')} disabled={p.smdPlaced}>
           <span className="num">2</span>Pick &amp; place SMD
         </button>
       )}
@@ -47,15 +47,16 @@ export function BenchActions(p: BenchActionsProps) {
         header={p.remainingParts.length ? { id: 'place-all', label: 'Place all' } : undefined}
         items={p.remainingParts.map((x) => ({ id: x.id, label: x.label }))}
         emptyText="Every part is placed"
+        guide="place"
         disabled={p.remainingParts.length === 0}
         onPick={(id) => p.onAction(id === 'place-all' ? 'place-all' : `place:${id}`)}
       />
       {!bb && (
-        <button type="button" className="pill" onClick={fire('solder')} disabled={p.soldered} title={p.allPlaced ? '' : 'Place every part first'}>
+        <button type="button" className="pill" data-guide="solder" onClick={fire('solder')} disabled={p.soldered} title={p.allPlaced ? '' : 'Place every part first'}>
           <span className="num">4</span>Solder joints
         </button>
       )}
-      <button type="button" className="pill primary" data-on={p.powered} onClick={fire('power')} aria-pressed={p.powered}>
+      <button type="button" className="pill primary" data-guide="power" data-on={p.powered} onClick={fire('power')} aria-pressed={p.powered}>
         <span className="dot" aria-hidden="true" />
         {p.powered ? unplug : label}
       </button>
@@ -66,16 +67,17 @@ export function BenchActions(p: BenchActionsProps) {
         </button>
       ))}
       {p.hasSketch && (
-        <button type="button" className="pill" onClick={fire('upload')} disabled={!p.powered}>
+        <button type="button" className="pill" data-guide="upload" onClick={fire('upload')} disabled={!p.powered}>
           Upload sketch
         </button>
       )}
-      <button type="button" className="pill" data-on={p.exploded} aria-pressed={p.exploded} onClick={fire('explode')}>
+      <button type="button" className="pill" data-guide="explode" data-on={p.exploded} aria-pressed={p.exploded} onClick={fire('explode')}>
         Exploded view
       </button>
       <MenuButton
         label="Break something"
         className="warn"
+        guide="break"
         header={{ id: 'repair', label: 'Repair all' }}
         items={p.failures.map((f) => ({ id: f.id, label: f.label, danger: true }))}
         onPick={(id) => p.onAction(id === 'repair' ? 'repair' : `break:${id}`)}

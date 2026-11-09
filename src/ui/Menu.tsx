@@ -16,10 +16,12 @@ export interface MenuButtonProps {
   className?: string
   /** extra row pinned at the top, e.g. "Place all" */
   header?: MenuItem
+  /** data-guide id for the guide's focus highlight */
+  guide?: string
 }
 
 /** Pill button that opens a small ink-bordered dropdown. */
-export function MenuButton({ label, items, onPick, disabled, emptyText = 'Nothing available', className = '', header }: MenuButtonProps) {
+export function MenuButton({ label, items, onPick, disabled, emptyText = 'Nothing available', className = '', header, guide }: MenuButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -48,6 +50,7 @@ export function MenuButton({ label, items, onPick, disabled, emptyText = 'Nothin
         type="button"
         className={`pill ${className}`}
         disabled={disabled}
+        data-guide={guide}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}

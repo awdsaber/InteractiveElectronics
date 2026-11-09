@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultLessonId } from '../../lessons'
-import { DEFAULT_SETTINGS, asCode, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
+import { DEFAULT_SETTINGS, asCode, asGuideSaves, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -125,5 +125,50 @@ describe('part inspector selection', () => {
     useStore.getState().zoomToPart('r1')
     useStore.getState().selectLesson('led-resistor')
     expect(useStore.getState().view.partId).toBeNull()
+  })
+})
+
+describe('guided steps in the store', () => {
+  it('records bench actions and inspector opens as guide events, advances, and saves progress per lesson', () => {
+    const saved: Record<string, string> = {}
+    vi.stubGlobal('localStorage', { getItem: (k: string) => saved[k] ?? null, setItem: (k: string, v: string) => (saved[k] = v) })
+    useStore.getState().selectLesson('ohms-law')
+    useStore.getState().selectLesson('led-resistor')
+    useStore.getState().guideRestart()
+    let s = useStore.getState()
+    expect(s.guideMode).toBe('guided')
+    expect(s.guide).toMatchObject({ current: 0, total: s.lesson.guide!.length })
+    s.selectPart('r1') // step 1: inspect the resistor
+    s = useStore.getState()
+    expect(s.guide).toMatchObject({ current: 1, done: ['meet-the-resistor'] })
+    expect(JSON.parse(saved['circuit-atelier:guide'])['led-resistor']).toEqual({ current: 1, done: ['meet-the-resistor'], mode: 'guided' })
+    s.act('power') // step 2: power + POWERED
+    expect(useStore.getState().guide?.current).toBe(2)
+    s.guideBack()
+    expect(useStore.getState().guide).toMatchObject({ current: 1, done: ['meet-the-resistor'] })
+    s.guideSkip()
+    expect(useStore.getState().guide?.current).toBe(2)
+  })
+
+  it('free explore pauses the guide; a lesson without a guide has none', () => {
+    useStore.getState().selectLesson('ohms-law')
+    useStore.getState().selectLesson('led-resistor')
+    useStore.getState().guideRestart()
+    useStore.getState().setGuideMode('free')
+    useStore.getState().selectPart('r1')
+    expect(useStore.getState().guide?.current).toBe(0)
+    useStore.getState().setGuideMode('guided')
+    // the inspector is still open on r1, so the step passes as soon as the guide resumes
+    expect(useStore.getState().guide?.current).toBe(1)
+    useStore.getState().selectLesson('resistor-codes-divider')
+    expect(useStore.getState().guide).toBeNull()
+    expect(useStore.getState().guideMode).toBe('free')
+  })
+
+  it('asGuideSaves keeps well-formed entries only', () => {
+    expect(asGuideSaves({ a: { current: 2, done: ['x', 3], mode: 'free' }, b: { current: 'x' }, c: 4 })).toEqual({
+      a: { current: 2, done: ['x'], mode: 'free' },
+    })
+    expect(asGuideSaves(null)).toEqual({})
   })
 })

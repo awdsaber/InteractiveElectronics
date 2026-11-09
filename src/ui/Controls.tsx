@@ -26,9 +26,9 @@ function speedNote(speed: number, rate: number, capped: boolean): string {
   return `capped at ×${Number(rate.toPrecision(2))} of ×${speed}`
 }
 
-function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ label, on, onChange, guide }: { label: string; on: boolean; onChange: (v: boolean) => void; guide?: string }) {
   return (
-    <button type="button" role="switch" aria-checked={on} className="toggle" onClick={() => onChange(!on)}>
+    <button type="button" role="switch" aria-checked={on} className="toggle" data-guide={guide} onClick={() => onChange(!on)}>
       <span className="switch-track" aria-hidden="true">
         <span className="knob" />
       </span>
@@ -52,7 +52,7 @@ export function Controls({ settings, onSetting, sim, instruments }: ControlsProp
           )}
         </div>
       )}
-      {instruments && <Toggle label="Instruments" on={instruments.open} onChange={instruments.onToggle} />}
+      {instruments && <Toggle label="Instruments" on={instruments.open} onChange={instruments.onToggle} guide="instruments" />}
       <label className="ctl">
         <span className="ctl-label">Ink wobble</span>
         <input

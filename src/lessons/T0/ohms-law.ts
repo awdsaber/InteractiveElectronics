@@ -184,6 +184,85 @@ Ohm's law ignores power, but the resistor can't. Every operating point dissipate
     'Since 1 % metal-film resistors cost about the same as 5 % carbon film, use them by default. Their values usually come from the E96 series.',
   ],
 
+  guide: [
+    {
+      id: 'find-the-load',
+      title: 'Find the load',
+      body: 'Click the resistor labelled **LOAD** to open its inspector. **Brown-black-red** is 1 kΩ, and it is a 1/4 W part.',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'It is the striped part on the breadboard, between the yellow and black leads. Its LOAD tag works too.',
+      explain: 'Brown (1), black (0), red (×100): 10 × 100 = 1000 Ω. The ammeter is in series with it, so it reads the same current that flows through the resistor.',
+    },
+    {
+      id: 'output-on',
+      title: 'Switch the output on',
+      body: "Press **Output ON**. The supply is set to 5 V. Notice **CURRENT**: Ohm's law says I = V / R = 5 / 1000 = **5 mA**.",
+      check: { kind: 'all', of: [{ kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 1, above: 0.0045, below: 0.0055, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'VOLTAGE ÷ CURRENT = 5 V ÷ 5 mA = 1 kΩ. That ratio is the resistance, and it stays the same at every voltage.',
+    },
+    {
+      id: 'double-the-volts',
+      title: 'Double the voltage',
+      body: 'Slide **Supply voltage** to **10 V**. The current doubles with it, to about **10 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Supply voltage', min: 9.5, max: 10.5 },
+          { kind: 'readout', index: 1, above: 0.0093, below: 0.0107, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Supply voltage' },
+      explain: 'Twice the voltage, twice the current: I is proportional to V, a straight line through the origin with slope 1/R.',
+    },
+    {
+      id: 'double-the-ohms',
+      title: 'Double the resistance',
+      body: 'Keep 10 V and slide **Resistance** to about **2 kΩ**. The current halves, back to about **5 mA** (10 / 2000).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Resistance', min: 1800, max: 2200 },
+          { kind: 'readout', index: 1, above: 0.0042, below: 0.0058, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Resistance' },
+      hint: 'The Resistance slider is logarithmic: 2 kΩ is a little past two-thirds of the way. Anything from 1.8 to 2.2 kΩ counts.',
+      explain: 'At a fixed voltage the current goes as 1/R: double the resistance, half the current.',
+    },
+    {
+      id: 'watch-the-power',
+      title: 'Watch the power',
+      body: 'Set **Resistance** back to about 1 kΩ and **Supply voltage** to **12 V**. Read **R1 POWER**: V² / R = 144 / 1000 = **144 mW**.',
+      check: { kind: 'readout', index: 2, above: 0.13, below: 0.16, holdMs: 300 },
+      hint: 'Both sliders matter here: 12 V, and a resistance close to 1 kΩ.',
+      explain: '144 mW is already over half of the 0.25 W rating. At 12 V, anything below about 576 Ω (144 / 0.25) would overload this 1/4 W part.',
+    },
+    {
+      id: 'short-it',
+      title: 'Break it: short the output',
+      body: 'Open **Break something** and choose **Short the output**. With R ≈ 0, Ohm says the current would be huge. Watch what the supply does instead.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'short-output' }, { kind: 'readout', index: 3, above: 0.5 }] },
+      focus: { control: 'break' },
+      explain: 'The supply leaves constant-voltage mode and holds its 0.6 A limit (CC MODE reads 1). Its voltage folds back to nearly 0 V and nothing burns. That is why you set the limit before you connect a circuit.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: each is one line of V = I · R or P = V² / R.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: '9 V across a 4.7 kΩ resistor. What current flows?',

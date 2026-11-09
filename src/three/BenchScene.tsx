@@ -20,6 +20,8 @@ export interface BenchSceneProps {
   settings: Settings
   /** the inspected part */
   selected?: string | null
+  /** the part the active guide step points at */
+  guideFocus?: string | null
   /** click a part (or its callout pill) to inspect it */
   onSelect?: (id: string) => void
   /** camera request: frame a part, or the board (partId null); `seq` changes per request */
@@ -153,7 +155,7 @@ function WobbleTicker({ wobble }: { wobble: number }) {
   return null
 }
 
-export default function BenchScene({ lesson, snap, settings, selected = null, onSelect, view }: BenchSceneProps) {
+export default function BenchScene({ lesson, snap, settings, selected = null, guideFocus = null, onSelect, view }: BenchSceneProps) {
   const smoking = Object.values(snap.partBurnt).some(Boolean)
   const live = snap.assembly.running || smoking
   return (
@@ -171,7 +173,7 @@ export default function BenchScene({ lesson, snap, settings, selected = null, on
       <WobbleClock />
       <WobbleTicker wobble={settings.wobble} />
       <Camera lesson={lesson} view={view} />
-      <Board lesson={lesson} snap={snap} settings={settings} selected={selected} onSelect={onSelect} />
+      <Board lesson={lesson} snap={snap} settings={settings} selected={selected} guideFocus={guideFocus} onSelect={onSelect} />
       {import.meta.env.DEV && <DevPartProbe />}
     </Canvas>
     </CalloutHost>

@@ -58,6 +58,8 @@ export interface LayoutProps {
   onQuizAnswer?: (correct: boolean) => void
   toasts: ToastMessage[]
   onDismissToast: (id: number) => void
+  /** the guided-steps card, above the bench (lessons with a guide) */
+  guide?: ReactNode
   /** the part inspector card (docked in the bench), while a part is selected */
   inspector?: ReactNode
 }
@@ -111,6 +113,8 @@ export function Layout(p: LayoutProps) {
           </div>
           <p className="tagline">{lesson.tagline}</p>
         </div>
+
+        {p.guide}
 
         <section className="bench" aria-label="Workbench">
           <div className="bench-stage">

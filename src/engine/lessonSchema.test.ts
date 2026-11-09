@@ -5,7 +5,8 @@ import { lesson as ledResistor } from '../lessons/T2/led-resistor'
 import { validateLesson } from './lessonSchema'
 import type { Lesson } from './types'
 
-const base = { ...(ledResistor as Lesson), fig: 1 }
+// without its guide: these tests swap the tweaks its steps refer to
+const base = { ...(ledResistor as Lesson), fig: 1, guide: undefined }
 const v = (over: Partial<Lesson>) => validateLesson({ ...base, ...over })
 const R1 = base.circuit.elements.find((e) => e.type === 'R')!.id
 

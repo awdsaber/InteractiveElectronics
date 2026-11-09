@@ -43,7 +43,7 @@ export function Quiz({ items, onComplete, onAnswer }: QuizProps) {
   }
 
   return (
-    <section className="note" aria-labelledby="quiz-h">
+    <section className="note" aria-labelledby="quiz-h" data-guide="quiz">
       <h2 id="quiz-h" className="note-head">
         <span>C</span> Check yourself
       </h2>
