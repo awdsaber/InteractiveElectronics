@@ -167,13 +167,25 @@ The median of 5 survives up to 2 bad readings (−1 or a stray echo). With `N/2`
 - **Sim shows:** about 30 % of the single readings come back short and random. The median of 5 still mostly holds, but `good` stays 5, so the bad readings aren't detectable as missing.
 - **Why:** both modules hear each other's 40 kHz burst. Fire multiple rangers in sequence (60 ms apart), or point them at angles that don't overlap.
 
+### F4: 5 V ECHO into a 3.3 V microcontroller
+- **Patch:** `{op:'remove', elementId:'pin10'}` then `add` a PIN with `vcc` 3.3 and `rating.maxV` 3.6 (the ESP32-S3 absolute maximum).
+- **Sim shows:** the first ECHO pulse (5 V) exceeds the 3.6 V rating and `pin10` burns (FAULT).
+- **Why:** the module drives ECHO to 5 V. Divide it (1 k series, 2 k to ground gives 3.33 V).
+
+### Authored notes (T6 build)
+- The `hcsr04` behavior replays ECHO and a TRIG marker for the scope from the start of the next frame (the bench simulates the circuit before the MCU catches up); widths are exact, the pair is shifted by under one frame. `sim` is dt 100 us at speed 0.25.
+- A new ping within `minGapUs` (20 ms, approximate) of the last, or while ECHO is still being held, is ignored. The datasheet gives no figure; vendors recommend 60 ms between pings.
+- `lossPct` overrides `surface` (soft 85 %, angled 75 %). `crosstalkPct` is 30. The `surface` tweak is an enum.
+- Figures checked: 2-400 cm, 15 degree beam, 40 kHz, 5 V, 15 mA, 10 us trigger, 38 ms no-echo pulse, 45 x 20 mm board (vendor datasheet values). The 0 to 40 C change in c is 7.3 % (was written 7.5 %).
+- The no-timeout hang (pulseIn with the default 1 s) is covered by a test and by the echo-off failure text; there is no failure that edits the sketch.
+
 ## Meet the board
 
 The HC-SR04 does the hard part itself. You pulse TRIG HIGH for **10 µs**. It sends eight 40 kHz cycles, then holds ECHO HIGH until the echo comes back. Your job is just to measure that pulse.
 
 **Speed of sound:** c ≈ 331.3 + 0.606·T. At 20 °C: 331.3 + 12.1 = **343.4 m/s**. Out and back, 1 cm takes 2 × 0.01 / 343.4 = **58.2 µs**, so distance (cm) ≈ echo µs / 58. A 1166 µs pulse is 1166 / 58.2 ≈ **20.0 cm**.
 
-**Temperature matters:** from 0 °C to 40 °C, c changes from 331 to 356 m/s, about 7.5 %. Assuming 20 °C on a 0 °C day reads 3.6 % long.
+**Temperature matters:** from 0 °C to 40 °C, c changes from 331.3 to 355.5 m/s, about 7.3 %. Assuming 20 °C on a 0 °C day reads 3.6 % long.
 
 **Range and rate:** vendors claim 2–400 cm. The longest round trip, 8 m / 343 m/s ≈ 23 ms, plus ring-down means one ping every **60 ms** (about 16 Hz) is a safe rate.
 
