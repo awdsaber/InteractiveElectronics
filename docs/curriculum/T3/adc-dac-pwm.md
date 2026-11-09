@@ -109,8 +109,8 @@ Turn the knob slowly. The Serial monitor counts in 4.9 mV steps while FILTERED f
 
 ### F3: Remove the filter capacitor
 - **Patch:** `{op:'remove', elementId:'C_F'}`
-- **Sim shows:** FILTERED still reads a steady ≈ 2.51 V. That is wrong, and the reason is the lesson (see SIM NOTE).
-- **Why:** the engine averages PWM into a DC voltage. Real pin 9 is a 490 Hz square wave switching between 0 and 5 V. A meter (which averages) also reads ≈ 2.5 V, but a scope, an ADC or a sensitive analog input sees full-height pulses.
+- **Sim shows:** FILTERED still averages ≈ 2.51 V on the readout (a meter averages), but the scope shows the raw 490 Hz, 0 to 5 V square wave and the ripple readout (`ac-meter` vpp) reads ≈ 5 V. The engine now switches PWM at its real edges (see SIM NOTE).
+- **Why:** nothing averages the pulses. A scope, an ADC or a sensitive analog input sees full-height pulses.
 
 ## Meet the board
 
@@ -119,6 +119,8 @@ Turn the knob slowly. The Serial monitor counts in 4.9 mV steps while FILTERED f
 code = V_in × 1024 / V_ref (clipped to 0–1023), so 1 LSB = 5/1024 = **4.88 mV**
 
 At 2.50 V: 2.50 × 1024/5 = **512**. (The simulator uses round(V/5 × 1023), which gives the same code here.)
+
+Accuracy: the ATmega328P datasheet gives about ±2 LSB absolute accuracy (200 kHz ADC clock), and quantization alone is ±½ LSB. With `analogReference(INTERNAL)` the reference is 1.1 V nominal (1.0 to 1.2 V part to part), so 1 LSB ≈ 1.07 mV. Anything above the reference reads 1023.
 
 The ADC samples through a small internal capacitor, so the datasheet asks for a source impedance of about 10 kΩ or less. A 10 kΩ pot is at most 2.5 kΩ, so it's fine.
 
@@ -174,7 +176,7 @@ V_avg = (d/255) × 5 V = (128/255) × 5 = **2.51 V**
 
 ## SIM NOTE
 
-- **True PWM switching:** `PIN` averages PWM to a DC level, so F3 (no filter) and ripple can't be shown. The engine needs an option to switch PWM pins at their real frequency (≈ 490 Hz for Uno pin 9, ≈ 980 Hz for pins 5 and 6) during transient. That needs dt ≤ ~20 µs for a 2 ms period (100 samples per cycle), or event-based stepping at PWM edges. Then add a scope widget (see `ac-oscilloscope`).
+- **True PWM switching (done):** a `PIN` with `vccNode` is switched at its real frequency (490 Hz for Uno pin 9, 980 Hz for pins 5 and 6) with edge-cut steps (`sim/pwm.ts`), so F3 and the ripple are shown; the scope and `ac-meter` read them.
 - **Potentiometer element:** there is no 3-terminal pot. The wiper is modelled as a Thévenin source (`V_WIPER` + 2.5 kΩ). A `POT` element (nodes: end1, wiper, end2; params: r, position 0–1, tweakable `position`) would be faithful, including the source-impedance change with position.
 - **ADC formula:** spec §5 uses round(V/V_CC × 1023), but the ATmega328P datasheet defines code = V_in·1024/V_ref (floored). The difference is ≤ 1 LSB. Consider matching the datasheet.
 - **Input-pin overvoltage:** there is no rating for an analog input above V_CC + 0.5 V (absolute maximum). An optional `maxV` on analog-pin nodes would enable a "feed A0 from 9 V" failure later.
