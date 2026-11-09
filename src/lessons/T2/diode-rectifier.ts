@@ -111,7 +111,7 @@ export const lesson: LessonDef = {
         mount: 'tht',
         label: 'SMOOTH',
         role: '1000 µF, 25 V aluminium electrolytic. Holds the output up between the peaks. The stripe marks the negative lead (on the right, to ground).',
-        params: { d: 1.0, h: 1.6, callout: [0.3, 2.0, -0.6] },
+        params: { d: 1.0, h: 1.6, callout: [1.2, 1.5, 0.4] },
         circuitIds: ['C1'],
         facts: ['25 V rated; off-load peak here is about 18 V', 'Electrolytic: polarity matters, ripple current heats it'],
       },
@@ -133,7 +133,7 @@ export const lesson: LessonDef = {
         mount: 'offboard',
         label: 'CH1 · DC OUT',
         role: 'Scope channel 1 on the DC output (the capacitor’s top): the ripple rides on this trace.',
-        params: { color: 'yellow', tilt: 22, callout: [0.9, 1.3, -0.9] },
+        params: { color: 'yellow', tilt: 22, callout: [-0.2, 1.4, -1.3] },
       },
       {
         id: 'ch2',
