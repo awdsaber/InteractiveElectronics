@@ -40,10 +40,10 @@ Board: `FET-19`, size 18 × 11, base `mat`.
 | `PIN9` | PIN | `p9`, `0` | pin 9, vcc 5, rOut 25 Ω | maxI 0.04 A | |
 | `R_G` | R | `p9`, `g` | 100 Ω | maxP 0.25 W | |
 | `R_PD` | R | `g`, `0` | 10 kΩ | maxP 0.25 W | |
-| `Q1` | NMOS | `d`, `g`, `0` | vth 1.5 V; k chosen for R_DS(on) ≈ 25 mΩ at V_GS ≈ 4.9 V | maxI 47 A, maxP 2.4 W, maxV 55 V, failMode short | IRLZ44N: V_DSS 55 V; V_GS(th) 1–2 V; R_DS(on) ≤ 25 mΩ at V_GS = 5 V; maxP is the free-air limit, (175 − 25)/62 °C/W |
+| `Q1` | NMOS | `d`, `g`, `0` | vth 1.5 V; k = 11.4 A/V² (fits 25 mΩ at 5 V and 35 mΩ at 4 V; the square law reads 10 mΩ at 10 V, where the real part is 22 mΩ) | maxI 47 A, maxP 2.4 W, maxV 55 V, rth 62 °C/W, tMax 175 °C, tauTh 1.5 s (time-compressed), failMode short | IRLZ44N: V_DSS 55 V; V_GS(th) 1–2 V; R_DS(on) ≤ 25 mΩ (max, not typ.) at V_GS = 5 V, 22 mΩ at 10 V, 35 mΩ at 4 V (I_D 25 A); maxP is the free-air limit, (175 − 25)/62 °C/W |
 | `V_12` | V | `v12`, `gnd12` | 12.0 V, rInternal 0.1 Ω | — | 12 V 2 A adapter |
 | `W_GND` | R | `gnd12`, `0` | 0.01 Ω | — | common-ground wire |
-| `R_LOAD` | R | `v12`, `d` | 12 Ω | maxP 25 W | |
+| `R_LOAD` | R | `v12`, `d` | 12 Ω | maxP 150 W | rating raised so the load-resistance tweak and the 1 Ω overload fail the FET, not the heater |
 
 Expected (pin HIGH): V_GS = 5 × 10k/10.125k ≈ 4.94 V; I_load ≈ 0.99 A; V_DS ≈ 25 mV; P_Q1 ≈ 25 mW.
 
@@ -85,8 +85,10 @@ void loop() {
 
 | label | elementId | key | min | max | step | log | unit |
 |---|---|---|---|---|---|---|---|
-| Load resistance | `R_LOAD` | value | 6 | 100 | — | yes | Ω |
-| MOSFET threshold (swap part) | `Q1` | vth | 1 | 4.5 | 0.1 | no | V |
+| Pin 9 HIGH level | `PIN9` | vcc | 3.3 | 5 | enum 3.3 / 5 | no | V |
+| Gate resistor | `R_G` | value | 10 | 10000 | — | yes | Ω |
+| Load resistance | `R_LOAD` | value | 2 | 100 | — | yes | Ω |
+| MOSFET threshold (swap part) | `Q1` | vth | 1 | 4.9 | 0.1 | no | V |
 
 Raise vth toward 4.5 V and the FET only half-turns on: V_DS rises, load power falls and FET power climbs. This is the "wrong MOSFET" experience.
 
@@ -101,6 +103,10 @@ Raise vth toward 4.5 V and the FET only half-turns on: V_DS rises, load power fa
 - **Patch:** `{op:'short', a:'d', b:'0'}`
 - **Sim shows:** the heater runs at full power whatever the pin does.
 - **Why:** MOSFETs usually fail drain-to-source short, after overheating, overvoltage or ESD. Anything that must be able to switch *off* (heaters, motors) needs an independent fuse or thermal cutout.
+
+### F4: A 1 Ω heater (12 A) with no heatsink
+- **Patch:** `{op:'set', elementId:'R_LOAD', key:'value', value:1}`
+- **Sim shows:** ≈ 3.7 W in Q1, Tj passes 175 °C in the ON phase and Q1 fails short (heater stuck on).
 
 ### F3: Forget the common ground
 - **Patch:** `{op:'remove', elementId:'W_GND'}`
@@ -162,6 +168,10 @@ A MOSFET's gate is insulated from its channel by a thin oxide layer. Apply V_GS 
 ## SIM NOTE
 
 - **NMOS parameter convention:** spec §4 says "square law with Vth, k" but not whether the triode conductance is k·(V_GS − V_th) or (k/2)·(…). The lesson asks for R_DS(on) ≈ 25 mΩ at V_GS ≈ 4.94 V with vth = 1.5 V, so k ≈ 11.6 A/V² under the first convention or ≈ 23 A/V² under the second. Document the convention in `devices.ts`.
-- **Gate charge and switching loss:** with no gate capacitance (C_iss, Q_g), switching losses and slow edges from a weak MCU drive aren't visible. Optional `cgs`/`cgd` on `NMOS`/`PMOS` would enable a PWM-heating lesson later.
+- **Gate charge and switching loss:** with no gate capacitance (C_iss, Q_g), switching losses and slow edges from a weak MCU drive aren't visible. The lesson adds a 1.7 nF `C_GS` (IRLZ44N C_iss) from gate to source; the Miller capacitance `cgd` is not modelled. Optional `cgs`/`cgd` on `NMOS`/`PMOS` would enable a PWM-heating lesson later.
 - **Temperature-dependent R_DS(on)** and a thermal model (see `power-heat`) would make the "no heatsink at 10 A" scenario meaningful. It is omitted as a failure here.
 - **Body diode:** `NMOS` has no body diode. Add an implicit source→drain diode (needed later for H-bridges and synchronous bucks).
+
+
+## Datasheet check (IRLZ44N, Infineon/IR)
+V_DSS 55 V; V_GS(th) 1.0–2.0 V at 250 µA; R_DS(on) 22 mΩ at 10 V, 25 mΩ at 5 V, 35 mΩ at 4 V (all maximums); V_GS ±16 V; T_J 175 °C; R_θJA 62 °C/W. The plain IRFZ44N is not logic-level: V_GS(th) 2–4 V and R_DS(on) is rated only at V_GS = 10 V (17.5 mΩ). The IRLZ44N has no rating below 4 V; the 3.3 V behaviour in the lesson is a model extrapolation.
