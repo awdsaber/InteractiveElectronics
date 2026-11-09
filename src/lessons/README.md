@@ -93,6 +93,8 @@ tweaks: [
 ]
 ```
 
+A tweak or `set` patch key may be dotted to reach a source's waveform (`wave.freq`, `wave.amp`, `wave.offset`, `wave.phase`, `wave.duty`; see `T1/ac-oscilloscope.ts`).
+
 Link targets follow the tweak from the start, so they take the tweak's value, not their own netlist value. A target may be `behavior:<instance>`.
 
 ## Readouts: units, derived values, peak-hold
