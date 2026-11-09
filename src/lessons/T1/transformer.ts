@@ -38,8 +38,9 @@ const jackOf = (at: [number, number], dx: number): [number, number, number] => [
 const withCallout = (w: ReturnType<typeof jumper>, callout: [number, number, number]) => ({ ...w, params: { ...w.params, callout } })
 
 // transformer ratings: a 5 VA, 12 V : 3 V part is good for 3 V × 1.67 A on the secondary and 0.42 A on the primary
-const RS_RATING = { maxI: 1.67, rmsWindow: 0.25 }
-const RP_RATING = { maxI: 0.45, rmsWindow: 0.25 }
+// thermal, not instantaneous: the winding heats over seconds (rated: 1.67 A × 0.1 Ω = 0.28 W lifts it to 150 °C), so the fuse, not the winding, answers a fault that lasts milliseconds
+const RS_RATING = { rth: 446, tauTh: 10, tMax: 150 }
+const RP_RATING = { rth: 480, tauTh: 10, tMax: 150 } // 0.42 A × 1.2 Ω = 0.21 W sits at 126 °C, 0.51 A would reach 150 °C
 
 const sine = { kind: 'sine', amp: 16.97, freq: 50 } as const // 12 V rms
 
@@ -184,18 +185,16 @@ export const lesson: LessonDef = {
   tweaks: [
     { label: 'Load resistance', elementId: 'R_LOAD', key: 'value', min: 1.5, max: 1000, log: true, unit: 'Ω' },
     {
-      label: 'Turns ratio  Ns : Np',
+      label: 'Turns ratio  Ns : Np (1 : 2 reflects the 6 Ω as 24 Ω, so the primary draws about 0.46 A, close to the 0.5 A fuse: raise the load before using it)',
       elementId: 'T1',
       key: 'n',
       kind: 'enum',
       min: 0.25,
-      max: 2,
+      max: 0.5,
       unit: '',
       options: [
-        { label: '1 : 4', value: 0.25 },
-        { label: '1 : 2', value: 0.5 },
-        { label: '1 : 1', value: 1 },
-        { label: '2 : 1', value: 2 },
+        { label: '1 : 4 (3 V out)', value: 0.25 },
+        { label: '1 : 2 (6 V out)', value: 0.5 },
       ],
     },
   ],
@@ -212,7 +211,7 @@ export const lesson: LessonDef = {
       id: 'dc',
       label: 'Feed the primary DC',
       explain:
-        'With a steady 12 V the flux stops changing, so nothing is induced: the secondary reads 0 V after the first few milliseconds. The primary is now just 1.2 Ω of copper and the fuse, so the current is limited only by resistance, about 12 V / 1.8 Ω ≈ 6.7 A in a winding rated near 0.4 A. The T500 mA fuse opens within a few tens of milliseconds; with no fuse the winding would cook. A transformer needs changing flux, so it passes AC and blocks DC.',
+        'With a steady 12 V the flux stops changing, so nothing is induced: the secondary reads 0 V after the first few milliseconds. The primary is now just 1.2 Ω of copper and the fuse, so only resistance limits the current, and the 2 H magnetizing inductance lets it climb at about 12 V / 2 H = 6 A/s (a time constant Lm / R ≈ 1.1 s toward 12 V / 1.8 Ω ≈ 6.7 A). The T500 mA slow-blow fuse opens after about 0.36 s, at roughly 0.7 A rms, in a winding rated near 0.4 A; without it the current would keep climbing and the winding would cook. A real core is far less kind than this linear model: it saturates within a cycle, the inductance collapses, and the current spikes far higher, which is why the fuse matters even more.  A transformer needs changing flux, so it passes AC and blocks DC.',
       patches: [
         { op: 'remove', elementId: 'V_AC' },
         { op: 'add', element: { id: 'V_AC', type: 'V', nodes: ['ga', '0'], value: 12, rInternal: 0.5, partId: 'src' } },
@@ -240,7 +239,7 @@ export const lesson: LessonDef = {
     },
   ],
 
-  sim: { dt: 1e-3 },
+  sim: { dt: 1e-3, method: 'trap' }, // trapezoidal: at 1 ms backward Euler reads the 50 Hz current about 7 % low
 
   meet: `A transformer is two coils on one iron core. A changing current in the primary makes a changing magnetic flux; the core carries that flux through the secondary, and it induces a voltage in *every turn*. Every turn sees the same flux, so the voltage per turn is the same on both windings:
 
@@ -256,7 +255,7 @@ This one is wound 1 : 4, so n = 0.25. Press **Switch on the source** and read th
 
 **Magnetizing current.** Even with the load removed (slide it to 1 kΩ) the primary still draws about **19 mA**. That is the current needed to build the flux in the core: the primary on its own is an inductor, here L_m = 2 H, so I_m = V / (2πf L_m) = 11.7 / 628 ≈ 19 mA, a quarter-cycle behind the voltage. It does not grow when you load the secondary: the load current adds to it (at 90° to it, so as √(I_load² + I_m²)). It stays small beside the load current, which is why n·I_s ≈ I_p works.
 
-**Regulation.** Unloaded (1 kΩ) the secondary reads the full 3.0 V; at 6 Ω it reads 2.9 V, and at 2 Ω about 2.7 V: the winding resistance takes its share as the current rises (regulation = (V_off-load − V_loaded)/V_loaded, about 3 % at 6 Ω). Small transformers regulate worse than large ones. Push the load down to 1.5 Ω and the secondary current passes its 1.67 A rating: the winding overheats and opens.
+**Regulation.** Unloaded (1 kΩ) the secondary reads the full 3.0 V; at 6 Ω it reads 2.9 V, and at 2 Ω about 2.7 V: the winding resistance takes its share as the current rises (regulation = (V_off-load − V_loaded)/V_loaded, about 3.6 % at 6 Ω). Small transformers regulate worse than large ones. Push the load down to 1.5 Ω and the secondary current passes its 1.67 A rating: the winding overheats and opens.
 
 **Why not DC?** Faraday's law: v = N · dΦ/dt. A constant current makes a constant flux, which induces nothing. A transformer passes only *changing* flux, so it blocks DC and passes AC. Break it with failure 1 to see the secondary go dead and the fuse open.
 
@@ -291,7 +290,7 @@ Even **reflected impedance** follows the rule you know from reflected inertia: a
       q: 'A 10 : 1 step-down transformer drives an 8 Ω load. What impedance does the primary see?',
       options: ['800 Ω', '0.08 Ω', '80 Ω', '8 kΩ'],
       answer: 0,
-      why: 'Z_p = n² · Z_s = 100 × 8 = 800 Ω.',
+      why: 'Z_p = (N_p / N_s)² · Z_s = 10² × 8 = 800 Ω.',
     },
     {
       q: "Why doesn't a transformer work on DC?",

@@ -22,9 +22,9 @@ function build(opts: { failure?: string; tweaks?: Record<string, number> } = {})
   return b
 }
 
-async function run(b: Bench, seconds: number): Promise<BenchSnapshot> {
+async function run(b: Bench, seconds: number, frame = FRAME): Promise<BenchSnapshot> {
   const end = b.t + seconds
-  while (b.t < end - 1e-9) await b.frame(FRAME)
+  while (b.t < end - 1e-9) await b.frame(frame)
   return b.snapshot()
 }
 
@@ -84,25 +84,49 @@ describe('T1 transformer lesson', () => {
     b2.dispose()
   })
 
-  it('turns-ratio tweak: 1 : 1 gives the primary voltage back', async () => {
-    const b = build({ tweaks: { 'T1.n': 1, 'R_LOAD.value': 30 } })
+  it('turns-ratio tweak: 1 : 2 gives half the primary voltage (V RATIO ≈ 2)', async () => {
+    const b = build({ tweaks: { 'T1.n': 0.5, 'R_LOAD.value': 30 } })
     const s = await run(b, 2)
-    within(s.values[VS] / s.values[VP], 1, 0.05)
+    within(s.values[VS] / s.values[VP], 0.5, 0.05)
+    within(s.values[VRATIO], 2, 0.05)
+    expect(s.assembly.burns).toEqual([])
     b.dispose()
+  })
+
+  it('the meters read the same at 50 and 100 fps (no frame-rate aliasing, trapezoidal steps)', async () => {
+    for (const fps of [50, 100]) {
+      const b = build()
+      const s = await run(b, 2, 1 / fps)
+      within(s.values[VP], 11.9, 0.03)
+      within(s.values[VS], 2.89, 0.03)
+      within(s.values[IS], 0.482, 0.04)
+      within(s.values[IP], 0.1203, 0.06)
+      b.dispose()
+    }
   })
 
   it('F1 (DC into the primary): nothing is induced; the primary is a 2.6 Ω resistor, the fuse blows', async () => {
     const b = build({ failure: 'dc' })
-    const s = await run(b, 2) // the meters' 0.25 s memory has long since forgotten the AC
+    const s = await run(b, 3)
     expect(s.values[VS]).toBeLessThan(0.05)
-    expect(s.assembly.burns.map((x) => x.elementId)).toContain('F1')
+    const burnt = s.assembly.burns.map((x) => x.elementId)
+    expect(burnt).toContain('F1')
+    expect(burnt).not.toContain('RP') // the fuse protects the winding
+    expect(burnt).not.toContain('RS')
+    // after the fuse opens nothing is stale: the meters and the ratios read zero
+    expect(s.values[VP]).toBeLessThan(0.05)
+    expect(s.values[IP]).toBeLessThan(0.005)
+    expect(s.values[IS]).toBeLessThan(0.005)
     b.dispose()
   })
 
   it('F2 (short the secondary): the secondary current explodes and the fuse blows', async () => {
     const b = build({ failure: 'short' })
     const s = await run(b, 1)
-    expect(s.assembly.burns.map((x) => x.elementId)).toContain('F1')
+    const burnt = s.assembly.burns.map((x) => x.elementId)
+    expect(burnt).toContain('F1')
+    expect(burnt).not.toContain('RP')
+    expect(burnt).not.toContain('RS')
     expect(s.values[VS]).toBeLessThan(0.3)
     b.dispose()
   })
@@ -118,7 +142,7 @@ describe('T1 transformer lesson', () => {
   it('an overload (1.5 Ω) takes the secondary winding past its 1.67 A rating', async () => {
     const b = build({ tweaks: { 'R_LOAD.value': 1.5 } })
     let s = await run(b, 4)
-    for (let k = 0; k < 20 && !s.assembly.burns.length; k++) s = await run(b, 1)
+    for (let k = 0; k < 60 && !s.assembly.burns.length; k++) s = await run(b, 1)
     expect(s.assembly.burns.map((x) => x.elementId)).toContain('RS')
     b.dispose()
   })
