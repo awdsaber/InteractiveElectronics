@@ -230,6 +230,103 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-coil',
+      title: 'Meet the coil',
+      body: 'Click the part labelled **COIL** to open its inspector. It is a **10 mH** drum choke with **10 Ω** of winding resistance, in series with a **1 µF** film capacitor.',
+      check: { kind: 'inspect', part: 'l1' },
+      focus: { part: 'l1' },
+      hint: 'It is the wound drum between the damping resistor and the film capacitor.',
+      explain: 'A coil and a capacitor pass energy back and forth: the coil holds it as current, the capacitor as voltage. The swap rate is f₀ = 1 / (2π√(LC)) = 1 / (2π√(0.01 × 10⁻⁶)) = 1592 Hz.',
+    },
+    {
+      id: 'output-on',
+      title: 'Switch the generator on',
+      body: 'Press **Generator output ON**. Read **f₀**: about **1592 Hz**. And **ζ**: about **0.10**, so this loop is lightly damped (R is only 10 Ω + 10 Ω).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 3, above: 1550, below: 1650, holdMs: 250 },
+          { kind: 'readout', index: 4, above: 0.08, below: 0.12, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'ζ = (R/2)·√(C/L) = (20 / 2) × √(10⁻⁶ / 0.01) = 0.10. Damping below 1 means the loop rings. Above 1 it creeps. Q = Z₀ / R = 100 / 20 = 5 is the same story seen from resonance.',
+    },
+    {
+      id: 'see-the-overshoot',
+      title: 'See the overshoot',
+      body: 'Watch **CH1** on the scope: each 5 V step overshoots and rings. **PEAK V_C (HOLD)** climbs to about **8.6 V**. The sim runs in slow motion, so give it a second or two.',
+      check: { kind: 'readout', index: 2, above: 8, below: 9.2 },
+      focus: { control: 'instruments' },
+      hint: 'The step arrives every 20 ms of simulated time, and the sim runs at ×0.01, so the first overshoot takes about 2 s of real time.',
+      explain: 'Overshoot = e^(−πζ/√(1−ζ²)) = 73 % of the 5 V step, so the peak is 5 × 1.73 = 8.65 V. The ringing is at f₀·√(1−ζ²) = 1583 Hz. A 6.3 V capacitor on this node would not survive.',
+    },
+    {
+      id: 'critical-damping',
+      title: 'Damp it critically',
+      body: 'Slide **Damping resistor** up to about **190 Ω**. **ζ** reaches **1**: the fastest rise with no overshoot.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Damping resistor', min: 170, max: 210 }, { kind: 'readout', index: 4, above: 0.9, below: 1.1, holdMs: 250 }],
+      },
+      focus: { control: 'tweak:Damping resistor' },
+      hint: 'ζ = 1 needs a total loop resistance of 2·√(L/C) = 200 Ω. The coil already supplies 10 Ω.',
+      explain: 'At ζ = 1 the loop is critically damped: the capacitor charges to 5 V as fast as it can without crossing it. Less damping is faster but rings. More is safe but slow.',
+    },
+    {
+      id: 'resonant-gain',
+      title: 'Drive it at resonance',
+      body: 'Set **Generator waveform** to the **1 V sine**, and bring **Damping resistor** back to about **10 Ω**. At f₀ the 1 V sine comes out as about **5 V**: **SINE GAIN** equals Q.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Generator waveform', min: 1 },
+          { kind: 'tweak', target: 'Damping resistor', min: 5, max: 20 },
+          { kind: 'readout', index: 7, above: 3.4, below: 7, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:Generator waveform' },
+      explain: 'At resonance the coil and capacitor reactances cancel, X_L = X_C = 100 Ω, and only the 20 Ω resistance is left. The capacitor then sees Q = 5 times the drive voltage, with no amplifier in sight.',
+    },
+    {
+      id: 'detune',
+      title: 'Detune the drive',
+      body: 'Slide **Sine frequency** up to about **5 kHz**. Far above f₀ the gain collapses to about **0.1**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Sine frequency', min: 4000 }, { kind: 'readout', index: 7, below: 0.3, holdMs: 250 }],
+      },
+      focus: { control: 'tweak:Sine frequency' },
+      explain: 'Above f₀ the coil dominates: its reactance grows as ω·L and the capacitor sees only a small slice of the drive. A series LC is a low-pass filter above resonance, falling at 40 dB per decade, with a peak at f₀.',
+    },
+    {
+      id: 'no-damping',
+      title: 'Break it: no damping',
+      body: 'Open **Break something** and choose **Take the damping resistor out**. **ζ** falls to about **0.05**, and the step rings for many more cycles.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-damping' }, { kind: 'readout', index: 4, below: 0.07, holdMs: 250 }] },
+      focus: { control: 'break' },
+      explain: 'Only the coil’s 10 Ω is left to absorb the energy, so Q is about 10 and the first peak is near 9.3 V, almost twice the supply. Undamped LC input filters do exactly this when you hot-plug them.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use f₀, ζ and Q.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `Put L and C in one loop and energy swaps between the coil's current (½LI²) and the capacitor's voltage (½CV²). The swap has a natural rate:
 
 **f₀ = 1 / (2π√(LC))** = 1 / (2π√(0.01 × 10⁻⁶)) = 1 / (2π × 10⁻⁴) ≈ **1592 Hz**

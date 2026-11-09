@@ -241,6 +241,95 @@ export const lesson: LessonDef = {
 
   sim: { dt: 1e-3, method: 'trap' }, // trapezoidal: at 1 ms backward Euler reads the 50 Hz current about 7 % low
 
+  guide: [
+    {
+      id: 'meet-the-transformer',
+      title: 'Meet the transformer',
+      body: 'Click the **TRANSFORMER** to open its inspector. Its two windings share one iron core: the secondary has **one quarter** of the primary’s turns.',
+      check: { kind: 'inspect', part: 'xf' },
+      focus: { part: 'xf' },
+      hint: 'It is the big laminated block in the middle of the board.',
+      explain: 'There is no wire between the windings, only magnetic flux. The turns ratio sets the voltage ratio, V_s / V_p = N_s / N_p = 1 / 4, and a 2 H magnetizing inductance is what the primary draws even with nothing connected.',
+    },
+    {
+      id: 'switch-on',
+      title: 'Switch the source on',
+      body: 'Press **Switch on the source**. **V PRIMARY** reads about **12 V** and **V SECONDARY** about **2.9 V**, a ratio of about 4 : 1.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 11.5, below: 12.3, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 2.7, below: 3.1, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'The scope (already open) shows the same sine twice, the secondary a quarter of the height and in phase. The secondary is a little under the ideal 3 V because the windings’ resistance drops some voltage when the load takes current.',
+    },
+    {
+      id: 'heavy-load',
+      title: 'Load it harder',
+      body: 'Slide **Load resistance** down to about **3 Ω**. **I SECONDARY** doubles to about **0.93 A**, and **I PRIMARY** follows at a quarter of it.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Load resistance', min: 2.5, max: 3.6 }, { kind: 'readout', index: 3, above: 0.85, below: 1, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Load resistance' },
+      hint: 'The slider is logarithmic. Anything from 2.5 to 3.6 Ω counts.',
+      explain: 'The secondary delivers 2.8 V into 3 Ω, 0.93 A. The primary supplies the same power at four times the voltage, so it draws a quarter of the current: I_p ≈ N_s/N_p × I_s. Watts in (INPUT V × I) are about the same as watts out, a little more for the copper loss.',
+    },
+    {
+      id: 'light-load',
+      title: 'Take the load away',
+      body: 'Slide **Load resistance** up to about **100 Ω**. **I RATIO** is no longer 4 but about **1.5**: the primary still draws current with almost nothing connected.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load resistance', min: 80, max: 130 },
+          { kind: 'readout', index: 3, below: 0.05, holdMs: 300 },
+          { kind: 'readout', index: 6, above: 1, below: 2, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Load resistance' },
+      explain: 'That leftover primary current is the magnetizing current. It builds the core’s flux, I_m = V / (2π·f·L_m) = 12 / (2π × 50 × 2) = 19 mA, and does no work on the load. At full load it hides inside the 4 : 1 ratio, at light load it is most of what the primary draws.',
+    },
+    {
+      id: 'turns-ratio',
+      title: 'Change the turns ratio',
+      body: 'Set the **Turns ratio** to **1 : 2**. **V SECONDARY** doubles to about **6 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'T1.n', min: 0.5 }, { kind: 'readout', index: 1, above: 5.5, below: 6.4, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Turns ratio  Ns : Np (1 : 2 reflects the 6 Ω as 24 Ω, so the primary draws about 0.46 A, close to the 0.5 A fuse: raise the load before using it)' },
+      hint: 'Keep the load light (about 100 Ω) here. With 6 Ω this ratio draws nearly the fuse’s whole 0.5 A.',
+      explain: 'V_s = V_p × N_s / N_p = 12 × 0.5 = 6 V. A load R behind a transformer looks like R / n² to the source: 6 Ω at 1 : 2 looks like 24 Ω, and at 1 : 4 like 96 Ω. That is how a transformer matches impedances.',
+    },
+    {
+      id: 'short-it',
+      title: 'Break it: short the secondary',
+      body: 'Open **Break something** and choose **Short the secondary**. The primary current jumps and the **FUSE** opens, which puts the bench in **FAULT**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'short' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      explain: 'With a shorted secondary only the copper limits the current, about 3.5 A in the primary and four times that, 14 A, in the secondary. The T500 mA slow-blow fuse opens in a few cycles. A transformer with no fuse or thermal cutout on that primary is a fire waiting for a short.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use the turns ratio and power in = power out.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `A transformer is two coils on one iron core. A changing current in the primary makes a changing magnetic flux; the core carries that flux through the secondary, and it induces a voltage in *every turn*. Every turn sees the same flux, so the voltage per turn is the same on both windings:
 
 **V_s / V_p = N_s / N_p = n**

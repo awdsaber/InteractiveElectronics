@@ -343,6 +343,92 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-chip',
+      title: 'Meet the op-amp',
+      body: 'Click **U1** to open its inspector. It is an **LM358**, a dual op-amp in an 8-pin DIP. This lesson uses one half as the amplifier and the other half for a 2.5 V reference.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the black 8-pin chip straddling the middle channel of the breadboard.',
+      explain: 'An op-amp amplifies the difference between its two inputs by a huge factor, about 100 000 here. On its own that is useless, since a millivolt of difference slams the output into a rail. Feedback is what turns it into a precise amplifier.',
+    },
+    {
+      id: 'connect',
+      title: 'Connect 5 V',
+      body: 'Press **Connect 5 V**. In the non-inverting setup **MEASURED GAIN** reads **11**, and **V+ − V−** is almost exactly **0**: the − input follows the + input.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 9, above: 2.4, below: 2.6, holdMs: 300 },
+          { kind: 'readout', index: 5, above: 10.5, below: 11.5, holdMs: 300 },
+          { kind: 'readout', index: 3, above: -0.001, below: 0.001, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'With R_F = 100 kΩ and R_G = 10 kΩ the gain is 1 + R_F / R_G = 11. The op-amp adjusts its output until its inputs match to within microvolts. That is the golden rule of negative feedback: it makes V+ − V− ≈ 0, and the gain is then set by the resistors alone.',
+    },
+    {
+      id: 'inverting',
+      title: 'Flip it: inverting',
+      body: 'Set **Configuration** to **Inverting**. **MEASURED GAIN** becomes about **−10**: the output swings opposite to the input.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Configuration', min: 1, max: 1 }, { kind: 'readout', index: 5, above: -10.5, below: -9.5, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Configuration' },
+      hint: 'Wait a second or so after the change: the gain is measured over a whole cycle of the 5 Hz signal.',
+      explain: 'Now the signal goes into the − input through R_G, and R_F feeds the output back to it. The − input is held at the 2.5 V reference by feedback (a virtual ground), so the gain is −R_F / R_G = −10.',
+    },
+    {
+      id: 'clip',
+      title: 'Ask for too much',
+      body: 'Slide **Input amplitude (peak)** up to about **0.5 V**. The output wants to swing ±5 V, but the chip can only manage 0 to 3.5 V, so **SWING LOST TO CLIPPING** goes above **20 %**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Input amplitude (peak)', min: 0.4 }, { kind: 'readout', index: 8, above: 20, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Input amplitude (peak)' },
+      hint: 'The slider is logarithmic. Slide it about two thirds of the way along.',
+      explain: 'The output can’t exceed the supply rails, and an LM358’s output stops about 1.5 V short of the positive rail, so it flat-tops at 3.5 V on a 5 V supply. The gain equation only holds while the output has room to move.',
+    },
+    {
+      id: 'rail-to-rail',
+      title: 'Swap the chip',
+      body: 'Set **Chip** to **MCP6002 (rail-to-rail)**. The output now reaches **4.97 V**, so **OUT HIGHEST** goes above **4.5 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Chip', min: 4.9 }, { kind: 'readout', index: 6, above: 4.5, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Chip' },
+      explain: 'A rail-to-rail output stage can get within about 25 mV of the supply. On a single 5 V supply that is the difference between 3.5 V and 4.97 V of usable swing, which is why modern single-supply designs choose rail-to-rail parts.',
+    },
+    {
+      id: 'no-feedback',
+      title: 'Break it: lose the feedback',
+      body: 'Open **Break something** and choose **The feedback resistor pops out**. **IDEAL GAIN** jumps to the open-loop value of about **100 000**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-feedback' }, { kind: 'readout', index: 4, above: 1000, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Nothing now ties the output back to the − input, which just sits at 2.5 V. The 100 000-fold gain multiplies even a few millivolts of difference, so the output slams between the rails: the op-amp has become a comparator. V+ − V− is no longer zero, because the golden rule only holds while feedback works.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use 1 + R_F / R_G, −R_F / R_G and the output swing.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `An op-amp amplifies the **difference** between its two inputs by an enormous open-loop gain, about 100 000 for an LM358. On its own that is useless: 50 µV of difference would already be 5 V. Add **negative feedback** (a fraction of the output fed back to the − input) and two rules emerge:
 
 1. The output moves until **V− = V+**. Watch the **V+ − V−** readout: tens of microvolts.

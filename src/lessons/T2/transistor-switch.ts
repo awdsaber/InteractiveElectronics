@@ -332,6 +332,102 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-transistor',
+      title: 'Meet the transistor',
+      body: 'Click **Q1** to open its inspector. It is an NPN switch: **40 V**, **600 mA** class, and the flat side tells you which leg is which.',
+      check: { kind: 'inspect', part: 'q1' },
+      focus: { part: 'q1' },
+      hint: 'It is the small black three-legged part in the middle of the breadboard.',
+      explain: 'A small base current lets a much larger collector current through. Used as a switch it is either off (no base current) or saturated (base current high enough that V_CE falls to a fraction of a volt).',
+    },
+    {
+      id: 'power-both',
+      title: 'Power the Uno and the motor pack',
+      body: 'Press **Plug USB** for the Uno, then **Connect pack** for the motor’s 6 V. Q1 is off, so **V CE** reads the full pack voltage, about **6 V**.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 2, above: 5.5, holdMs: 300 }] },
+      focus: { control: 'power' },
+      hint: 'There are two power buttons: Plug USB, and Connect pack under it.',
+      explain: 'The Uno’s 5 V and the pack’s 6 V are two separate supplies that share one ground. Q1 is the only thing between the motor and ground, and with no base current it blocks all 6 V.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the sketch',
+      body: 'Press **Upload** to run the sketch: pin 9 goes HIGH for 2 s, then LOW for 2 s.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'upload' }, { kind: 'status', is: 'RUNNING' }] },
+      focus: { control: 'upload' },
+      explain: 'digitalWrite(9, HIGH) drives 5 V through R_B into the base. The pin could only supply 40 mA, far too little for a motor, which is the reason for the transistor.',
+    },
+    {
+      id: 'read-the-numbers',
+      title: 'Read the ON state',
+      body: 'While the motor spins, read **BASE CURRENT** (about **8.5 mA**), **MOTOR CURRENT** (about **0.18 A**) and **V CE** (about **0.14 V**).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'readout', index: 0, above: 0.15, below: 0.22, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.007, below: 0.0095, holdMs: 300 },
+          { kind: 'readout', index: 2, below: 0.3, holdMs: 300 },
+        ],
+      },
+      focus: { part: 'q1' },
+      hint: 'The readings only show up while pin 9 is HIGH, which lasts 2 s. Wait for the next ON.',
+      explain: 'I_B = (5 − 0.8) / (470 + 25) = 8.5 mA. At a gain of 150 the transistor could pass 1.3 A, but the motor only wants 0.18 A, so Q1 is driven hard into saturation and V CE is just 0.14 V. Q1 dissipates 0.14 × 0.18 = 0.03 W, which is almost nothing.',
+    },
+    {
+      id: 'weak-base',
+      title: 'Starve the base',
+      body: 'Slide **Base resistor** up to about **4.7 kΩ**. **BASE CURRENT** falls under 1 mA, **V CE** rises to about **2 V**, and **Q1 POWER** goes over **0.15 W**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Base resistor', min: 4000, max: 5500 },
+          { kind: 'readout', index: 1, below: 0.0015, holdMs: 300 },
+          { kind: 'readout', index: 4, above: 0.15, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Base resistor' },
+      hint: 'The slider is logarithmic. Anything from 4.0 to 5.5 kΩ counts. The readings need pin 9 HIGH.',
+      explain: 'With I_B = 0.9 mA and a gain of 150, Q1 can pass only 134 mA. The motor wants more, so Q1 comes out of saturation and drops about 2 V, dissipating it as heat: P = 0.13 A × 1.9 V. A switch must be driven hard enough to saturate, and the usual rule is a base current of one tenth of the load current.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Watch the turn-off',
+      body: 'Open **Instruments**. The scope catches **V CE** at the instant pin 9 goes LOW. **V CE PEAK** holds about **6.8 V**: 6 V plus one diode drop.',
+      check: { kind: 'all', of: [{ kind: 'instruments' }, { kind: 'readout', index: 5, above: 6.5, below: 7.3 }] },
+      focus: { control: 'instruments' },
+      hint: 'Wait for the next turn-off, at most 2 s. The scope triggers on the rising V CE edge and holds it.',
+      explain: 'The motor winding’s inductance keeps its current flowing when Q1 switches off. D1 (the flyback diode) gives that current a path from ground back up to the supply, so the collector rises only to the pack voltage plus D1’s 0.7 V.',
+    },
+    {
+      id: 'no-flyback',
+      title: 'Break it: remove the diode',
+      body: 'Put **Base resistor** back near **470 Ω**. Then open **Break something** and choose **Remove the flyback diode**. At the next turn-off **V CE PEAK** jumps past **40 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Base resistor', max: 1000 }, { kind: 'break', failure: 'no-flyback' }, { kind: 'readout', index: 5, above: 40 }],
+      },
+      focus: { control: 'break' },
+      hint: 'The kick happens when pin 9 goes LOW, at most 2 s after the diode is gone.',
+      explain: 'With nowhere else to go the inductor’s current forces the collector up until Q1 avalanches at about 60 V, over its 40 V rating. Q1 fails short, so the motor is stuck on: the unsafe direction. Every inductive load needs a flyback diode right across it.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use the base current rule and the flyback diode.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `An NPN bipolar transistor lets a small **base** current control a much larger **collector** current. In the active region, I_c = β·I_b with β ≈ 100–300. As a *switch* we drive it past that, into **saturation**, where V_CE falls to ≈ 0.1–0.3 V and the transistor behaves like a closed contact.
 
 **Base drive.** I_b = (5 − 0.75)/(470 + 25) ≈ **8.6 mA**, well inside the pin's 20 mA comfort zone.

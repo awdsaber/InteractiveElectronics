@@ -192,6 +192,96 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'output-on',
+      title: 'Switch the generator on',
+      body: 'Press **Generator output ON**. The scope is already open: **CH1** is the signal into the filter. Read **IN Vpp**: about **9.9 V** for a 5 V peak sine.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 0, above: 9.4, below: 10.3, holdMs: 400 }],
+      },
+      focus: { control: 'power' },
+      explain: 'Peak-to-peak is twice the peak: 2 × 4.96 V. The generator’s own 50 Ω forms a divider with the 3.3 kΩ filter, so a hair under 5 V reaches the filter. The sim runs at ×0.1, so the meter takes a second or two to settle.',
+    },
+    {
+      id: 'read-the-filter',
+      title: 'Read the filter',
+      body: 'Compare **OUT RMS** with **IN RMS**. **GAIN** reads about **69 %** and **PHASE** about **−46°**: the output is smaller and it lags.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'readout', index: 3, above: 66, below: 72, holdMs: 500 }, { kind: 'readout', index: 6, above: -50, below: -42, holdMs: 500 }],
+      },
+      focus: { part: 'c1' },
+      hint: 'RMS of a sine is its peak divided by √2: 3.5 V in, about 2.4 V out.',
+      explain: 'The corner is f_c = 1 / (2π·R·C) = 1 / (2π × 3300 × 1 µF) = 48 Hz, and the generator sits at 50 Hz, just above it. At the corner the gain is 1/√2 = 71 % and the phase lag is 45°.',
+    },
+    {
+      id: 'set-the-amplitude',
+      title: 'Lower the amplitude',
+      body: 'Slide **Amplitude (peak)** to **2 V**. **IN Vpp** falls to about **4 V** but **GAIN** does not move.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Amplitude (peak)', min: 1.9, max: 2.1 }, { kind: 'readout', index: 0, above: 3.6, below: 4.3, holdMs: 500 }],
+      },
+      focus: { control: 'tweak:Amplitude (peak)' },
+      explain: 'Vpp = 2 × peak, less the little lost in the 50 Ω source. A resistor and a capacitor are linear: scale the input and the output scales with it, so the gain ratio stays the same.',
+    },
+    {
+      id: 'go-faster',
+      title: 'Turn the frequency up',
+      body: 'Slide **Frequency** to about **200 Hz**. **GAIN** drops to about **23 %** and **PHASE** heads for **−77°**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Frequency', min: 170, max: 240 },
+          { kind: 'readout', index: 3, above: 20, below: 27, holdMs: 500 },
+          { kind: 'readout', index: 6, above: -82, below: -70, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'tweak:Frequency' },
+      hint: 'The slider is logarithmic. 200 Hz is about two thirds of the way along. The sim is slow-motion, so the readings need a second or two to settle.',
+      explain: 'At 200 Hz the capacitor’s reactance is X_C = 1 / (2π × 200 × 1 µF) = 796 Ω, a quarter of R. The gain is X_C / √(R² + X_C²) = 0.23 and the phase is −arctan(R/X_C) = −76.4°.',
+    },
+    {
+      id: 'move-the-corner',
+      title: 'Move the corner instead',
+      body: 'Keep **Frequency** near **500 Hz** and shrink **Filter resistor** to about **330 Ω**. The corner moves up to 482 Hz, so **GAIN** is back to about **69 %**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Frequency', min: 450 },
+          { kind: 'tweak', target: 'Filter resistor', max: 400 },
+          { kind: 'readout', index: 3, above: 62, below: 75, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'tweak:Filter resistor' },
+      explain: 'The filter only cares about the ratio of the signal frequency to f_c = 1 / (2πRC). Divide R by 10 and the corner rises tenfold from 48 Hz to 482 Hz, so a 500 Hz signal sits at the same spot on the curve as 50 Hz did before.',
+    },
+    {
+      id: 'load-47',
+      title: 'Break it: load the generator',
+      body: 'Open **Break something** and choose **Load the generator with 47 Ω**. **IN Vpp** is cut about in half.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'load-47' }, { kind: 'readout', index: 0, below: 2.6, holdMs: 500 }] },
+      focus: { control: 'break' },
+      explain: 'The generator is 5 V behind 50 Ω. A 47 Ω load forms a divider with that 50 Ω, so only 5 × 47 / (50 + 47) = 2.4 V peak is left on the line. Always know whether a bench generator’s amplitude assumes a 50 Ω load or an open circuit.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use Vpp, RMS and the RC corner.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `An AC voltage repeats: v(t) = V_p·sin(2πft + φ). Here **V_p = 5 V**, so V_pp = 10 V. The period is T = 1/f = 1/50 = **20 ms**. Press **Generator output ON**: the Instruments panel is already open on the scope, with CH1 (yellow) on the filter input and CH2 (cyan) on the output.
 
 **RMS** is the DC voltage that would heat a resistor equally. For a sine, V_rms = V_p/√2 = 5/1.414 = **3.54 V**. A meter shows RMS; a scope shows the shape.

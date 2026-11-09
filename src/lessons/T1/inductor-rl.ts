@@ -272,6 +272,90 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-choke',
+      title: 'Meet the choke',
+      body: 'Click the part labelled **CHOKE** to open its inspector. It is a **1 H** iron-core coil with about **18 Ω** of wire in its winding.',
+      check: { kind: 'inspect', part: 'l1' },
+      focus: { part: 'l1' },
+      hint: 'It is the big wound coil on the breadboard between the red button and the resistor.',
+      explain: 'An inductor stores energy in a magnetic field, E = ½·L·I². The 18 Ω of winding resistance is real copper, so it adds to R1 in the loop.',
+    },
+    {
+      id: 'switch-on',
+      title: 'Switch the supply on',
+      body: 'Press **Switch supply on**. The button is still open, so **COIL CURRENT** stays at 0 and **ACROSS SWITCH** reads the whole supply, about **5 V**.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 2, above: 4.5, below: 5.5, holdMs: 250 }] },
+      focus: { control: 'power' },
+      explain: 'An open switch drops the full supply voltage and carries nothing. The loop only exists while the button is pressed.',
+    },
+    {
+      id: 'hold-the-button',
+      title: 'Hold the button',
+      body: 'Press and hold the red **push button** for a moment. **COIL CURRENT** climbs to V / R = 5 / (18 + 82) = **50 mA**.',
+      check: { kind: 'all', of: [{ kind: 'tweak', target: 'PUSH BUTTON', min: 1 }, { kind: 'readout', index: 0, above: 0.045, below: 0.055, holdMs: 250 }] },
+      focus: { control: 'tweak:PUSH BUTTON' },
+      hint: 'Keep the mouse button down on the push button control: it springs open when you let go.',
+      explain: 'The current does not jump: v = L·di/dt makes the coil fight any change. It rises as 1 − e^(−t/τ) with τ = L/R = 1 H / 100 Ω = 10 ms, and is within 5 % of 50 mA after 3τ = 30 ms.',
+    },
+    {
+      id: 'let-go',
+      title: 'Let go',
+      body: 'Release the button. The diode catches the current, so **SWITCH PEAK** holds only about **5.8 V**, not thousands of volts.',
+      check: { kind: 'all', of: [{ kind: 'readout', index: 0, below: 0.001, holdMs: 250 }, { kind: 'readout', index: 4, above: 5.5, below: 6.5, holdMs: 250 }] },
+      focus: { part: 'd1' },
+      explain: 'With the switch open, the coil still wants its 50 mA. D1 gives it a path, so the coil top swings to about −0.7 V and the switch sees 5 + 0.7 = 5.7 V. The stored ½·L·I² = 1.25 mJ is burnt off in D1 and the 100 Ω loop.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Watch it on the scope',
+      body: 'Open **Instruments**, then tap the button once and hold it long enough for the trace to flatten. **I COIL** is the exponential: 63 % of 50 mA, about **31 mA**, after one 10 ms time constant.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'instruments' }, { kind: 'tweak', target: 'PUSH BUTTON', min: 1 }, { kind: 'readout', index: 0, above: 0.045, holdMs: 250 }],
+      },
+      focus: { control: 'instruments' },
+      hint: 'The scope triggers when the coil current rises through 5 mA and holds the sweep, so one tap is enough.',
+      explain: 'Each division is 20 ms. The curve flattens at 50 mA after about three divisions of 10 ms time constants. This is the same shape as a capacitor charging, with current in the place of voltage.',
+    },
+    {
+      id: 'bigger-resistor',
+      title: 'Fit a bigger resistor',
+      body: 'Slide **Series resistor** to about **220 Ω**, then hold the button. The loop settles at 5 / (18 + 220) = **21 mA**, and τ = 1 / 238 shrinks to 4 ms.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Series resistor', min: 200, max: 250 }, { kind: 'readout', index: 0, above: 0.018, below: 0.024, holdMs: 250 }],
+      },
+      focus: { control: 'tweak:Series resistor' },
+      hint: 'The slider is logarithmic. Anything from 200 to 250 Ω counts. Set it first, then hold the button.',
+      explain: 'More resistance means a lower final current and a faster rise: the final value is V/R and the time constant is L/R, so a bigger R makes both smaller.',
+    },
+    {
+      id: 'no-flyback',
+      title: 'Break it: remove the diode',
+      body: 'Open **Break something** and choose **Remove the flyback diode**. Then hold the button and let go. **SWITCH PEAK** jumps past **300 V**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-flyback' }, { kind: 'readout', index: 4, above: 100 }] },
+      focus: { control: 'break' },
+      hint: 'The kick only happens when the button opens, so press and release it after you break the diode.',
+      explain: 'Now the current has to stop in microseconds, and v = L·di/dt wants tens of kilovolts. The voltage climbs until the air gap breaks down at about 330 V, six times the switch rating of 50 V. The contacts arc and weld shut.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use τ = L / R and v = L · di/dt.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `An inductor resists *changes* in current: **v = L · di/dt**. Apply a voltage and the current ramps. Try to stop the current and the inductor generates whatever voltage it takes to keep it flowing.
 
 **Current rise.** Hold the button. With R_total = 18 (winding) + 82 (R1) = 100 Ω:

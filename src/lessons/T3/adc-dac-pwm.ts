@@ -348,6 +348,106 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'plug-usb',
+      title: 'Plug in the Uno',
+      body: 'Press **Plug USB**. The knob is a 10 kΩ pot across 5 V, so even before any code runs **A0 (knob)** reads about **2.5 V** at the halfway position.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 0, above: 2.4, below: 2.6, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'A potentiometer is a voltage divider with a movable tap. The wiper goes to analog pin A0, so the pin sees a fraction of 5 V equal to the knob’s position. The scope (already open) is waiting for the PWM.',
+    },
+    {
+      id: 'upload',
+      title: 'Run the sketch',
+      body: 'Press **Upload**. **KNOB ADC** shows about **511** of 1023, **DUTY** about **127** of 255, and the filter output settles near **2.5 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'readout', index: 1, above: 505, below: 517, holdMs: 300 },
+          { kind: 'readout', index: 4, above: 120, below: 135, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'upload' },
+      explain: 'analogRead returns 0 to 1023: 10 bits, each step 5 / 1024 = 4.88 mV. The sketch divides by 4 to fit the 8-bit analogWrite, and a duty of 127/255 = 50 % of 5 V averages to 2.5 V at 490 Hz. The RC filter turns the pulses into that average.',
+    },
+    {
+      id: 'turn-the-knob',
+      title: 'Turn the knob down',
+      body: 'Slide **Knob** to about **20 %**. **KNOB ADC** falls to about **204**, and **FILTERED** settles at about **1.0 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Knob', min: 15, max: 25 },
+          { kind: 'readout', index: 1, above: 190, below: 220, holdMs: 300 },
+          { kind: 'readout', index: 6, above: 0.9, below: 1.1, holdMs: 500 },
+        ],
+      },
+      focus: { control: 'tweak:Knob' },
+      explain: 'The knob moves the ADC count (204 of 1023 is 20 %), the sketch moves the duty (51 of 255) and the filter moves the average (0.2 × 5 V = 1.0 V). This chain is a digital-to-analog converter made of a timer and an RC.',
+    },
+    {
+      id: 'small-cap',
+      title: 'Shrink the filter capacitor',
+      body: 'Set **Filter capacitor** to **100 nF**. The cutoff rises to about **159 Hz**, much closer to the 490 Hz PWM, so **RIPPLE (meter)** grows to over **1 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Filter capacitor', max: 2e-7 }, { kind: 'readout', index: 7, above: 0.8, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Filter capacitor' },
+      explain: 'The cutoff is f_c = 1 / (2π·R·C): 10 kΩ and 100 nF give 159 Hz, only a factor of 3 under the PWM. A first-order filter cuts that by just 3 times, so most of the square wave leaks through. The ripple formula agrees with the meter.',
+    },
+    {
+      id: 'big-cap',
+      title: 'Put a big capacitor back',
+      body: 'Set **Filter capacitor** back to **10 µF** (or 100 µF). The cutoff is about **1.6 Hz** and the ripple falls to about **25 mV**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Filter capacitor', min: 5e-6 }, { kind: 'readout', index: 7, below: 0.05, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Filter capacitor' },
+      explain: 'Ripple falls with C, but so does speed: the filter settles in about 5 R·C = 0.5 s at 10 µF. A smoother DAC level is a slower DAC. You pay in response time, with no way round it.',
+    },
+    {
+      id: 'internal-reference',
+      title: 'Use the 1.1 V reference',
+      body: 'Slide **Reference switch** to **1** (internal 1.1 V). The same 0.3 V signal now reads about **279** counts instead of 61.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Reference switch (1 = internal 1.1 V)', min: 1 }, { kind: 'readout', index: 3, above: 250, below: 310, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Reference switch (1 = internal 1.1 V)' },
+      explain: 'One count is Vref / 1024, which is 4.88 mV against 5 V and 1.07 mV against the internal 1.1 V. The same small signal gets 4.5 times as many counts, which is 4.5 times the resolution. The catch: nothing above 1.1 V can be measured.',
+    },
+    {
+      id: 'heavy-load',
+      title: 'Break it: load the filter',
+      body: 'Open **Break something** and choose **Drive a 1 kΩ load from the filter**. **FILTERED** sags to about **0.2 V** and **LOAD CURRENT** shows tens of microamps.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'break', failure: 'heavy-load' }, { kind: 'readout', index: 11, above: 5e-5, holdMs: 300 }, { kind: 'readout', index: 6, below: 0.5, holdMs: 300 }],
+      },
+      focus: { control: 'break' },
+      explain: 'The RC filter is a voltage source with 10 kΩ behind it. A 1 kΩ load makes a divider: 1 / (10 + 1) of the voltage, so 2.5 V becomes about 0.23 V. PWM filters are high-impedance sources; put an op-amp follower after them.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use ADC counts, PWM duty and the filter cutoff.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `**ADC (analog to digital).** The Uno's 10-bit converter compares the input with a reference voltage V_ref (5 V from USB by default) and returns
 
 code = V_in × 1024 / V_ref, clipped to 0 to 1023, so **1 LSB = 5/1024 = 4.88 mV**

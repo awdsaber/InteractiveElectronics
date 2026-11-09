@@ -243,6 +243,98 @@ export const lesson: LessonDef = {
     },
   ],
 
+  guide: [
+    {
+      id: 'meet-the-diode',
+      title: 'Meet a bridge diode',
+      body: 'Click the diode labelled **D1** to open its inspector. It is a **1N4007**: 1 A, 1000 V, and the stripe marks the **cathode**.',
+      check: { kind: 'inspect', part: 'd1' },
+      focus: { part: 'd1' },
+      hint: 'D1 is the top-left diode of the four on the breadboard. Its stripe faces the DC output.',
+      explain: 'A diode passes current from anode to cathode and blocks it the other way, dropping about 0.7 V while it conducts. Four of them in a bridge send both halves of the AC the same way through the load.',
+    },
+    {
+      id: 'plug-in',
+      title: 'Plug in the adapter',
+      body: 'Press **Plug in the adapter**. **DC OUT** reads about **16 V** with about **1 V** of ripple, and **LOAD CURRENT** about **155 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 15.2, below: 16.8, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.7, below: 1.5, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'The adapter’s 13.2 V RMS is 18.7 V at the peak, and two diode drops take about 1.4 V: 17.3 V. The capacitor holds that between peaks, sagging to about 16 V. Check **D1 PEAK CURRENT (HOLD)**: the empty capacitor pulls a surge of nearly 4 A through a 1 A diode for a millisecond or two. That is allowed because the rating is an average, not an instant.',
+    },
+    {
+      id: 'small-cap',
+      title: 'Shrink the capacitor',
+      body: 'Slide **Smoothing capacitor** down to about **100 µF**. Watch **RIPPLE p-p** on the scope and the readout: it grows to about **7.5 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Smoothing capacitor', max: 150e-6 }, { kind: 'readout', index: 1, above: 5, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Smoothing capacitor' },
+      hint: 'Drag the slider all the way to its minimum: 100 µF.',
+      explain: 'The capacitor supplies the load between charging peaks. The sag is ΔV ≈ I / (2·f·C) for a full-wave bridge, 0.16 / (100 × 100 µF) = 16 V if nothing else limited it, and it clips at the supply’s own swing. A tenfold bigger capacitor gives about a tenth of the ripple.',
+    },
+    {
+      id: 'restore-cap',
+      title: 'Put 1000 µF back',
+      body: 'Slide **Smoothing capacitor** back up to about **1000 µF**. The ripple falls back to about **1 V**.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Smoothing capacitor', min: 800e-6, max: 1.3e-3 }, { kind: 'readout', index: 1, below: 1.6, holdMs: 300 }],
+      },
+      focus: { control: 'tweak:Smoothing capacitor' },
+      hint: 'The slider is logarithmic: 1000 µF is a little more than halfway.',
+      explain: 'Ripple goes as 1/C, so ten times the capacitance means a tenth of the ripple. In a real design the limit is the capacitor’s ripple-current rating and its size, not the ripple alone.',
+    },
+    {
+      id: 'half-wave',
+      title: 'Lift a diode: half-wave',
+      body: 'Set **Rectifier** to **Half-wave (D2 lifted)**. Only one half-cycle charges the capacitor, so the ripple more than doubles to about **2.5 V** and **DC OUT** falls to about **14.9 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Rectifier', max: 0 },
+          { kind: 'readout', index: 1, above: 2, below: 3.5, holdMs: 300 },
+          { kind: 'readout', index: 0, above: 14.2, below: 15.4, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Rectifier' },
+      explain: 'With D2 out the negative half-cycle has no path. The capacitor is topped up every 20 ms instead of every 10 ms, so it sags for twice as long. This is exactly what one failed-open bridge diode does.',
+    },
+    {
+      id: 'no-cap',
+      title: 'Break it: no capacitor',
+      body: 'Put **Rectifier** back on **Full-wave (bridge)**, then open **Break something** and choose **Leave out the smoothing capacitor**. The ripple becomes the whole rectified hump, about **17 V** p-p.',
+      check: {
+        kind: 'all',
+        of: [{ kind: 'tweak', target: 'Rectifier', min: 1 }, { kind: 'break', failure: 'no-cap' }, { kind: 'readout', index: 1, above: 12, holdMs: 300 }],
+      },
+      focus: { control: 'break' },
+      explain: 'Without storage the output follows |v_ac| minus two diode drops, humps of 100 Hz from 0 V to about 17 V. A DC meter shows their average, near 10.6 V, but anything that cares about the peaks or the dips sees the full swing.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: they use the peak of a sine and the diode drops.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   meet: `A diode conducts when its anode is about **0.6 to 0.7 V** above its cathode, and the drop creeps up with current: a 1N4007 reaches about **0.9 V** at its 1 A rating (1.1 V maximum). In reverse it blocks, up to its **1000 V** V_RRM.
 
 **The bridge.** On the positive half-cycle, current flows AC1 → D1 → load → D4 → AC2. On the negative half-cycle it flows AC2 → D2 → load → D3 → AC1. Either way it passes through the load the same way, crossing **two** diodes.
