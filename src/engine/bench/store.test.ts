@@ -99,7 +99,7 @@ describe('store actions', () => {
 
 describe('part inspector selection', () => {
   it('selects a part of the lesson, ignores unknown ids, clears on close and on lesson change', () => {
-    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
+    useStore.getState().selectLesson('resistor-codes-divider') // a lesson with parts r1 and r2
     expect(useStore.getState().selectedPart).toBeNull()
     useStore.getState().selectPart('r1')
     expect(useStore.getState().selectedPart).toBe('r1')
@@ -113,7 +113,7 @@ describe('part inspector selection', () => {
   })
 
   it('zoom to part and reset view are camera requests; selecting alone never moves the camera', () => {
-    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
+    useStore.getState().selectLesson('resistor-codes-divider') // a lesson with part r1
     const v0 = useStore.getState().view
     expect(v0.partId).toBeNull()
     useStore.getState().selectPart('r1')
