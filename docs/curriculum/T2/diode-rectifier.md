@@ -2,7 +2,7 @@
 
 *One-way valves for current*
 
-> Four 1N4007s and 1000 µF turn a 12 V AC adapter into about 15 V DC, with 1.5 V of ripple at 150 mA.
+> Four 1N4007s and 1000 µF turn a 12 V AC adapter into about 16 V DC, with about 1.1 V of ripple at 156 mA.
 
 - **Lesson id:** `diode-rectifier` · **Track:** T2 Semiconductors
 - **Prerequisites:** `transformer`, `capacitor-rc`
@@ -45,7 +45,7 @@ The secondary floats; the DC negative is ground `0`.
 | `C1` | C | `dcp`, `0` | 1000 µF | maxV 25 V, failMode short | |
 | `R_LOAD` | R | `dcp`, `0` | 100 Ω | maxP 5 W | |
 
-Expected: DC ≈ 15 V average, ripple ≈ 1.5 V p-p at 100 Hz, load ≈ 150 mA (2.3 W). Diode current comes in short pulses of several hundred mA near each peak. No-load output ≈ 17.5 V (< 25 V cap rating).
+Expected (sim): DC ≈ 16.0 V average (peak 16.5 V), ripple ≈ 1.1 V p-p at 100 Hz (the formula I/(2fC) = 1.56 V is an upper bound; the diodes recharge for ≈ 2.5 ms of each 10 ms), load ≈ 156 mA (2.5 W). Half-wave: ≈ 2.5 V ripple, DC ≈ 14.8 V. Diode current comes in short pulses of several hundred mA near each peak. No-load output ≈ 17.5 V (< 25 V cap rating).
 
 ## Readouts
 
@@ -78,10 +78,10 @@ Doubling C halves the ripple. Halving R_LOAD doubles the current and the ripple,
 - **Sim shows:** DC OUT is a string of 100 Hz humps from 0 V to ≈ 17 V. A DC meter would read their average, ≈ 11 V.
 - **Why:** without storage, the output is just |v_ac| minus two diode drops. The average of a full-wave rectified sine is 2V_p/π.
 
-### F3: A diode fails short
-- **Patch:** `{op:'short', a:'ac1', b:'dcp'}` (D1 shorted)
-- **Sim shows:** on every other half-cycle, D2 conducts with nothing but the winding resistance in the loop: peaks of ≈ 12 A. D2 is driven far past its 1 A rating.
-- **Why:** with D1 shorted, the path ac2 → D2 → dcp → (short) → ac1 bypasses the load and shorts the secondary through one diode. This is why rectifiers are fused.
+### F3: A diode fitted backwards
+- **Patch:** remove `D2`, add `D2R` with its nodes swapped (`dcp`, `a2`).
+- **Sim shows:** on every positive half-cycle the loop adapter → R_W → D1 → D2R → adapter has only 1.5 Ω and two diode drops in it: ≈ 10 A peaks. D1 and D2R burn open after ≈ 0.3 s.
+- **Why:** a reversed diode turns the bridge into a short circuit across the secondary. This is why rectifiers are fused and why you check the stripe first.
 
 ## Meet the board
 
@@ -144,5 +144,5 @@ so the average is about 16.1 − 0.75 ≈ **15.3 V**, and I ≈ 15.3/100 ≈ 0.1
 - **Sine source:** as in `ac-oscilloscope`.
 - **Time step:** the conduction pulses last ~1–2 ms. A 1 ms step badly under-resolves them, so use dt ≤ 100 µs (per-lesson `dt`).
 - **AC/pulsed ratings:** the short-diode current in F3 is pulsed (≈ 8 ms on, 12 ms off), so a "continuously over `maxI` for 300 ms" rule never fires. Ratings need RMS or thermal integration (e.g. I²t or a junction-temperature RC) so pulsed overloads burn parts. Real diodes also need a separate `I_FSM` surge rating.
-- **Behaviors:** `ripple-meter` (p-p over the last 2 periods, as `ripple.dcp`) and `peak-hold` (as `peak.D1`).
+- **Behaviors:** the shared `ac-meter` (DC out, ripple p-p, AC rms); D1's peak current is a `peak: true` readout. I_FSM is stated, not simulated. Built on a breadboard with a floating secondary.
 - Electrolytic reverse polarity is not modelled (see `capacitor-rc`).
