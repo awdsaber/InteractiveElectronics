@@ -278,6 +278,75 @@ The simulator uses this same idea, called modified nodal analysis: one KCL equat
     "Choose as ground the node with the most connections. It removes the most unknowns and matches how you'll probe with a scope.",
   ],
 
+  guide: [
+    {
+      id: 'output-on',
+      title: 'Switch the outputs on',
+      body: 'Press **Output ON**. **NODE A** settles at about **4.67 V**. Two currents flow in (**I1** 4.33 mA, **I3** 0.33 mA) and **I2** carries **4.67 mA** out.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 4.4, below: 4.9, holdMs: 300 },
+          { kind: 'readout', index: 3, above: 0.0044, below: 0.0049, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'KCL at node A: 4.33 + 0.33 = 4.67 mA in, 4.67 mA out. Node A is (9/1k + 5/1k) / (3/1k) = 4.67 V, and the three drops obey KVL around each loop: for example 9 V − 4.33 V across R1 − 4.67 V at node A = 0.',
+    },
+    {
+      id: 'push-ch1',
+      title: 'Push channel 1 harder',
+      body: 'Slide **Channel 1** up to about **12 V**. Node A rises above 5 V, so **I3** turns **negative**: that arm now carries current back into channel 2.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Channel 1', min: 11.5 },
+          { kind: 'readout', index: 2, below: -0.0004, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Channel 1' },
+      explain: 'A negative reading is not an error, it is information: the real current flows opposite to your assumed arrow. Node A is (12 + 5) / 3 = 5.67 V, so the east arm carries (5 − 5.67) / 1 kΩ = −0.67 mA, and KCL still balances.',
+    },
+    {
+      id: 'sink-open',
+      title: 'Break it: cut the sink arm',
+      body: 'Open **Break something** and choose **The sink arm goes open**. **I2** drops to 0, and one current now circulates from channel 1 into channel 2.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'sink-open' }, { kind: 'readout', index: 3, below: 0.00001, holdMs: 300 }, { kind: 'readout', index: 2, below: -0.003, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'With no path to ground the only loop left runs through both 1 kΩ arms: I = (12 − 5) / 2 kΩ = 3.5 mA, flowing in on the west arm and back out through the east arm (I3 = −3.5 mA). Node A floats to the midpoint of the two sources, 8.5 V. KCL: in = out, even when out is zero.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. **I2** carries current to ground again.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 3, above: 0.005, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'short-a',
+      title: 'Break it: short node A to ground',
+      body: 'Choose **Short node A to ground**. **NODE A** falls to 0 V and **I1** jumps to about **12 mA** (the whole 12 V across R1).',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'short-a' }, { kind: 'readout', index: 0, below: 0.05, holdMs: 300 }, { kind: 'readout', index: 1, above: 0.011, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Each arm now sees its full source voltage across 1 kΩ: I1 = 12 mA and I3 = 5 mA, and the 17 mA together leave through the short. KCL still holds. R1 dissipates 12² / 1000 = 144 mW, which a 1/4 W part survives.',
+    },
+    {
+      id: 'repair-again',
+      title: 'Repair again',
+      body: 'Choose **Repair all** once more to remove the short.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 4 , holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: KCL at a node, KVL around a loop.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'Three wires meet at a node. 3 mA and 5 mA flow in, and 2 mA flows out on the first exit. What flows out of the second exit?',

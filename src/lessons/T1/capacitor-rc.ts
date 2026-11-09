@@ -293,6 +293,98 @@ The current starts at V/R = 5/10k = **0.5 mA** and decays with the same τ.
     'Large capacitors stay charged after power-off. Fit a bleed resistor and measure before touching.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-cap',
+      title: 'Meet the capacitor',
+      body: 'Click the **capacitor** to open its inspector. It is **100 µF**, **16 V**, and the stripe marks the negative leg.',
+      check: { kind: 'inspect', part: 'c1' },
+      focus: { part: 'c1' },
+      hint: 'The tall can with a stripe down one side.',
+      explain: 'It is polarised: the oxide film that makes it work only forms in one direction. With R1 = 10 kΩ the time constant is τ = R × C = 10 000 × 0.0001 = 1 s.',
+    },
+    {
+      id: 'plug-in',
+      title: 'Plug in the supply',
+      body: 'Press **Plug in the 5 V supply**. **SUPPLY** reads 5 V but **CAP VOLTAGE** stays at 0: the charge switch is still open.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 3, above: 4.9, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'The supply is ready, but there is no path from it to C1. A capacitor only moves current while its voltage is changing.',
+    },
+    {
+      id: 'open-scope',
+      title: 'Open the instruments',
+      body: 'Open the **Instruments** panel. The scope shows **V CAP** with a mark at **3.16 V**, 63 % of the supply.',
+      check: { kind: 'instruments' },
+      focus: { control: 'instruments' },
+      explain: 'One time constant is when the capacitor reaches 1 − 1/e = 63.2 % of the supply: 3.16 V of 5 V. The scope sweeps 5 s across, so you will see five time constants.',
+    },
+    {
+      id: 'charge-it',
+      title: 'Flip the charge switch',
+      body: 'Switch **Charge switch** on and watch. **CAP VOLTAGE** passes **3.16 V** after about 1 s, and **CHARGE CURRENT** dwindles from 0.5 mA to almost nothing as it reaches 5 V.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Charge switch', min: 1 },
+          { kind: 'readout', index: 0, above: 4.7, holdMs: 300 },
+          { kind: 'readout', index: 1, below: 0.00005, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Charge switch' },
+      hint: 'Wait about 3 seconds for the voltage to pass 4.7 V.',
+      explain: 'V(t) = 5 × (1 − e^(−t/τ)): 63 % at 1 s, 86 % at 2 s, 99 % at 5 s. The current starts at 5 V / 10 kΩ = 0.5 mA and decays the same way, because the less room left in the capacitor, the less voltage there is across R1.',
+    },
+    {
+      id: 'drain-it',
+      title: 'Drain it',
+      body: 'Switch **Charge switch** off, then press **DRAIN button**. **CAP VOLTAGE** falls to nearly 0 in a fraction of a second.',
+      check: { kind: 'all', of: [{ kind: 'tweak', target: 'Charge switch', max: 0.5 }, { kind: 'readout', index: 0, below: 0.3, holdMs: 250 }] },
+      focus: { control: 'tweak:DRAIN button' },
+      hint: 'With the charge switch still on the voltage only falls to about 0.45 V: switch it off first.',
+      explain: 'The drain resistor is 1 kΩ, so τ = 1 kΩ × 100 µF = 0.1 s, ten times quicker than the charge. Energy goes in as ½CV² = 1.25 mJ and comes out as heat in the drain resistor.',
+    },
+    {
+      id: 'overvoltage',
+      title: 'Break it: plug it into 24 V',
+      body: 'Open **Break something** and choose **Plug it into 24 V**. The voltage races past the **16 V** rating and the capacitor fails.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'overvoltage-24v' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'It takes about a second to reach 16 V.',
+      explain: 'V(t) climbs toward 24 V and passes 16 V at t = τ ln 3 = 1.1 s. The oxide film breaks down, C1 fails shorted, V CAP drops to 0 and only R1 limits the current. A voltage rating is a hard limit.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The supply returns to 5 V.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 3, below: 6, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'bigger-cap',
+      title: 'Fit a 1000 µF capacitor',
+      body: 'Slide **Capacitance** up to **1000 µF**, then switch **Charge switch** on. τ is now 10 s, so after 3 s **CAP VOLTAGE** is only about **1.3 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Capacitance', min: 0.0008 },
+          { kind: 'tweak', target: 'Charge switch', min: 1 },
+          { kind: 'readout', index: 0, above: 0.3, below: 1.5, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Capacitance' },
+      hint: 'Set the capacitance first, then flip the charge switch.',
+      explain: 'τ = R × C = 10 kΩ × 1000 µF = 10 s: ten times the capacitance, ten times the time. Timing circuits and filters all come down to choosing R and C for the τ you want.',
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: τ = RC and the 63 % rule.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What is the time constant of 47 kΩ and 22 µF?',

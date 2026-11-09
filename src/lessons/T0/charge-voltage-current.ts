@@ -215,6 +215,100 @@ A note on direction, for later lessons. Current is drawn flowing from + to −, 
     'Agree on a polarity habit: red lead on the higher-potential side, and write down the sign of every reading. Negative numbers are information, not mistakes.',
   ],
 
+  guide: [
+    {
+      id: 'find-the-limiter',
+      title: 'Find the limit resistor',
+      body: 'Click the resistor labelled **LIMIT** to open its inspector. **Brown-black-brown** is 100 Ω, and it is a 1/4 W part.',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'The striped part on the breadboard between the ammeter lead and the red LED. Its LIMIT tag works too.',
+      explain: 'Brown (1), black (0), brown (×10): 10 × 10 = 100 Ω. This part decides how much charge the loop allows to pass each second.',
+    },
+    {
+      id: 'close-the-loop',
+      title: 'Close the loop',
+      body: 'Press **Flip the switch**. **CURRENT** reads about **12 mA**, and **ELECTRONS/s** shows about **78** (in millions of billions).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 0.011, below: 0.014, holdMs: 300 },
+          { kind: 'readout', index: 4, above: 70, below: 85, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'The resistor gets what the LED leaves: (3.0 − 1.8 V) / 100 Ω ≈ 12 mA. One ampere is one coulomb per second, and a coulomb is 6.24 × 10¹⁸ electrons, so 12 mA is about 7.5 × 10¹⁶ electrons every second.',
+    },
+    {
+      id: 'fit-470',
+      title: 'Fit a bigger resistor',
+      body: 'Slide **Limit resistor** to about **470 Ω**. The current falls to about **3 mA**, so fewer electrons pass each second.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Limit resistor', min: 400, max: 550 },
+          { kind: 'readout', index: 0, above: 0.0025, below: 0.0035, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Limit resistor' },
+      hint: 'The slider is logarithmic. Anything from 400 to 550 Ω counts.',
+      explain: 'Same push, more opposition, less flow: I = (3.0 − 1.6) / 470 ≈ 3 mA. The LED drop sags a little at the lower current, which is why 1.6 V and not 1.8 V.',
+    },
+    {
+      id: 'more-push',
+      title: 'Add a cell',
+      body: 'Slide **Cells in series** up to **4.5 V** (three cells). Keep the 470 Ω: the current doubles to about **6 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Cells in series (1.5 V each)', min: 4.4 },
+          { kind: 'readout', index: 0, above: 0.0052, below: 0.0068, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Cells in series (1.5 V each)' },
+      explain: 'More voltage means more energy per coulomb, so more coulombs per second get pushed through the same opposition: (4.5 − 1.65) / 470 ≈ 6 mA.',
+    },
+    {
+      id: 'open-the-loop',
+      title: 'Break it: open the loop',
+      body: 'Open **Break something** and choose **Open the loop**. **CURRENT** drops to 0 and the LED goes dark, but **BATTERY** still shows the full push.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'open-loop' }, { kind: 'readout', index: 0, below: 0.00001, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Charge can only flow around a closed loop. The battery voltage is still there, and all of it now sits across the gap, but with no path nothing moves. Nothing spills out of the cut.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** and choose **Repair all**. The current comes back.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 0.004, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'bypass-it',
+      title: 'Break it: bypass the resistor',
+      body: 'Choose **Bypass the resistor with a jumper**. Now only the cells and the LED limit the current. Watch what happens to the LED.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'bypass-resistor' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'Give it a moment: a part takes a few hundred milliseconds to burn.',
+      explain: 'An LED passes current exponentially with voltage. Without the resistor the current leaps far past its 30 mA absolute maximum, the LED burns open and the loop is broken again. The resistor was the only thing choosing the current.',
+    },
+    {
+      id: 'repair-again',
+      title: 'Repair again',
+      body: 'Choose **Repair all** once more to fit a new LED.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 0.004, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: charge, current and voltage in numbers.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A loop carries 12 mA for 10 minutes. How much charge passed?',

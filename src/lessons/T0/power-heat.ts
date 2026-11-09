@@ -187,6 +187,71 @@ Design rule: run resistors at **50 % or less** of their rating, and less again i
     'Pulse loads are judged by energy and duty, not peak power. Resistors have separate pulse-withstand curves, so use them for inrush and snubber parts.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-hot-one',
+      title: 'Meet the hot resistor',
+      body: 'Click the resistor labelled **HOT** to open its inspector. It is a **220 Ω** part rated for **1/4 W**.',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'The striped part on the breadboard, with the orange thermocouple tip resting on it.',
+      explain: 'The rating is a promise about heat: 0.25 W at 70 °C ambient, derated to nothing at 155 °C. That works out to about 340 °C of rise for every watt.',
+    },
+    {
+      id: 'output-on',
+      title: 'Switch the output on',
+      body: 'Press **Output ON**. At 5 V across 220 Ω, **POWER** reads about **0.114 W** (5² / 220).',
+      check: { kind: 'all', of: [{ kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 1, above: 0.1, below: 0.125, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'P = V² / R = 25 / 220 = 114 mW, which is also I² R and V · I. Pick the form that uses the numbers you already have.',
+    },
+    {
+      id: 'heat-arrives',
+      title: 'Wait for the heat',
+      body: 'Power appears at once, heat does not. Watch **BODY TEMP** climb past **45 °C** over a few seconds.',
+      check: { kind: 'readout', index: 2, above: 45, holdMs: 300 },
+      hint: 'Be patient: the body has thermal mass, so the temperature follows a slow exponential curve.',
+      explain: 'ΔT = P × θ = 0.114 W × 340 °C/W ≈ 39 °C, so about 64 °C on a 25 °C bench. The temperature creeps toward that value with a time constant of a few seconds, like a capacitor charging.',
+    },
+    {
+      id: 'turn-it-up',
+      title: 'Turn the voltage up',
+      body: 'Slide **Supply voltage** to about **8 V**. The voltage went up 1.6×, so **POWER** goes up 1.6² to about **0.29 W**: already over the rating.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Supply voltage', min: 7.5, max: 8.5 },
+          { kind: 'readout', index: 1, above: 0.26, below: 0.33, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Supply voltage' },
+      explain: 'Power goes with the square of voltage (or of current). That is why a small push in the supply can overload a part that was comfortable a moment ago.',
+    },
+    {
+      id: 'burn-it',
+      title: 'Break it: fit 47 Ω',
+      body: 'Open **Break something** and choose **47 Ω fitted instead of 220 Ω**. Wait a few seconds, then watch **BODY TEMP** climb past 155 °C.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'r-47' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'Nothing happens at once. Heat takes a few seconds to arrive.',
+      explain: 'At 8 V, 47 Ω would turn 1.4 W into heat. The body shoots through 155 °C and the part goes open. Heat takes time, but it always arrives.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 1, above: 0.05, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: each is one line of P = V · I = I² R = V² / R.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What does a 330 Ω resistor dissipate on 12 V?',
