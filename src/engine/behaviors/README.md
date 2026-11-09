@@ -61,6 +61,7 @@ The instance name defaults to the id, and two instances of one behavior need dif
 | `pot-knob` | `pot` (a POT element id), `turn` (0–100 %) | `turn`. Sets the POT's wiper, so a tweak `behavior:<instance>.turn` with unit '%' reads "50 %". |
 | `source-select` | `switches` (comma-separated SW ids), `mode` (index, default 0) | `mode`. Closes only the SW at index `mode`: a generator's waveform button driven by an enum tweak `behavior:<instance>.mode`. |
 | `series-rlc` | `l`, `c` (element ids), `r` (comma-separated R ids in the loop), `rExtra` (Ω, default 0), `sine` (a V with a `wave`) | `f0`, `z0`, `zeta`, `q`, `fd` (0 when ζ ≥ 1), `gain` (steady-state gain V_C/V_in at the sine frequency), `rTotal`, from the live netlist; NaN once L or C has failed. |
+| `power-meter` | `vin` (node), `iin` (element, e.g. a PROBE), `vout` (node), `iout` (element, e.g. the load) | `pin`, `pout`, `loss` (W) and `eta` (%, 0 below 1 µW in) from the time-averaged solution: a converter's efficiency. |
 
 ## Rules
 - Keep behaviors pure TypeScript with no React or three.js. Test them headless through `createBench(lesson, { registry: { id: behavior } })` (see `src/engine/bench/simLoop.test.ts`).
