@@ -9,6 +9,7 @@ import { defaultFloor } from '../engine/bench/readouts'
 import { findTrigger } from '../engine/bench/sampleRing'
 import { formatSI } from '../engine/sim/format'
 import type { Lesson, Readout, ScopeChannel, ScopeSource } from '../engine/types'
+import { LogicAnalyzer } from './LogicAnalyzer'
 import { RadioSeg } from './RadioSeg'
 import { Sweep, columnPath, parseSource, seq125, sourceKey, withValue } from './scopeView'
 
@@ -23,6 +24,9 @@ const DIVS_Y = 8
 const PRE = 0.2 // trigger point: 2 divisions from the left
 const PER_DIV = withValue(seq125(1e-6, 100), 0.25)
 const TIME_DIV = seq125(1e-6, 5)
+
+type View = 'scope' | 'chart' | 'logic'
+const VIEW_LABEL: Record<View, string> = { scope: 'Oscilloscope', chart: 'Strip chart', logic: 'Logic analyzer' }
 
 interface Chan {
   key: string
@@ -397,7 +401,8 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
     return b.instrumentConfig()
   })
 
-  const [view, setView] = useState<'scope' | 'chart'>(defaults?.view ?? (defaults?.chart && !defaults.scope ? 'chart' : 'scope'))
+  const views: View[] = defaults?.logic ? ['scope', 'chart', 'logic'] : ['scope', 'chart']
+  const [view, setView] = useState<View>(defaults?.view ?? (defaults?.chart && !defaults.scope ? 'chart' : 'scope'))
   const [chans, setChans] = useState<Chan[]>(() => initialChans(lesson, boot.scope))
   const sd = defaults?.scope
   const [tDiv, setTDiv] = useState(sd?.timePerDiv ?? 1e-3)
@@ -451,6 +456,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
       const b = bench()
       const c = cfg.current
       const s = st.current
+      if (c.view === 'logic') return // the logic analyzer draws itself
       if (c.view === 'chart') {
         const cw = b.chart.writes
         if (chartCanvas.current && (cw !== s.chartWrites || s.dirty)) {
@@ -563,12 +569,13 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
         onKeyDown={(e) => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
           e.preventDefault()
-          const next = e.key === 'Home' ? 'scope' : e.key === 'End' ? 'chart' : view === 'scope' ? 'chart' : 'scope'
+          const i = views.indexOf(view)
+          const next = e.key === 'Home' ? views[0] : e.key === 'End' ? views[views.length - 1] : views[(i + (e.key === 'ArrowLeft' ? views.length - 1 : 1)) % views.length]
           setView(next)
           document.getElementById(`${uid}-tab-${next}`)?.focus()
         }}
       >
-        {(['scope', 'chart'] as const).map((v) => (
+        {views.map((v) => (
           <button
             key={v}
             id={`${uid}-tab-${v}`}
@@ -579,10 +586,10 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
             tabIndex={view === v ? 0 : -1}
             onClick={() => setView(v)}
           >
-            {v === 'scope' ? 'Oscilloscope' : 'Strip chart'}
+            {VIEW_LABEL[v]}
           </button>
         ))}
-        <span className="inst-note">sampled every sim step, edge substeps included</span>
+        <span className="inst-note">{view === 'logic' ? 'bus timing laid out at the real bit rate, µs resolution' : 'sampled every sim step, edge substeps included'}</span>
       </div>
 
       <div className="inst-body" id={`${uid}-panel-scope`} role="tabpanel" aria-labelledby={`${uid}-tab-scope`} hidden={view !== 'scope'}>
@@ -709,6 +716,12 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
           </fieldset>
         </div>
       </div>
+
+      {defaults?.logic && (
+        <div className="inst-body" id={`${uid}-panel-logic`} role="tabpanel" aria-labelledby={`${uid}-tab-logic`} hidden={view !== 'logic'}>
+          <LogicAnalyzer lesson={lesson} bench={bench} active={view === 'logic'} />
+        </div>
+      )}
 
       <div className="inst-body" id={`${uid}-panel-chart`} role="tabpanel" aria-labelledby={`${uid}-tab-chart`} hidden={view !== 'chart'}>
         <div className="inst-screen">

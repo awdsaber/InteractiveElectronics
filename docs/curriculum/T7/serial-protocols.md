@@ -65,10 +65,10 @@ Board: `PROTOCOL BENCH`, size 16 × 9, base `mat`. A logic analyzer's grabbers a
 ### Behaviors
 
 - **`wire-bus`**. Implements the Arduino `Wire` API: `begin()`, `setClock(hz)`, `beginTransmission(addr)`, `write(b)`, `endTransmission(stop)` (returns 0 = OK, 2 = NACK on address, 3 = NACK on data, 4 = other), `requestFrom(addr, n)`, `available()` and `read()`. Devices register on the bus. Here `imu-mpu6050` provides register-level access at 0x68 with registers 0x75 WHO_AM_I → 0x68, 0x6B PWR_MGMT_1 (sleep bit set at power-up), and 0x3B–0x40 accelerometer data.
-  - **Edge check:** each transaction computes the SDA/SCL rise time t_r = 0.8473 × R × C from the *current* values of `r_sda`/`c_sda` (and SCL). If t_r exceeds the mode limit (1000 ns at ≤100 kHz, 300 ns at ≤400 kHz), bits are corrupted with probability rising with t_r / (½ bit time), giving random NACKs or bad data. With a pull-up missing, the bus is stuck low and every call returns 4.
+  - **Edge check:** each transaction computes the SDA/SCL rise time t_r = 0.8473 × R × C from the *current* values of `r_sda`/`c_sda` (and SCL). If t_r exceeds the mode limit (1000 ns at ≤100 kHz, 300 ns at ≤400 kHz) the bus is out of spec. *As built:* the `logic-analyzer` behavior lays the edges out at the real rate (a rise reaches V_IH = 0.7·VDD after 1.204·R·C) and decodes the address from that waveform before the device sees it; when the rise is slower than the SCL high time the clock pulse is swallowed and the address is NACKed (endTransmission returns 2). With a pull-up missing, the bus is stuck low and every call returns 2 (the draft said 4; Wire and SPI are the MCU's built-in libraries, not separate behaviors).
   - Transactions advance virtual time by their real duration (9 clocks per byte plus START/STOP).
 - **`spi-bus`**. Implements `SPI.begin()`, `SPI.beginTransaction(SPISettings(hz, order, mode))`, `SPI.transfer(b)` and `SPI.endTransaction()`, with the constants `MSBFIRST`, `LSBFIRST`, `SPI_MODE0`…`SPI_MODE3`. Bytes go to the registered device (`hc595`) with the clock rate and mode.
-- **`hc595`**. Shifts in bits MSB-first in SPI mode 0 (the 595 samples on the SRCLK rising edge). On a rising edge of pin 10 (latch) it copies the shift register to `q0…q7.closed`. If the master uses mode 1 or 3, it shifts the sampled bits by one position (a mode mismatch).
+- **`hc595`**. Shifts in bits MSB-first in SPI mode 0 (the 595 samples on the SRCLK rising edge). On a rising edge of pin 10 (latch) it copies the shift register to `q0…q7.closed`. Modes 0 and 3 sample on SCK rising, so they work. In mode 1 the master changes MOSI on the rising edge: the 595 catches the previous level first and the byte arrives shifted by one bit (a mode mismatch). Mode 2 also changes data on the rising edge and only works thanks to the 595's zero hold time. (Corrected: the draft said modes 1 and 3 shift.)
 - **`logic-analyzer`**. Records every UART byte (from `Serial.print`), I²C transaction and SPI byte, plus digital edges on the probed pins, as timestamped events. It renders them as waveforms with protocol decode rows:
   - **UART:** idle-HIGH, start bit, 8 data bits LSB first, stop bit, at the sketch's baud rate. The analyzer decodes at *its own* configured baud (`laBaud`).
   - **I²C:** SCL/SDA with exponential rise edges using t_r.
@@ -147,6 +147,8 @@ void setup() {
 void loop() {
   if (readRegs(0x3B, buf, 2) == 2) {
     int ax = buf[0] * 256 + buf[1];
+    // NOTE (as built): on the Uno int is 16 bits, so buf[0] * 256 + buf[1] already wraps to the signed
+    // value and this test is never true. The lesson uses int ax = (buf[0] << 8) | buf[1]; instead.
     if (ax > 32767) {
       ax = ax - 65536;                      // 16-bit two's complement
     }
@@ -203,12 +205,12 @@ Change `Wire.setClock(100000)` to `400000` in the code and watch the rise-time r
 
 ### F2: 47 kΩ pull-ups at 400 kHz
 - **Patches:** `{op:'set', elementId:'r_sda', key:'value', value:47000}`, `{op:'set', elementId:'r_scl', key:'value', value:47000}`, plus the learner sets `Wire.setClock(400000)`.
-- **Sim shows:** t_r = 0.8473 × 47 kΩ × 100 pF ≈ **4 µs**. The edges never reach HIGH within a 1.25 µs half-period, so NACKs and corrupt bytes follow. At 100 kHz (half-period 5 µs) it is marginal.
+- **Sim shows:** t_r = 0.8473 × 47 kΩ × 100 pF ≈ **4 µs**. The edges never reach HIGH within a 1.25 µs half-period, so NACKs follow. At 100 kHz (half-period 5 µs) it fails too: reaching V_IH takes 1.204 × RC ≈ 5.7 µs. (Corrected from "marginal"; the lesson's failure applies 47 kΩ at the sketch's 100 kHz, no code change needed.)
 - **Why:** pull-ups trade rise time against sink current. Rmax = t_r / (0.8473 × C) = 300 ns / (0.8473 × 100 pF) ≈ **3.5 kΩ** for fast mode, and Rmin = (3.3 − 0.4) V / 3 mA ≈ **970 Ω**. 2.2 kΩ is a safe choice.
 
 ### F3: Pull-ups missing
 - **Patches:** `{op:'remove', elementId:'r_sda'}`, `{op:'remove', elementId:'r_scl'}`
-- **Sim shows:** SDA idles near 0 V. Every `endTransmission` returns 4 and the sketch prints "I2C read failed". The analyzer shows flat-low lines with no START.
+- **Sim shows:** SDA idles near 0 V. Every `endTransmission` returns 2 (address NACK) and the sketch prints "I2C read failed". The analyzer shows flat-low lines with no START.
 - **Why:** devices on an I²C bus only pull low (open-drain). With no pull-up, "HIGH" never happens.
 
 ## Meet the board
@@ -270,3 +272,11 @@ Change `Wire.setClock(100000)` to `400000` in the code and watch the rise-time r
 - **Array parameters to functions** (`int buf[]`) must work in the transpiler (JS arrays pass by reference, which matches C).
 - Open-drain PIN mode (also requested in `pca9685-servo` and `mpu6050-imu`).
 - A tweak bound to sketch code (`Wire.setClock`) is not possible. The learner edits the code instead, which is fine.
+
+## As built (2026-11-09)
+
+- Behaviors: `logic-analyzer` (new), `hc595` (new), `imu-mpu6050`. Wire and SPI are the MCU's own libraries; the analyzer listens through a bus monitor.
+- Board: the UART goes from pin 1 to a USB-UART adapter's RX (weak pull-up), so a TX→TX swap leaves the RX lane flat HIGH. The 595's VCC current is read through a 10 mΩ element (`r595`) for LED BAR CURRENT.
+- Failures: wrong-baud (analyzer at 9600), weak-pullups (47 kΩ at 100 kHz), long-bus (400 pF: t_r 1.59 µs, out of spec but still working at 100 kHz), no-pullups, tx-to-tx. The SPI mode mismatch is a code edit (SPI_MODE1): a failure cannot change the sketch.
+- Readouts: UART BYTE TIME (86.8 µs), BYTES/S AT RX, FRAMING ERRORS, I²C RISE TIME (398 ns), I²C NACKS, SPI LAST BYTE, SDA IDLE, LED BAR CURRENT.
+- The sketch holds the sensor at a −25° tilt (tweak "Sensor tilt"): ax ≈ +0.42 g, level 5, SPI byte 0x1F.

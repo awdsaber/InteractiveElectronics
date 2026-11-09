@@ -24,6 +24,7 @@ import type {
   Behavior,
   BehaviorContext,
   BehaviorEvent,
+  BusMonitor,
   BehaviorLifecycleEvent,
   BenchStatus,
   BurnEvent,
@@ -203,6 +204,8 @@ export interface Bench {
   needsFrames(): boolean
   snapshot(): BenchSnapshot
   events(): readonly BehaviorEvent[]
+  /** live instrument data a behavior exposes (Behavior.expose), by instance name or behavior id; undefined when none */
+  behaviorData(idOrInstance: string): unknown
   mcuTimeMs(): number
   dispose(): void
 }
@@ -323,6 +326,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
   const pendingI2c: [number, unknown][] = []
   const pendingSpi: [number, unknown][] = []
+  const pendingTaps: BusMonitor[] = []
 
   // ── snapshots ──
   let since = 0
@@ -485,6 +489,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     })
     for (const [a, d] of pendingI2c) mcu.attachI2c(a, d as never)
     for (const [p, d] of pendingSpi) mcu.attachSpi(p, d as never)
+    for (const m of pendingTaps) mcu.addBusMonitor(m)
     return mcu
   }
 
@@ -600,6 +605,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         attachSpi(csPin, device) {
           if (mcu) mcu.attachSpi(csPin, device as never)
           else pendingSpi.push([csPin, device])
+        },
+        tapBus(monitor) {
+          if (mcu) mcu.addBusMonitor(monitor)
+          else pendingTaps.push(monitor)
         },
         get timeMicros() {
           return mcu?.timeMicros ?? 0
@@ -1134,6 +1143,10 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     needsFrames: () => !disposed && (isPowered(lesson, asm) || asm.running),
     snapshot,
     events: () => events,
+    behaviorData: (name) => {
+      const inst = instances.find((i) => i.r.instance === name) ?? instances.find((i) => i.def.id === name)
+      return inst?.def.expose?.(inst.ctx)
+    },
     mcuTimeMs: () => (mcu ? mcu.timeMs + mcuStart * 1000 : 0),
     dispose() {
       if (disposed) return
