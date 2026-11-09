@@ -4,6 +4,9 @@
 
 > A 7805 dropping 12 V to 5 V at 0.65 A turns 4.6 W into heat. With no heatsink that means a 325 °C junction on paper; a 10 °C/W heatsink brings it down to about 96 °C.
 
+
+> **Implemented (M4, `src/lessons/T7/thermal-design.ts`) differently from this draft:** the load is 7.5 Ω (0.667 A, P = 4.73 W); sink, thermal interface (dry 3, silicone pad 1, grease 0.5 °C/W) and airflow (fan = θsa × 0.45, illustrative) are enum tweaks on `thermal-network` (`sink`, `pad`, `fan`), with a small 12 °C/W / 9 J/K and a large 5 °C/W / 27 J/K heatsink (illustrative class values, not a named part; the "Aavid 577202 at 4–6 °C/W" figure could not be verified). The Uno, NTC, fan MOSFET and `mcu-supply` are deferred: the fan is a tweak. Datasheet numbers: onsemi MC7805 TO-220 Rθjc 5 and Rθja 65 °C/W (ST L7805: 50), operating T_j 0 to 125 °C, internal thermal protection with no published trip temperature (150 °C trip and 130 °C restart are model values).
+
 - **Lesson id:** `thermal-design` · **Track:** T7 Professional
 - **fig:** 40. Provisional: sidebar order.
 - **Prerequisites:** T2 `regulators-linear-buck`, `thermistor`, `power-grounding-emc`
@@ -191,7 +194,7 @@ void loop() {
 
 ### F1: Remove the heatsink
 - **Patch:** `{op:'set', elementId:'behavior:thermal-network', key:'heatsink', value:false}`
-- **Sim shows:** with only the tab's 0.8 J/K, T_j climbs past 150 °C in under a minute. The output drops to 0 and the Uno resets. It cools to 130 °C, restarts and heats again: a slow on/off **cycle**, with `boot` printed each time.
+- **Sim shows:** with only the tab's 0.8 J/K, T_j climbs past 150 °C in under a minute. The output drops to 0 and the Uno resets. It cools to 130 °C, restarts and heats again: an on/off **cycle**, with `boot` printed each time. (Corrected: the junction sits P × Rθjc, about 24 K at 4.6 W, above the tab only while it dissipates, so after a trip it falls to the tab temperature within about a second. With the tab under 130 °C it restarts and trips again every few seconds, chattering until the tab is hot; it is not a slow cycle.)
 - **Why:** 4.6 W × 65 °C/W = 299 K of rise, giving 324 °C on paper. Thermal shutdown is a last-ditch protection, not a design feature. Repeated cycling stresses the die attach and bond wires.
 
 ### F2: Run it from 24 V
@@ -201,7 +204,7 @@ void loop() {
 
 ### F3: Mount it dry (no grease, poor contact)
 - **Patch:** `{op:'set', elementId:'behavior:thermal-network', key:'rthCS', value:4}`
-- **Sim shows:** the steady-state T_j rises by 4.6 × 3.5 ≈ 16 K to about 112 °C. The heatsink itself runs *cooler* than before, a classic misleading clue.
+- **Sim shows:** the steady-state T_j rises by 4.6 × 3.5 ≈ 16 K to about 112 °C. The heatsink itself stays exactly as warm as before at fixed power (T_hs = T_a + P × Rθsa does not depend on the interface); only the tab-to-sink ΔT grows (P × Rθcs). A cool heatsink with a hot part is the classic clue. (Corrected: an earlier draft said the heatsink runs cooler.)
 - **Why:** a microscopically rough tab touching a rough heatsink only makes contact at high points. Grease or a pad fills the air gaps. A cool heatsink with a hot part means the interface is the bottleneck.
 
 ## Meet the board
