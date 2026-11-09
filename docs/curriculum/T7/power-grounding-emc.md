@@ -2,7 +2,29 @@
 
 *Where the current returns*
 
-> 1.2 A returning through 84 mΩ of shared ground wire lifts a TMP36's ground by 0.1 V, which the Uno reads as a 10 °C error.
+> 1.17 A returning through 84 mΩ of shared ground wire lifts a TMP36's ground by 98 mV, which the Uno reads as a 9.8 °C error.
+
+## As built (2026-11-09) — supersedes the draft below where they differ
+
+The lesson (`src/lessons/T7/power-grounding-emc.ts`) solves every effect from netlist parasitics instead of the draft's `emc-edges` formula behavior:
+
+- **Load:** a 12 V solenoid, L 20 mH + R 10 Ω, with a 1N4007 flyback (an inductive load is needed for the flyback topic). It replaces the 10 Ω heater.
+- **Wires:** each 1 m of 24 AWG is R 84 mΩ **and** L 1 µH in the netlist: supply wire, load return wire, sensor ground wire.
+- **Far-board decoupling:** 100 µF electrolytic (ESR 0.1 Ω) + 100 nF ceramic; the TMP36's own 100 nF bypass is a board part.
+- **Topology:** `source-select` closes `SW_STAR` or `SW_SHARED` (an enum tweak "Load return"); each switch has the engine's 50 mΩ contact, so I_load = 12 / (0.05 + 0.084 + 10 + 0.026 + 0.05 + 0.084) ≈ **1.17 A**.
+- **Behaviors:** `tmp36` (V source = 0.5 V + 10 mV/°C × T on the sensor's own ground node), `source-select`, `serial-plotter`. Power: `V_USB` ("Plug USB") plus extra power `V_PSU` ("Switch on 12 V").
+- **Sim:** dt 1 ms, `edgeSubsteps: 16` (first substep ≈ 15 ns). Q1 has no gate capacitance.
+- **A0 RC filter:** 1 kΩ + 100 nF at the Uno (enum tweak: None / 1 kΩ + 100 nF).
+
+Numbers from the solve (and the lesson's tests):
+- Star: sensor ground shift 4 µV, reading 24.8 °C (ADC quantization). Shared: shift = 1.17 A × 0.084 Ω ≈ **98 mV → 9.8 °C**; 30 AWG (0.34 Ω): ≈ 0.40 V → ≈ 40 °C.
+- No decoupling at the load: at turn-off the wires' current must stop at Q1's turn-off rate. Q1's gate is driven from the Uno's ground while its source sits on 1 µH of return wire (common-source inductance), so the source bounces to −V_GS ≈ −(1.5 + √(2 × 1.17 / 11)) ≈ −1.96 V, di/dt ≈ 2 A/µs, and the far rail peaks at ≈ 12 + 2 × 1.96 ≈ **16 V** (with the capacitors: < 12.3 V). On a shared return the sensor ground dips ≈ **2 V** below the Uno's, which would put A0 at −1.3 V (past the ATmega328P's −0.5 V absolute maximum) without the RC filter. Because the load is inductive the fast edge is turn-off, so the symptom is a supply spike, not a droop.
+- No flyback: the drain goes to Q1's ≈ 60 V avalanche clamp for ≈ L·I/(60 − 12) ≈ 0.5 ms (½·L·I² ≈ 14 mJ). The IRLZ44N is avalanche-rated, so it is not failed.
+- Draft failure F3 (IRF540N) was dropped: T2 `mosfet-switch` covers logic-level gate drive, and the square-law fit could not match the IRF540N datasheet.
+
+Figures checked: 1 oz copper (35 µm) is ρ/t = 1.72e-8 / 35e-6 ≈ 0.49 mΩ/sq, so 1 mm × 40 mm = 40 sq ≈ 20 mΩ and 0.5 mm × 100 mm ≈ 98 mΩ (correct). 24 AWG is 84.2 mΩ/m and 30 AWG 339 mΩ/m (correct). "About 1 µH per metre" is a rule of thumb: a straight isolated 24 AWG wire computes to ≈ 1.6 µH/m, a closely spaced pair less. TMP36: 750 mV at 25 °C, 10 mV/°C, 500 mV offset, under 50 µA (correct).
+
+## Draft
 
 - **Lesson id:** `power-grounding-emc` · **Track:** T7 Professional
 - **fig:** 39. Provisional: sidebar order.
