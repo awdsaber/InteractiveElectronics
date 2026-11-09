@@ -197,7 +197,7 @@ export const lesson: LessonDef = {
   sim: { dt: 0.0001, speed: 0.25 },
 
   behaviors: [
-    { id: 'hcsr04', params: { distanceCm: 100, airTempC: 20, surface: 0, noiseCm: 0.3, otherSensor: false, maxCm: 400, timeoutUs: 38000 } },
+    { id: 'hcsr04', params: { distanceCm: 100, airTempC: 20, surface: 0, noiseCm: 0.3, otherSensor: false, maxCm: 400, timeoutUs: 38000, trigViewUs: 200 } },
     { id: 'mcu-supply', instance: 'mcu', params: { supplyNode: '5v', bor: 2.7, fClk: 16 } },
     { id: 'serial-plotter', instance: 'serial' },
   ],
@@ -218,7 +218,7 @@ export const lesson: LessonDef = {
     open: true,
     scope: {
       channels: [
-        { label: 'TRIG', source: { kind: 'voltage', node: 'trig_mon' }, perDiv: 2, offset: 2.5 },
+        { label: 'TRIG', source: { kind: 'voltage', node: 'trig_mon' }, perDiv: 3, offset: 2 },
         {
           label: 'ECHO',
           source: { kind: 'voltage', node: 'd10' },
