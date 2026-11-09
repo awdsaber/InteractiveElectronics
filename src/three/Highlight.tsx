@@ -88,13 +88,15 @@ interface Mark {
 }
 
 /** Brackets that follow a part's bounding box (drop and exploded-view animation included). */
-export function PartHighlight({ object, mode }: { object: Object3D | undefined; mode: 'hover' | 'selected' }) {
+/** `object` may be a getter, for a mark that mounts before its part has registered (a guide focus on load) */
+export function PartHighlight({ object, mode }: { object: Object3D | undefined | (() => Object3D | undefined); mode: 'hover' | 'selected' | 'guide' }) {
   const [b, setB] = useState<Mark | null>(null)
   const last = useRef('')
   useFrame(() => {
     // measure the part body (the frame group tagged with its partId), not its callout leader,
     // in the frame of its rotation group
-    const body = object && partBody(object)
+    const o = typeof object === 'function' ? object() : object
+    const body = o && partBody(o)
     if (!body) return
     const frame = body.children[0] ?? body
     localBox(frame, frame, box)
@@ -112,7 +114,7 @@ export function PartHighlight({ object, mode }: { object: Object3D | undefined; 
         points={pts}
         segments
         color={ACCENT}
-        lineWidth={mode === 'selected' ? 2.25 : 1.5}
+        lineWidth={mode === 'guide' ? 2.75 : mode === 'selected' ? 2.25 : 1.5}
         dashed={mode === 'hover'}
         dashSize={0.06}
         gapSize={0.04}

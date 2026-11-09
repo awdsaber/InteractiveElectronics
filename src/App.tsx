@@ -4,6 +4,7 @@ import { getBench, useStore } from './engine/bench/store'
 import { lessons, pinned, tracks } from './lessons'
 import { Instruments } from './ui/Instruments'
 import { Layout } from './ui/Layout'
+import { GuidePanel } from './ui/GuidePanel'
 import { PartInspector } from './ui/PartInspector'
 import { sfx } from './audio/sound'
 
@@ -17,6 +18,7 @@ export default function App() {
   const failures = useMemo(() => lesson.failures.map((f) => ({ id: f.id, label: f.label })), [lesson])
   const code = s.code[lesson.id] ?? lesson.sketch?.code ?? ''
   const inspected = s.selectedPart ? lesson.board.parts.find((p) => p.id === s.selectedPart) : undefined
+  const guideFocus = s.guide && s.guideMode === 'guided' ? (s.guide.step?.focus?.part ?? null) : null
 
   return (
     <Layout
@@ -68,6 +70,21 @@ export default function App() {
       onQuizAnswer={(ok) => sfx(ok ? 'place' : 'pop', ok ? 0.5 : 0.2)}
       toasts={s.toasts}
       onDismissToast={s.dismissToast}
+      guide={
+        s.guide && lesson.guide ? (
+          <GuidePanel
+            steps={lesson.guide}
+            state={s.guide}
+            mode={s.guideMode}
+            onMode={s.setGuideMode}
+            onBack={s.guideBack}
+            onSkip={s.guideSkip}
+            onRestart={s.guideRestart}
+            onConfirm={s.guideConfirm}
+            onShowPart={s.zoomToPart}
+          />
+        ) : null
+      }
       inspector={
         inspected ? (
           <PartInspector
@@ -83,7 +100,7 @@ export default function App() {
       }
     >
       <Suspense fallback={<div className="bench-loading">Setting out the bench…</div>}>
-        <BenchScene lesson={lesson} snap={snap} settings={settings} selected={s.selectedPart} onSelect={s.selectPart} view={s.view} />
+        <BenchScene lesson={lesson} snap={snap} settings={settings} selected={s.selectedPart} guideFocus={guideFocus} onSelect={s.selectPart} view={s.view} />
       </Suspense>
       {s.view.partId && (
         <button type="button" className="pill view-reset" onClick={s.resetView}>

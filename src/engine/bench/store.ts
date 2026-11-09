@@ -6,6 +6,7 @@ import { setEffectsEnabled, sfx, startLofi, stopLofi, unlockAudio } from '../../
 import { defaultLessonId, getLesson, lessons } from '../../lessons'
 import type { SettingChange } from '../../ui/Controls'
 import { PALETTES, type BenchAction, type Settings, type ToastMessage } from '../../ui/types'
+import { type Guide, type GuideEvent, type GuideProgress, type GuideState, benchActionEvents, createGuide } from '../guide'
 import type { Lesson, Tweak } from '../types'
 import type { Note } from './assembly'
 import { type Bench, type BenchSnapshot, createBench, tweakKey } from './simLoop'
@@ -37,6 +38,16 @@ export interface AppState {
    * every request, so asking for the same part twice re-frames it.
    */
   view: CameraView
+  /** the lesson's guided steps (null when it has no guide) */
+  guide: GuideState | null
+  /** 'guided' (default when the lesson has a guide) or 'free' explore; saved per lesson */
+  guideMode: GuideMode
+  setGuideMode(mode: GuideMode): void
+  guideBack(): void
+  guideSkip(): void
+  guideRestart(): void
+  /** the "I've done this" button of a manual step */
+  guideConfirm(): void
   /** select a part of the current lesson (unknown ids are ignored), or null to close the inspector */
   selectPart(id: string | null): void
   zoomToPart(id: string): void
@@ -53,6 +64,25 @@ export interface AppState {
   completeQuiz(score: number, total: number): void
   toast(text: string, tone?: ToastMessage['tone']): void
   dismissToast(id: number): void
+}
+
+export type GuideMode = 'guided' | 'free'
+
+/** saved guide progress per lesson id */
+export type GuideSaves = Record<string, GuideProgress & { mode: GuideMode }>
+
+export function asGuideSaves(v: unknown): GuideSaves {
+  if (!isRecord(v)) return {}
+  const out: GuideSaves = {}
+  for (const [id, g] of Object.entries(v)) {
+    if (!isRecord(g) || typeof g.current !== 'number' || !Number.isFinite(g.current)) continue
+    out[id] = {
+      current: g.current,
+      done: Array.isArray(g.done) ? g.done.filter((x): x is string => typeof x === 'string') : [],
+      mode: g.mode === 'free' ? 'free' : 'guided',
+    }
+  }
+  return out
 }
 
 export interface CameraView {
@@ -160,6 +190,11 @@ export function lessonFromHash(hash: string): string | null {
 const hasWindow = typeof window !== 'undefined'
 
 let bench: Bench
+let guide: Guide | null = null
+let guideSaves: GuideSaves = {}
+/** a bench button is being handled: its own pump (with the button's events) judges the guide */
+let acting = false
+const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 let raf = 0
 let last = 0
 let toastSeq = 1
@@ -187,6 +222,7 @@ export const useStore = create<AppState>()((set, get) => {
 
   function mount(l: Lesson, code: string | undefined): BenchSnapshot {
     bench?.dispose()
+    guide = null // the old lesson's guide must not see the new bench (mountGuide makes the new one)
     if (raf && hasWindow) cancelAnimationFrame(raf)
     raf = 0
     bench = createBench(l, {
@@ -195,9 +231,50 @@ export const useStore = create<AppState>()((set, get) => {
       // keep a frame's stepping inside ~8 ms of wall clock so the page stays responsive
       stepBudgetMs: hasWindow ? 8 : undefined,
       onNote,
-      onSnapshot: (snap) => set({ snap, tweaks: bench.tweakValues() }),
+      onSnapshot: (snap) => {
+        set({ snap, tweaks: bench.tweakValues() })
+        if (!acting) pump([], snap)
+      },
     })
     return bench.snapshot()
+  }
+
+  /** a fresh guide for `l` from its saved progress (null when the lesson has none) */
+  function mountGuide(l: Lesson): { guide: GuideState | null; guideMode: GuideMode } {
+    const saved = guideSaves[l.id]
+    guide = l.guide?.length ? createGuide(l, saved, clock()) : null
+    return { guide: guide?.state() ?? null, guideMode: guide ? (saved?.mode ?? 'guided') : 'free' }
+  }
+
+  function saveGuide() {
+    if (!guide) return
+    guideSaves = { ...guideSaves, [get().lesson.id]: { ...guide.progress(), mode: get().guideMode } }
+    saveJSON('guide', guideSaves)
+  }
+
+  /** feed guide events (and the bench as it is now) to the guide; publish and save when it moves */
+  function pump(events: GuideEvent[], snap?: BenchSnapshot) {
+    if (!guide) return
+    const s = get()
+    if (!s || s.guideMode !== 'guided' || !s.guide) return
+    const before = s.guide
+    const next = guide.evaluate(snap ?? bench.snapshot(), events, {
+      now: clock(),
+      tweaks: bench.tweakValues(),
+      selectedPart: s.selectedPart,
+      instrumentsOpen: s.instrumentsOpen,
+    })
+    if (next.current === before.current) return
+    set({ guide: next })
+    saveGuide()
+    if (next.complete) sfx('success', 0.6)
+    else sfx('place', 0.4)
+  }
+
+  /** a guide navigation button: publish and save the new state */
+  function navigate(next: GuideState) {
+    set({ guide: next })
+    saveGuide()
   }
 
   const initialId = (hasWindow && lessonFromHash(location.hash)) || defaultLessonId
@@ -206,6 +283,8 @@ export const useStore = create<AppState>()((set, get) => {
   const settings = asSettings(loadRaw('settings'))
   setEffectsEnabled(settings.effects)
   const snap = mount(lesson, code[lesson.id])
+  guideSaves = asGuideSaves(loadRaw('guide'))
+  const guide0 = mountGuide(lesson)
 
   return {
     lesson,
@@ -220,10 +299,35 @@ export const useStore = create<AppState>()((set, get) => {
     toasts: [],
     selectedPart: null,
     view: { partId: null, seq: 0 },
+    ...guide0,
+
+    setGuideMode(mode) {
+      if (!guide || mode === get().guideMode) return
+      set({ guideMode: mode })
+      saveGuide()
+      pump([])
+    },
+
+    guideBack() {
+      if (guide) navigate(guide.back(clock()))
+    },
+
+    guideSkip() {
+      if (guide) navigate(guide.skip(clock()))
+    },
+
+    guideRestart() {
+      if (guide) navigate(guide.restart(clock()))
+    },
+
+    guideConfirm() {
+      pump([{ type: 'manual' }])
+    },
 
     selectPart(id) {
       if (id !== null && !get().lesson.board.parts.some((p) => p.id === id)) return
       if (id !== get().selectedPart) set({ selectedPart: id })
+      if (id !== null) pump([{ type: 'inspect', part: id }])
     },
 
     zoomToPart(id) {
@@ -243,6 +347,7 @@ export const useStore = create<AppState>()((set, get) => {
 
     setInstrumentsOpen(open) {
       set({ instrumentsOpen: open })
+      if (open) pump([{ type: 'instruments' }])
     },
 
     resetPeaks() {
@@ -266,13 +371,22 @@ export const useStore = create<AppState>()((set, get) => {
         // a new board: the inspector closes and the camera frames the whole board again
         selectedPart: null,
         view: { partId: null, seq: get().view.seq + 1 },
+        ...mountGuide(l),
       })
     },
 
     act(a) {
       unlockAudio()
-      bench.dispatch(a)
-      set({ snap: bench.snapshot() })
+      const before = bench.snapshot()
+      acting = true
+      try {
+        bench.dispatch(a)
+      } finally {
+        acting = false
+      }
+      const snap = bench.snapshot()
+      set({ snap })
+      pump(benchActionEvents(a, before, snap), snap)
       kick()
     },
 
@@ -298,8 +412,15 @@ export const useStore = create<AppState>()((set, get) => {
     upload(text) {
       get().setCode(text)
       unlockAudio()
-      bench.upload(text)
-      set({ snap: bench.snapshot() })
+      acting = true
+      try {
+        bench.upload(text)
+      } finally {
+        acting = false
+      }
+      const snap = bench.snapshot()
+      set({ snap })
+      pump([{ type: 'action', action: 'upload' }], snap)
       kick()
     },
 
@@ -320,6 +441,7 @@ export const useStore = create<AppState>()((set, get) => {
       saveJSON('progress', progress)
       set({ progress })
       sfx('success')
+      pump([{ type: 'quiz' }])
       get().toast(`Quiz done: ${score}/${total} first try. Lesson marked complete.`, 'ok')
     },
 

@@ -139,16 +139,24 @@ export function Tweaks({ tweaks, values, defaults, onTweak }: TweaksProps) {
         {tweaks.map((t) => {
           const k = tweakKey(t)
           const v = values[k] ?? t.min
-          switch (t.kind) {
-            case 'toggle':
-              return <ToggleTweak key={k} t={t} v={v} onTweak={onTweak} />
-            case 'enum':
-              return <EnumTweak key={k} t={t} v={v} onTweak={onTweak} />
-            case 'momentary':
-              return <MomentaryTweak key={k} t={t} v={v} rest={defaults?.[k] ?? t.min} onTweak={onTweak} />
-            default:
-              return <Slider key={k} t={t} v={v} onTweak={onTweak} />
-          }
+          const control = (() => {
+            switch (t.kind) {
+              case 'toggle':
+                return <ToggleTweak t={t} v={v} onTweak={onTweak} />
+              case 'enum':
+                return <EnumTweak t={t} v={v} onTweak={onTweak} />
+              case 'momentary':
+                return <MomentaryTweak t={t} v={v} rest={defaults?.[k] ?? t.min} onTweak={onTweak} />
+              default:
+                return <Slider t={t} v={v} onTweak={onTweak} />
+            }
+          })()
+          // data-guide: the guide's focus highlight finds the control by its label
+          return (
+            <div key={k} className="tweak-slot" data-guide={`tweak:${t.label}`}>
+              {control}
+            </div>
+          )
         })}
       </div>
     </section>

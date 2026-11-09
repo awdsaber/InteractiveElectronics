@@ -188,3 +188,54 @@ test('part inspector: click a resistor and the card decodes its bands', async ({
   await expect(pill).toBeFocused()
   expect(errors).toEqual([])
 })
+
+test('guide: led-resistor walks three steps, highlights the target and survives a reload', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('#/lesson/led-resistor')
+  await expect(page.locator('canvas').first()).toBeVisible()
+  const guide = page.locator('section.guide')
+  await expect(guide).toContainText('Step 1 of 8')
+  await expect(guide.locator('.guide-title')).toHaveText('Meet the resistor')
+  await expect(page.getByRole('radio', { name: 'Guided' })).toHaveAttribute('aria-checked', 'true')
+
+  // 1: inspect the resistor (its LIMIT pill is a button)
+  await page.getByRole('button', { name: 'Inspect LIMIT' }).click()
+  await expect(guide).toContainText('Step 2 of 8')
+  await expect(guide.locator('.guide-title')).toHaveText('Plug in USB')
+  await expect(guide.locator('.guide-done summary')).toContainText('Meet the resistor')
+  // the focus highlight pulses the Plug USB button
+  const power = page.getByRole('button', { name: 'Plug USB' })
+  await expect(power).toHaveCSS('outline-style', 'dashed')
+  await page.keyboard.press('Escape')
+
+  // 2: power
+  await power.click()
+  await expect(guide).toContainText('Step 3 of 8')
+  await expect(guide.locator('.guide-title')).toHaveText('Upload Blink')
+  await expect(page.getByRole('button', { name: 'Upload sketch' })).toHaveCSS('outline-style', 'dashed')
+
+  // 3: upload; pin 13 goes HIGH
+  await page.getByRole('button', { name: 'Upload sketch' }).click()
+  // (the 13 mA step that follows may pass within the next HIGH half-second too)
+  const at = () => guide.locator('[role=progressbar]').getAttribute('aria-valuenow').then(Number)
+  await expect.poll(at, { timeout: 5000 }).toBeGreaterThanOrEqual(3)
+  // unplug: the guide holds its place while the bench changes
+  await page.getByRole('button', { name: 'Unplug USB' }).click()
+  const reached = await at()
+
+  // progress is kept; back / skip / free explore work from the keyboard
+  await page.reload()
+  await expect.poll(at).toBe(reached)
+  await guide.getByRole('button', { name: '← Back' }).click()
+  await expect.poll(at).toBe(reached - 1)
+  await guide.getByRole('button', { name: 'Skip →' }).focus()
+  await page.keyboard.press('Enter')
+  await expect.poll(at).toBe(reached)
+  await page.getByRole('radio', { name: 'Guided' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('radio', { name: 'Free explore' })).toHaveAttribute('aria-checked', 'true')
+  await expect(guide).toContainText('The bench is yours')
+  await expect(page.getByRole('button', { name: 'Upload sketch' })).not.toHaveCSS('outline-style', 'dashed')
+  expect(errors).toEqual([])
+})

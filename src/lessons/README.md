@@ -129,3 +129,60 @@ instruments: {
 
 ## Sim speed (`sim.speed`)
 The controls strip offers ×0.01, ×0.1, ×1, ×10 and ×100. `sim: { speed: 0.1 }` sets the lesson's starting speed. Slow motion still steps at `sim.dt`; it takes one step whenever a whole dt of sim time has built up. Time-lapse is capped at `sim.stepsPerFrame` steps per frame (default 30 × speed). When the cap holds the sim back, the strip shows "running slower than real time" (or "capped at ×N" above real time). With a fine `dt` (µs), even ×1 may be capped: set `speed` below 1 for those lessons.
+
+## Guided steps (`lesson.guide`)
+A lesson can carry a short guided walk-through. The **Guide** card above the bench shows one step at a time: what to do, what to notice, a progress rule, a hint, and Back / Skip / Restart. It advances by itself when the bench detects that the step is done, and then offers the step's `explain`. The learner can switch to **Free explore** at any time. Progress is saved per lesson. A lesson with a guide starts in Guided mode. The two models are `T2/led-resistor.ts` (sketch, pin and readout steps) and `T0/ohms-law.ts` (tweak and readout steps).
+
+```ts
+guide: [
+  {
+    id: 'plug-usb',                          // kebab-case, unique; progress is saved by it
+    title: 'Plug in USB',
+    body: 'Press **Plug USB**. Notice that **LED CURRENT** stays at 0.', // short markdown
+    check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }] },
+    focus: { control: 'power' },             // pulses that button; { part: 'r1' } brackets a part in 3D
+    hint: 'The blue button at the top left of the bench.', // offered after about 20 s
+    explain: 'An input pin sources no current: the sketch has to make pin 13 an OUTPUT.', // shown once done
+  },
+  {
+    id: 'dim-it',
+    title: 'Fit 1 kΩ instead',
+    body: 'Slide **Series resistor** to about **1 kΩ**. The LED gets (5 − 1.8) / 1025 ≈ **3 mA**.',
+    check: { kind: 'all', of: [
+      { kind: 'tweak', target: 'Series resistor', min: 900 },                 // a tweak by label (or 'R1.value')
+      { kind: 'readout', index: 0, above: 0.002, below: 0.0045, holdMs: 250 }, // SI units: amps
+    ] },
+    focus: { control: 'tweak:Series resistor' },
+  },
+  { id: 'quiz', title: 'Check yourself', body: 'Answer the questions below.', check: { kind: 'quiz' }, focus: { control: 'quiz' } },
+],
+```
+
+**Checks.** A check is plain data, never code. "Event" checks count only what happened after the step became active. "State" checks look at the bench as it is now.
+
+| check | passes when |
+|---|---|
+| `{ kind: 'action', action }` | that bench button was used after the step began: `strip`, `pick-place`, `place` (any one part), `place-all` (also the last part placed by hand), `solder`, `power` (either way: pair it with a `status` check), `upload`, `explode`, `repair` |
+| `{ kind: 'status', is }` | the bench status is `BARE PCB`, `ASSEMBLING`, `READY`, `POWERED`, `RUNNING` or `FAULT` |
+| `{ kind: 'break', failure }` | that failure was triggered, or is active now |
+| `{ kind: 'tweak', target, min?, max? }` | the tweak (its `label`, or `elementId.key`) is inside min..max, inclusive |
+| `{ kind: 'readout', index, above?, below?, holdMs? }` | readout `index` (SI base units) is strictly above / below, continuously for `holdMs` (default 0) |
+| `{ kind: 'pin', pin, level }` | the sketch drives that pin as an OUTPUT at 0 or 1 |
+| `{ kind: 'inspect', part }` | the part inspector was opened on that part, or is open on it |
+| `{ kind: 'instruments' }` | the instrument panel was opened, or is open |
+| `{ kind: 'quiz' }` | the quiz was finished after the step began |
+| `{ kind: 'all' \| 'any', of: [...] }` | all / any of the nested checks pass |
+| `{ kind: 'manual' }` | the learner pressed "I've done this" |
+
+`validateLesson` checks every reference: failure ids, part ids, tweak labels, readout indices (and that a readout check has a bound), sketch pins, and that a `focus` names a control the bench has (`pick-place` and `solder` don't exist on a breadboard bench, and `upload` and `code` need a sketch).
+
+**Focus targets.** `focus.part` puts the inspector's corner brackets on a board part, and the step's "Show me" button frames it. `focus.control` pulses one of these controls: `strip`, `pick-place`, `place`, `solder`, `power`, `upload`, `explode`, `break` (the Break menu, which also holds Repair all), `instruments`, `quiz`, `code` (the sketch editor), or `tweak:<label>`.
+
+**Writing good steps.**
+- Use about **5–9 steps**. A guide is a path through the bench, not a second copy of "Meet the board".
+- Each step either **does one thing** (press, slide, break) or **notices one concrete number** ("LED CURRENT reads about 13 mA"). Put the number and its one-line derivation in `body`, and put the why in `explain`.
+- Build up to a **"break it" step**, then a **repair** step, and end on a **quiz** step.
+- **Never ask for something the bench can't detect.** If you can't write a check for it, rephrase the step until you can, such as a readout window instead of "watch the LED dim". Use `manual` sparingly, only for something you truly can only look at.
+- Readout windows should be generous (±10–20 %), with a `holdMs` of 250–300 ms, so a passing flicker doesn't count and a slider overshoot isn't punished. A blinking sketch spends half its time LOW, so keep `holdMs` well under the half-period.
+- Steps advance one at a time, but a state check that is already true when its step begins passes at once. Order the steps so each one waits for something new (for example, power before upload). Pairing an `action` with a `status` makes a step wait for the press.
+- The headless test `src/lessons/guidePilots.test.ts` drives both pilot guides through a real bench. Add a case like it for a new guide.

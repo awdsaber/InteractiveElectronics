@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { ALL_PART_KINDS } from '../three/parts/kinds'
 import { registry as defaultRegistry } from './behaviors'
 import { readoutGraphErrors } from './bench/readouts'
-import type { Behavior, Element, Lesson, Readout } from './types'
+import type { Behavior, Element, GuideCheck, Lesson, Readout } from './types'
 
 /** optional element fields a tweak or `set` patch may target, beyond the ones the element already has */
 const OPTIONAL_KEYS: Record<string, string[]> = {
@@ -147,6 +147,43 @@ const statusLine = z.object({
   text: z.string().min(1),
 })
 
+const guideAction = z.enum(['strip', 'pick-place', 'place', 'place-all', 'solder', 'power', 'upload', 'explode', 'repair'])
+
+const guideCheck: z.ZodType<GuideCheck> = z.lazy(() =>
+  z.union([
+    z.object({ kind: z.literal('action'), action: guideAction }),
+    z.object({ kind: z.literal('status'), is: status }),
+    z.object({ kind: z.literal('break'), failure: z.string().min(1) }),
+    z.object({ kind: z.literal('tweak'), target: z.string().min(1), min: num.optional(), max: num.optional() }),
+    z.object({
+      kind: z.literal('readout'),
+      index: z.number().int().min(0),
+      above: num.optional(),
+      below: num.optional(),
+      holdMs: num.nonnegative().optional(),
+    }),
+    z.object({ kind: z.literal('pin'), pin: z.number().int(), level: z.union([z.literal(0), z.literal(1)]) }),
+    z.object({ kind: z.literal('inspect'), part: z.string().min(1) }),
+    z.object({ kind: z.literal('instruments') }),
+    z.object({ kind: z.literal('quiz') }),
+    z.object({ kind: z.enum(['all', 'any']), of: z.array(guideCheck).min(1) }),
+    z.object({ kind: z.literal('manual') }),
+  ]),
+)
+
+const GUIDE_CONTROLS = ['strip', 'pick-place', 'place', 'solder', 'power', 'upload', 'explode', 'break', 'instruments', 'quiz', 'code'] as const
+const guideControl = z.union([z.enum(GUIDE_CONTROLS), z.templateLiteral(['tweak:', z.string().min(1)])])
+
+const guideStep = z.object({
+  id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'kebab-case id'),
+  title: z.string().min(1),
+  body: z.string().min(1),
+  check: guideCheck,
+  hint: z.string().min(1).optional(),
+  focus: z.object({ part: z.string().min(1).optional(), control: guideControl.optional() }).optional(),
+  explain: z.string().min(1).optional(),
+})
+
 const behaviorRef = z.union([
   z.string().min(1),
   z.object({
@@ -214,6 +251,7 @@ export const lessonSchema = z.object({
     })
     .optional(),
   instruments: instruments.optional(),
+  guide: z.array(guideStep).min(1).optional(),
 })
 
 /**
@@ -349,5 +387,61 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
     }
     for (const [name, n] of Object.entries(lesson.sketch.analogPins ?? {})) node(n, `sketch.analogPins.${name}`)
   }
+  errs.push(...guideErrors(lesson))
+  return errs
+}
+
+/** cross-reference problems in `lesson.guide` (its shape is already checked by the schema) */
+function guideErrors(lesson: Lesson): string[] {
+  const errs: string[] = []
+  const steps = lesson.guide ?? []
+  const ids = steps.map((s) => s.id)
+  for (const id of new Set(ids.filter((id, i) => ids.indexOf(id) !== i))) errs.push(`guide: duplicate step id "${id}"`)
+  const parts = new Set(lesson.board.parts.map((p) => p.id))
+  const failures = new Set(lesson.failures.map((f) => f.id))
+  const tweaks = lesson.tweaks ?? []
+  const tweakNamed = (t: string) => tweaks.some((x) => x.label === t || `${x.elementId}.${x.key}` === t)
+  const bb = lesson.board.base === 'breadboard-only'
+  const control = (c: string, where: string) => {
+    if (bb && (c === 'pick-place' || c === 'solder')) errs.push(`${where}: a breadboard bench has no "${c}" button`)
+    if ((c === 'upload' || c === 'code') && !lesson.sketch) errs.push(`${where}: "${c}" needs a sketch`)
+  }
+  const check = (c: GuideCheck, where: string) => {
+    switch (c.kind) {
+      case 'action':
+        control(c.action, where)
+        break
+      case 'break':
+        if (!failures.has(c.failure)) errs.push(`${where}: no failure "${c.failure}"`)
+        break
+      case 'inspect':
+        if (!parts.has(c.part)) errs.push(`${where}: no part "${c.part}"`)
+        break
+      case 'tweak':
+        if (!tweakNamed(c.target)) errs.push(`${where}: no tweak "${c.target}" (use its label or elementId.key)`)
+        if (c.min !== undefined && c.max !== undefined && c.max < c.min) errs.push(`${where}: max must be at least min`)
+        break
+      case 'readout':
+        if (c.index >= lesson.readouts.length) errs.push(`${where}: no readout ${c.index}`)
+        if (c.above === undefined && c.below === undefined) errs.push(`${where}: a readout check needs above and/or below`)
+        break
+      case 'pin':
+        if (!(lesson.sketch && String(c.pin) in lesson.sketch.pins)) errs.push(`${where}: pin ${c.pin} is not in sketch.pins`)
+        break
+      case 'all':
+      case 'any':
+        c.of.forEach((x, i) => check(x, `${where}.of.${i}`))
+        break
+    }
+  }
+  steps.forEach((s, i) => {
+    check(s.check, `guide.${i}.check`)
+    const f = s.focus
+    if (f?.part !== undefined && !parts.has(f.part)) errs.push(`guide.${i}.focus: no part "${f.part}"`)
+    if (f?.control?.startsWith('tweak:')) {
+      const t = f.control.slice(6)
+      if (!tweakNamed(t)) errs.push(`guide.${i}.focus: no tweak "${t}"`)
+    } else if (f?.control) control(f.control, `guide.${i}.focus`)
+  })
   return errs
 }

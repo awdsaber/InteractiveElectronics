@@ -1396,3 +1396,256 @@ input[type='range']:active::-webkit-slider-thumb {
     display: none;
   }
 }
+
+/* ───────── guide: a notebook-margin card above the bench (a sticky top sheet on phones) ───────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.guide {
+  position: relative;
+  margin: 0 0 12px;
+  padding: 10px 14px 12px 26px;
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--rule);
+}
+/* the notebook's margin rule */
+.guide::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 12px;
+  border-left: 1.5px dashed var(--blue-line);
+}
+.guide-top {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+}
+.guide-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+}
+.guide-mark {
+  color: var(--blue);
+  font-size: 15px;
+}
+.guide-count {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.guide-mode {
+  margin-left: auto;
+}
+.guide-fold {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.guide-progress {
+  position: relative;
+  height: 10px;
+  margin: 8px 0 2px;
+}
+.guide-progress::before,
+.guide-progress > span {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  height: 2px;
+}
+.guide-progress::before {
+  right: 0;
+  background: var(--rule);
+}
+.guide-progress > span {
+  background: var(--blue);
+  transition: width 0.35s ease;
+}
+.guide-progress i {
+  position: absolute;
+  top: 1px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border: 1.5px solid var(--ink-3);
+  border-radius: 50%;
+  background: var(--card);
+}
+.guide-progress i[data-state='done'] {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+.guide-progress i[data-state='now'] {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-tint);
+}
+.guide-paused {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.guide-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+.guide-title {
+  font-size: 19px;
+  margin: 0 0 2px;
+}
+.guide-step .prose p,
+.guide-done .prose p,
+.guide-hint p {
+  margin: 0 0 6px;
+}
+.guide-step {
+  max-width: 80ch;
+  animation: guide-in 0.25s ease-out;
+}
+.guide-hint {
+  padding: 6px 10px;
+  border: 1.5px dashed var(--blue);
+  border-radius: 8px;
+  background: var(--blue-tint);
+  font-size: 13px;
+}
+.guide-done {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  max-width: 80ch;
+}
+.guide-done summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--ok);
+  font-weight: 600;
+  list-style: none;
+}
+.guide-done summary::-webkit-details-marker {
+  display: none;
+}
+.guide-done[open] summary {
+  margin-bottom: 4px;
+}
+.guide-why {
+  font-weight: 400;
+  color: var(--blue);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.guide-tick {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  color: #fff;
+  background: var(--ok);
+  border-radius: 50%;
+}
+.guide-done .prose {
+  padding-left: 22px;
+}
+.guide-finished {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: guide-in 0.35s ease-out;
+}
+.guide-finished p {
+  margin: 0;
+  color: var(--ink-2);
+}
+/* a rubber stamp, slightly askew */
+.guide-stamp {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  font: 600 22px var(--serif);
+  color: var(--ok);
+  border: 2px solid var(--ok);
+  border-radius: 50%;
+  transform: rotate(-8deg);
+  box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 4.5px rgba(47, 158, 68, 0.45);
+}
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.guide-restart {
+  margin-left: auto;
+}
+.guide-hint-btn[data-stuck] {
+  border-color: var(--blue);
+  color: var(--blue);
+  box-shadow: 2px 2px 0 var(--blue);
+}
+@keyframes guide-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+/* the focus highlight's rule is written by GuidePanel for the step's data-guide target */
+@keyframes guide-pulse {
+  50% {
+    outline-offset: 7px;
+    outline-color: var(--blue-line);
+  }
+}
+.tweak-slot {
+  min-width: 0;
+  border-radius: 8px;
+}
+@media (max-width: 760px) {
+  /* a top sheet: stays in reach under the top bar while the bench scrolls */
+  .guide {
+    position: sticky;
+    top: 58px;
+    z-index: 15;
+    max-height: 46vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0 0 12px;
+    padding: 8px 12px 10px 22px;
+    box-shadow: 0 3px 0 var(--rule);
+  }
+  .guide::before {
+    left: 10px;
+  }
+  .guide-title {
+    font-size: 17px;
+  }
+  .guide-step .prose {
+    font-size: 13px;
+  }
+}

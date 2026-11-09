@@ -17,7 +17,7 @@ export interface TryItYourselfProps {
 
 export function TryItYourself({ sketch, code, onCodeChange, onUpload, uploadDisabled, serialLines, error }: TryItYourselfProps) {
   return (
-    <section className="note" aria-labelledby="try-h">
+    <section className="note" aria-labelledby="try-h" data-guide="code">
       <h2 id="try-h" className="note-head">
         <span>B</span> Try it yourself
       </h2>
