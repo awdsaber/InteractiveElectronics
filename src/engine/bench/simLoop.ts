@@ -615,8 +615,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   /**
    * Apply behavior setParam calls made inside the stepping loop (onStep) to the running transient
    * before the next step: Transient.setParam patches one element in place (same matrix layout: no
-   * recompile). Skipped, and left to the frame-end rebuild, for an element a failure patch, a burn,
-   * a thermal shutdown or a power-off also touches (their patches apply after behavior values).
+   * recompile). For an element a failure patch, a burn, a thermal shutdown or a power-off also
+   * touches (their patches apply after behavior values) the whole netlist is rebuilt instead.
    */
   function applyLiveNow(): void {
     if (!liveQueue.length || !sim) return
@@ -632,7 +632,12 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       else sim.setParam(id, key, live[k])
     }
     liveQueue.length = 0
-    if (slow) return
+    if (slow) {
+      // a patch overrides behavior values on that element: rebuild the netlist now (recompiles)
+      liveDirty = false
+      rebuild(false)
+      return
+    }
     // the transient's netlist now equals what buildNetlist would give: no frame-end rebuild needed
     netlist = sim.netlist
     liveDirty = false
@@ -657,6 +662,11 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   // ── actions ──
   function lifecycle(ev: BehaviorLifecycleEvent): void {
     for (const inst of instances) inst.def.onEvent?.(inst.ctx, ev)
+    // params a behavior set in onEvent (a mode selector at power-on) act on the very next step
+    if (liveDirty) {
+      liveDirty = false
+      rebuild(false)
+    }
   }
   function resetBehaviors(): void {
     for (const inst of instances) inst.def.reset?.(inst.ctx)
@@ -974,6 +984,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
           sample(p.t, p.solution)
           for (let j = 0; j < steppers.length; j++) steppers[j].def.onStep!(steppers[j].ctx, p.t, p.solution)
         }
+        // an onStep behavior that setParam'd (a comparator flipping a switch) acts on the very next step,
+        // not a frame later
         if (liveQueue.length) applyLiveNow()
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
         if (burnt) {

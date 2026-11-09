@@ -8,6 +8,7 @@
 - **Prerequisites:** `capacitor-rc`, `flipflops-counters`
 - **Power element:** `SW1` (powerLabel: "Connect battery")
 - **Transient:** yes
+- **As built:** a breadboard-only board (no solder step) with a mode selector for monostable (`SW_LINK`, `SW_PU`, `R_TRG`, `SW_TRIG`) and a blink counter; see `docs/decisions.md` (2026-11-09, timer-555).
 
 ## Learning goals
 
@@ -46,14 +47,20 @@ Internal blocks (`partId: u1`) are modelled with real elements. The comparator-a
 | `R_D3` | R | `tr_ref`, `0` | 5 kΩ | — | |
 | `C_CTL` | C | `th_ref`, `0` | 10 nF | maxV 50 V | pin 5 decoupling |
 | `SW_DIS` | SW | `dis`, `0` | closed: false (behavior) | maxI 0.2 A | discharge transistor, pin 7 (the rating is a conservative stand-in; the datasheet gives no absolute discharge maximum) |
-| `V_OUT` | V | `o`, `0` | 0 or (V_CC − 1.7 V), behavior; rInternal 10 Ω | — | output stage, pin 3 |
+| `V_OUT` | V | `o`, `0` | 0 or (V_CC − 1.2 V), behavior; rInternal 5 Ω | — | output stage, pin 3. Datasheet typicals: high level V_CC − 1.7 V at −100 mA (13.3 V at 15 V, 3.3 V at 5 V); low level 0.1 V at 10 mA. 1.2 V behind 5 Ω reproduces 1.7 V at 100 mA and under 0.1 V low at 10 mA |
 | `R1` | R | `vcc`, `dis` | 1 kΩ | maxP 0.25 W | |
 | `R2` | R | `dis`, `thr` | 10 kΩ | maxP 0.25 W | |
 | `C1` | C | `thr`, `0` | 47 µF | maxV 25 V | |
+| `SW_LINK` | SW | `thr`, `trg` | closed: true (astable) | — | pin 2 tied to pin 6; opened in monostable mode |
+| `SW_PU` | SW | `vcc`, `pu` | closed: false | — | closed in monostable mode only; a pull-up on the capacitor node would skew the astable timing |
+| `R_TRG` | R | `pu`, `trg` | 10 kΩ | maxP 0.25 W | trigger pull-up (monostable) |
+| `SW_TRIG` | SW | `trg`, `0` | closed: false (momentary) | — | TRIGGER button |
 | `R_LED` | R | `o`, `led` | 470 Ω | maxP 0.25 W | |
-| `LED1` | LED | `led`, `0` | color: red | maxI 0.03 A, maxV 5 V | ≈ 11.5 mA when the output is high |
+| `LED1` | LED | `led`, `0` | color: red | maxI 0.03 A, maxV 5 V | ≈ 12.7 mA when the output is high at 9 V (25 mA at 15 V) |
 
 Behavior `ne555`: when v(thr) ≥ v(th_ref), the output goes low and SW_DIS closes. When v(thr) ≤ v(tr_ref), the output goes high and SW_DIS opens. It does nothing (output low) while V_CC < 4.5 V. It publishes `u1.freq` and `u1.duty`.
+
+Monostable (`source-select` instance `mode` opens `SW_LINK` and closes `SW_PU`): the output gives one pulse of t = ln 3 · (R1 + R2) · C = 1.1 RC = 0.57 s after a TRIGGER press; trigger held longer than the pulse keeps the output high (the trigger comparator dominates, per the datasheet function table).
 
 Expected: t_high ≈ 0.358 s, t_low ≈ 0.326 s, f ≈ 1.46 Hz, duty ≈ 52%; C1 swings between 3 V and 6 V.
 
@@ -73,7 +80,7 @@ Expected: t_high ≈ 0.358 s, t_low ≈ 0.326 s, f ≈ 1.46 Hz, duty ≈ 52%; C1
 |---|---|---|---|---|---|---|---|
 | R1 | `R1` | value | 1000 | 47000 | — | yes | Ω |
 | R2 | `R2` | value | 1000 | 100000 | — | yes | Ω |
-| C1 | `C1` | value | 0.000001 | 0.00047 | — | yes | F |
+| C1 | `C1` | value | 0.0000047 | 0.00047 | — | yes | F |
 | Supply | `V_BAT` | value | 3 | 15 | 0.5 | no | V |
 
 Change the supply from 6 V to 15 V and the frequency doesn't move, though the LED brightness does.
@@ -82,7 +89,7 @@ Change the supply from 6 V to 15 V and the frequency doesn't move, though the LE
 
 ### F1: Leave out R1 (pin 7 tied straight to V_CC)
 - **Patch:** `{op:'short', a:'vcc', b:'dis'}`
-- **Sim shows:** the first time discharge turns on, about 5 A flows from the battery through SW_DIS; the discharge switch fails and the oscillation stops.
+- **Sim shows:** the first time discharge turns on, about 5.8 A (9 V / (1.5 Ω + the switch)) flows from the battery through SW_DIS; the discharge switch fails and the oscillation stops.
 - **Why:** R1 is what limits the discharge-transistor current. Without it, discharge shorts the supply, limited only by the battery's ≈ 1.5 Ω. In hardware this destroys the 555's discharge transistor.
 
 ### F2: Remove the timing capacitor
@@ -112,7 +119,7 @@ Equivalently, f = 1.44/((R1 + 2R2)·C) = 1.44/(21k × 47 µ) = 1.46 Hz ✓.
 
 V_CC cancels out of both times, so the frequency is independent of the supply. Since t_high always includes R1, the duty cycle is always above 50%. A diode across R2 gets around that.
 
-The LED current is (9 − 1.7 − 1.8)/(470 + 10) ≈ **11.5 mA**. The electrolytic's ±20% tolerance means the real rate could be anywhere from about 1.2 to 1.8 Hz.
+The LED current is (9 − 1.2 − 1.8)/(470 + 5) ≈ **12.6 mA** (the sim gives 12.7 mA). The electrolytic's ±20% tolerance means the real rate could be anywhere from about 1.2 to 1.8 Hz.
 
 ## For mechanical engineers
 
