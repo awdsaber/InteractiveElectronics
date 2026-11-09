@@ -424,6 +424,100 @@ Note: TDK lists the MPU-6050 as not recommended for new designs. Check the curre
     'Check the axis signs on your board. Tilt it nose-down by hand and confirm the accel and gyro estimates go the same direction. Mounting orientation decides which axis is "pitch".',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-sensor',
+      title: 'Meet the sensor',
+      body: 'Click the **MPU-6050** to open its inspector. One chip holds a 3-axis accelerometer and a 3-axis gyroscope, and speaks **I²C** at address **0x68**.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the small square chip on the GY-521 breakout board.',
+      explain: 'The breakout adds a 3.3 V regulator and I²C pull-up resistors. The gyro reports how fast the board turns; the accelerometer reports which way gravity points.',
+    },
+    {
+      id: 'power',
+      title: 'Plug in USB',
+      body: 'Press **Plug USB**. **I²C IDLE (SDA)** reads **3.3 V**: the pull-ups hold the bus high.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 6, above: 3.2, below: 3.4, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'I²C lines are open-drain: a device can only pull them low, and the pull-ups bring them back high. Without the pull-ups the bus would sit at 0 V.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the filter sketch',
+      body: 'Press **Upload sketch**. For about a second the sketch averages the gyro with the board held still to measure its bias. Then it estimates pitch two ways and blends them.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'upload' }, { kind: 'status', is: 'RUNNING' }] },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered.',
+      explain: 'The raw gyro integral has been drifting since power-on, at a bias of 2.1 °/s. Calibration measures that offset once and subtracts it.',
+    },
+    {
+      id: 'tilt',
+      title: 'Tilt the plate to 30°',
+      body: 'Slide **Plate pitch** to about **30°**. **FILTERED PITCH** follows and settles within a degree of the true angle.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Plate pitch', min: 25, max: 35 },
+          { kind: 'readout', index: 4, above: 27, below: 33, holdMs: 400 },
+        ],
+      },
+      focus: { control: 'tweak:Plate pitch' },
+      explain: 'The accelerometer gives pitch = atan2(−a_x, a_z), which is exact when still but noisy under vibration. The gyro integral is smooth but drifts. The complementary filter (α = 0.98, τ ≈ 0.49 s) trusts the gyro for fast changes and the accelerometer for the long-term answer.',
+    },
+    {
+      id: 'shaker',
+      title: 'Turn on the shaker',
+      body: 'Every 10 s the sketch runs the vibration motor for 3 s. When **VIBRATION** passes **0.3 g** the accelerometer pitch is scattered, but **FILTERED PITCH** barely moves.',
+      check: { kind: 'readout', index: 5, above: 0.3, holdMs: 300 },
+      hint: 'The shaker starts on a 10 s cycle, so you may wait up to 10 s.',
+      explain: 'A motor vibrating at about 250 Hz adds 0.5 g rms to the accelerometer, which reads as pitch error. The filter averages it away with its 0.49 s time constant, which is why a robot uses both sensors.',
+    },
+    {
+      id: 'warm',
+      title: 'Break it: warm the sensor',
+      body: 'First slide **Plate pitch** back to **0°**. Then open **Break something** and choose **Warm the sensor after calibrating**. **GYRO PITCH (CAL)** drifts away from 0 by more than 4°.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Plate pitch', min: -1, max: 1 },
+          { kind: 'break', failure: 'warm' },
+          {
+            kind: 'any',
+            of: [
+              { kind: 'readout', index: 3, above: 4 },
+              { kind: 'readout', index: 3, below: -4 },
+            ],
+          },
+        ],
+      },
+      focus: { control: 'break' },
+      hint: 'It takes about 5 s at 54° per minute.',
+      explain: 'The gyro bias shifts by about 0.03 °/s per °C, so a 30 °C warm-up adds 0.9 °/s that the one-time calibration does not know about. The calibrated gyro walks away at 54° per minute; the filter bounds the error to τ × 0.9 ≈ 0.44°.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The sensor cools to 25 °C.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: gyro drift, the filter and the bus.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'At ±250 °/s range, the gyro reads 655 counts. What is the rotation rate?',

@@ -379,6 +379,109 @@ Body diodes in each MOSFET catch the motor's inductive kick, so no external flyb
     'Raise the PWM frequency to 20 kHz on pins 9/10 (Timer1 registers or the TimerOne library) to remove the audible whine. Check the motor still starts at low duty, because higher frequency means more switching loss per second, and at very low duty the current never builds up.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-driver',
+      title: 'Meet the driver',
+      body: 'Click the small chip labelled **TB6612FNG** to open its inspector. It holds two full H-bridges; this lesson uses channel A. Look for its **1.2 A** average and **3.2 A** peak current ratings.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the black SMD chip on the driver carrier board.',
+      explain: 'Each bridge is four MOSFETs with an on-resistance of about 0.5 Ω in total, so a TB6612 wastes far less than a bipolar bridge. The ratings are for a motor: a small geared motor stalls at a current well above its running current.',
+    },
+    {
+      id: 'both-supplies',
+      title: 'Connect both supplies',
+      body: 'Press **Plug USB** for the Uno, then **Connect battery** for the motor. The **VM (BATTERY)** readout should show about **6 V**, a pack of four AA cells.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 2, above: 5.5, below: 6.2, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      hint: 'There are two power buttons at the top of the bench, one for each supply.',
+      explain: 'Logic runs from the Uno\'s 5 V and the motor from its own battery on VM, with one common ground wire. Below 2.5 V on VM the driver stays in undervoltage lockout.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the motor sketch',
+      body: 'Press **Upload sketch**. The sketch sets **STBY** (pin 4) HIGH to wake the driver, then ramps the motor.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'pin', pin: 4, level: 1 },
+        ],
+      },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered.',
+      explain: 'STBY low puts the whole driver to sleep. It is the first thing to check if a motor will not move.',
+    },
+    {
+      id: 'full-speed',
+      title: 'Read full speed',
+      body: 'Wait for the clockwise ramp to finish. At 100 % duty the motor sees about **5.8 V** and the wheel turns at about **190 rpm**.',
+      check: { kind: 'readout', index: 3, above: 170, below: 215, holdMs: 300 },
+      hint: 'The ramp takes 2 s and then holds for 1 s.',
+      explain: '6 V pack minus the bridge: I × 0.5 Ω at 0.15 A no-load current is under 0.1 V, plus the pack\'s internal drop. The geared motor turns 9 200 rpm; a 48:1 gearbox brings that to about 190 at the wheel.',
+    },
+    {
+      id: 'reverse',
+      title: 'Watch it reverse',
+      body: 'The sketch brakes, then ramps counter-clockwise. **OUTPUT SPEED** goes negative, below **-170 rpm**.',
+      check: { kind: 'readout', index: 3, below: -170, holdMs: 300 },
+      hint: 'The sketch cycles CW, brake, CCW, coast. The CCW ramp starts about 4 s into the cycle.',
+      explain: 'Swapping AIN1 and AIN2 swaps which side of the motor goes to the supply, reversing the current and the torque. Both pins high is a short brake, both low with PWM high is coast.',
+    },
+    {
+      id: 'load',
+      title: 'Load the wheel',
+      body: 'Slide **Wheel load torque** up past 0.005 N·m. The wheel is pushed down and the motor current climbs above **0.7 A** (in magnitude) while it turns.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Wheel load torque', min: 0.005 },
+          {
+            kind: 'any',
+            of: [
+              { kind: 'readout', index: 0, above: 0.7, holdMs: 300 },
+              { kind: 'readout', index: 0, below: -0.7, holdMs: 300 },
+            ],
+          },
+        ],
+      },
+      focus: { control: 'tweak:Wheel load torque' },
+      hint: 'The current only shows while the motor is driven, so wait for the next ramp.',
+      explain: 'Torque is proportional to current. The 1.2 A average rating is a thermal limit: the bridge dissipates I² × 0.5 Ω, and a fully stalled motor on 6 V would pull about 6 / (4 + 0.5 + 0.6) ≈ 1.2 A.',
+    },
+    {
+      id: 'vm-4s',
+      title: 'Break it: too many volts on VM',
+      body: 'Open **Break something** and choose **VM from a 4S LiPo (16.8 V)**. The datasheet allows 15 V absolute maximum on VM.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'vm-4s' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      explain: 'A 4S LiPo charged is 16.8 V, above the 15 V absolute maximum (13.5 V operating). The bridge fails short and the driver is gone. A 3S pack, 12.6 V full, is the most it can take, with margin needed for inductive spikes.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: H-bridge states, ratings and the two supplies.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A 4 Ω motor, a 0.5 Ω bridge and a 6 V pack with 0.6 Ω internal resistance. What is the stall current?',

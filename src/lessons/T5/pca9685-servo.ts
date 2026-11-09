@@ -432,6 +432,102 @@ export const lesson: LessonDef = {
     'Tie OE to a pin. Pulling it HIGH disables every output at once: a cheap, fast software "e-stop" that doesn\'t depend on the I²C bus.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-chip',
+      title: 'Meet the PWM chip',
+      body: 'Click the **PCA9685** to open its inspector. It makes 16 independent 12-bit PWM channels from a 25 MHz oscillator, controlled over the **I²C** bus at address **0x40**.',
+      check: { kind: 'inspect', part: 'u1' },
+      focus: { part: 'u1' },
+      hint: 'It is the TSSOP chip in the middle of the servo board.',
+      explain: 'The Uno never makes the 50 Hz servo pulses itself. It writes a few registers once, and the chip repeats the pulse train forever, freeing the processor.',
+    },
+    {
+      id: 'power-usb',
+      title: 'Plug in USB',
+      body: 'Press **Plug USB**. The Uno and the PCA9685 logic run from USB. The servos are **not** powered yet.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'power' }, { kind: 'status', is: 'POWERED' }] },
+      focus: { control: 'power' },
+      explain: 'USB 2.0 promises only 500 mA, and the Uno\'s own polyfuse holds only about 500 mA. That is nowhere near enough for four servos, so they get their own supply.',
+    },
+    {
+      id: 'power-psu',
+      title: 'Switch on the servo supply',
+      body: 'Press **Switch on servo PSU**. **SERVO RAIL V+** should read about **5 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'readout', index: 3, above: 4.5, below: 5.5, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      hint: 'There are two power buttons at the top of the bench. The second one is the servo supply.',
+      explain: 'A 5 V, 4 A supply feeds V+ directly, with a common ground to the Uno. The servo current never passes through the Uno.',
+    },
+    {
+      id: 'upload',
+      title: 'Upload the servo wave',
+      body: 'Press **Upload sketch**. The sketch sets the prescaler for a **50 Hz** frame: 25 MHz / (4096 × 50) - 1 rounds to 121. **PWM FREQ** reads about **50 Hz**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'upload' },
+          { kind: 'status', is: 'RUNNING' },
+          { kind: 'readout', index: 0, above: 49, below: 51, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'upload' },
+      hint: 'Upload only works while the board is powered.',
+      explain: 'The prescale register holds 121, which gives a 20 ms frame of 4096 counts, 4.88 µs each. A 1.5 ms centre pulse is 307 counts, which the sketch prints on the serial monitor.',
+    },
+    {
+      id: 'wave',
+      title: 'Watch the wave',
+      body: 'After centring the four servos one at a time, the sketch sweeps them in a travelling wave from 45° to 135°. **CH0 ANGLE** climbs above **125°**.',
+      check: { kind: 'readout', index: 2, above: 125 },
+      hint: 'Wait for the centring to finish (about 1.2 s). One full wave takes 2 s.',
+      explain: 'Angle is pulse width: 0.5 ms for 0° and 2.5 ms for 180°, so 135° is 1.99 ms, 408 counts. The channels are 25 % out of phase, so the horns ripple.',
+    },
+    {
+      id: 'weak-psu',
+      title: 'Weaken the supply',
+      body: 'Slide **PSU internal R** up to about **1 Ω**. Four servos draw more than **1 A** together, and **SERVO RAIL V+** sags below **4.6 V** (I × 1 Ω).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'PSU internal R', min: 0.8 },
+          { kind: 'readout', index: 3, below: 4.6, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:PSU internal R' },
+      explain: 'Every servo move starts with a surge of about 0.65 A, and holding a load takes about 0.2 A each. The supply and the wiring have resistance, so V+ falls by I × R. The bulk capacitor evens out the surges.',
+    },
+    {
+      id: 'servos-on-5v',
+      title: 'Break it: servos on the Uno 5 V pin',
+      body: 'Open **Break something** and choose **Power the servos from the Uno\'s 5 V pin**. The **BROWN-OUTS** readout climbs.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'servos-on-uno-5v' }, { kind: 'readout', index: 7, above: 0.5 }] },
+      focus: { control: 'break' },
+      hint: 'It takes a few seconds for the polyfuse to heat and trip.',
+      explain: 'About 1 A through the 0.6 Ω USB and polyfuse path drops the rail, the polyfuse trips, the Uno resets below 2.7 V and the PCA9685 forgets its registers. When the fuse cools it all starts again: a boot loop.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The servos have their own supply again.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: prescalers, pulse widths and separate supplies.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What PCA9685 prescale value gives about 50 Hz with the 25 MHz internal oscillator?',

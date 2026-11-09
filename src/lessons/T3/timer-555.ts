@@ -406,6 +406,103 @@ Hold the button longer than that and the output stays high: the trigger comparat
     'A 555’s accuracy is limited by its timing capacitor (±10–20 %). For anything that must be accurate, use a crystal-clocked microcontroller timer.',
   ],
 
+  guide: [
+    {
+      id: 'meet-c1',
+      title: 'Meet the timing capacitor',
+      body: 'Click the capacitor labelled **TANK** to open its inspector. It is **47 µF**, 25 V, an electrolytic with its stripe on the negative lead.',
+      check: { kind: 'inspect', part: 'c1' },
+      focus: { part: 'c1' },
+      hint: 'It is the tall can on the breadboard, next to the NE555.',
+      explain: 'The whole oscillator is this capacitor charging and discharging between 1/3 and 2/3 of the supply, 3 V and 6 V from the 9 V battery. Its value, with R1 and R2, sets the speed.',
+    },
+    {
+      id: 'power-up',
+      title: 'Connect the battery',
+      body: 'Press **Connect battery**. The LED starts blinking and **FREQUENCY** settles near **1.46 Hz** with a **DUTY** near **52 %**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 2, above: 1.3, below: 1.6, holdMs: 300 },
+          { kind: 'readout', index: 3, above: 48, below: 56, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      hint: 'The reading appears after the first full cycle, about 0.7 s.',
+      explain: 'f = 1.44 / ((R1 + 2 R2) C) = 1.44 / (21 kΩ × 47 µF) = 1.46 Hz. The capacitor charges through R1 + R2 and discharges through R2 only, so the output is high a little longer than low: duty = (R1 + R2) / (R1 + 2 R2) = 52 %.',
+    },
+    {
+      id: 'slow-it',
+      title: 'Slow it with a bigger capacitor',
+      body: 'Slide **C1** to about **100 µF**. The blink slows to about **0.69 Hz**: 1.44 / (21 kΩ × 100 µF).',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'C1', min: 85e-6, max: 125e-6 },
+          { kind: 'readout', index: 2, above: 0.58, below: 0.8, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:C1' },
+      hint: 'The slider is logarithmic. 100 µF is a bit past halfway. The new frequency shows after a cycle or two.',
+      explain: 'Frequency is inversely proportional to C: double the capacitance and the capacitor takes twice as long to ramp between the same two thresholds.',
+    },
+    {
+      id: 'supply',
+      title: 'Raise the supply to 12 V',
+      body: 'Slide **Supply** up to about **12 V**. The thresholds move to 4 V and 8 V, yet **FREQUENCY** stays near **0.69 Hz**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Supply', min: 11, max: 13 },
+          { kind: 'readout', index: 7, above: 10.5 },
+          { kind: 'readout', index: 2, above: 0.58, below: 0.8, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Supply' },
+      explain: 'The comparators work from fractions of the same supply that charges the capacitor, so V_CC cancels out of the timing: the capacitor still needs the same ln 2 time constants per phase. The LED just gets brighter.',
+    },
+    {
+      id: 'no-r1',
+      title: 'Break it: leave R1 out',
+      body: 'Open **Break something** and choose **Leave out R1**. The discharge transistor on pin 7 now shorts the battery to ground and burns out.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-r1' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      hint: 'The burn happens when the capacitor first reaches the upper threshold, within a couple of seconds.',
+      explain: 'R1 is the only thing limiting the current through the discharge transistor. Without it the battery is limited only by its own 1.5 Ω, about 5.8 A from 9 V, and the transistor fails. Then C1 can never discharge and the output sticks low.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The blinking resumes.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 2, above: 0.1, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'one-shot',
+      title: 'Make it a one-shot',
+      body: 'Set **Timer mode** to **Monostable**, then press **TRIGGER**. The output gives one pulse and **PULSE WIDTH** reads about **1.2 s**: 1.1 × 11 kΩ × 100 µF.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Timer mode', min: 1 },
+          { kind: 'readout', index: 5, above: 0.9, below: 1.7 },
+        ],
+      },
+      focus: { control: 'tweak:Timer mode' },
+      hint: 'Switch the mode first, wait a few seconds for the capacitor to empty, then press and release TRIGGER once.',
+      explain: 'In monostable mode pin 2 rests high, so nothing sets the latch. A press pulls it below 1/3 V_CC, the output goes high and the capacitor charges through R1 + R2 until it hits 2/3 V_CC: t = ln 3 × (R1 + R2) × C = 1.1 RC, whatever the supply.',
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: each is a 555 timing calculation.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'An astable 555 has R1 = 10 kΩ, R2 = 100 kΩ and C = 10 µF. What is its frequency?',

@@ -356,6 +356,106 @@ Everything here is a 74HC gate or a behavior standing in for one; the memory ele
     'Never drive S and R of a NAND latch low together. If two inputs can collide, use a D flip-flop, which has no forbidden state.',
   ],
 
+  guide: [
+    {
+      id: 'power-up',
+      title: 'Connect 5 V',
+      body: 'Press **Connect 5 V**. The SR latch (two cross-coupled NAND gates) powers up reset: **Q** reads about 0 V and **Q BAR** about 5 V.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'Q and Q-bar are always complements. One gate output feeds the other gate input, so the pair settles into one of two stable states: that loop is one bit of memory.',
+    },
+    {
+      id: 'set',
+      title: 'Set the latch, then let go',
+      body: 'Press and release the **SET button**. **Q** goes to **5 V** and stays there after you let go.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'readout', index: 0, above: 4.5, holdMs: 250 },
+          { kind: 'readout', index: 1, below: 0.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:SET button' },
+      hint: 'SET is a momentary button: hold it for a moment, then release.',
+      explain: 'The buttons are active low, and one low input forces a NAND output high. After you release, both inputs are back at 1 and each gate holds the other in place. The latch remembers.',
+    },
+    {
+      id: 'reset',
+      title: 'Reset it',
+      body: 'Press and release the **RESET button**. **Q** falls back to **0 V** and **Q BAR** returns to **5 V**, again without needing you to hold it.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'readout', index: 0, below: 0.5, holdMs: 250 },
+          { kind: 'readout', index: 1, above: 4.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:RESET button' },
+      explain: 'Set and reset are the whole interface of a latch: two ways to write, none to read, because Q is always there.',
+    },
+    {
+      id: 'forbidden',
+      title: 'Break it: press both',
+      body: 'Open **Break something** and choose **Press SET and RESET together**. Both **Q** and **Q BAR** read about **5 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'break', failure: 'both-buttons' },
+          { kind: 'readout', index: 0, above: 4.5, holdMs: 250 },
+          { kind: 'readout', index: 1, above: 4.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'break' },
+      explain: 'Both active-low inputs are low, so both NAND outputs are forced high. Q and Q-bar are no longer complements, and when both buttons release at once the latch lands on a random side. That is why the datasheet forbids it.',
+    },
+    {
+      id: 'repair-latch',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'count-five',
+      title: 'Count five clock pulses',
+      body: 'Press the **CLOCK button** five times. The yellow LEDs count in binary: **COUNT** reaches **5** (0101).',
+      check: { kind: 'readout', index: 3, above: 4.5 },
+      focus: { control: 'tweak:CLOCK button' },
+      hint: 'Each press needs a short hold and a release. The board runs slowed down, so give each press a moment.',
+      explain: 'The 74HC393 is a ripple counter: each stage toggles on the falling edge of the one before and so halves the frequency. Four stages count 0 to 15 and wrap back to 0 on the 16th pulse.',
+    },
+    {
+      id: 'bounce',
+      title: 'Break it: remove the debounce capacitor',
+      body: 'Open **Break something** and choose **Remove the debounce capacitor**. Then press **CLOCK** a few times: **EXTRA COUNTS** rises above 0, one press giving several counts.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'no-debounce' }, { kind: 'readout', index: 11, above: 0.5 }] },
+      focus: { control: 'break' },
+      hint: 'The extra counts only show up on presses made after the capacitor is gone.',
+      explain: 'A real contact chatters for a few milliseconds. The counter answers in nanoseconds, so it counts every chatter. With 1 µF and 10 kΩ the node falls with a 10 ms time constant, too slow to follow the bounce, and the Schmitt trigger turns it into one clean edge.',
+    },
+    {
+      id: 'repair-bounce',
+      title: 'Repair the bench again',
+      body: 'Choose **Repair all** once more. The capacitor is back and one press counts once.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: latch states, binary counting and bounce.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A 4-bit counter starts at 0000 and receives 11 clock edges. What does it show (Q3 Q2 Q1 Q0)?',

@@ -384,6 +384,105 @@ NOT inverts A. NAND is the **universal** gate: tie its inputs together and it is
     'When mixing 3.3 V and 5 V logic, check V_IH and V_IL in both directions. Use 74HCT parts or a level shifter going up. Going down, protect the 3.3 V input (a series resistor or a level shifter) unless its datasheet says it is 5 V tolerant.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-nand',
+      title: 'Meet a gate',
+      body: 'Click the chip labelled **NAND** on the first breadboard to open its inspector. It is a **74HC00**: four 2-input NAND gates in a DIP-14, and this board uses gate 1.',
+      check: { kind: 'inspect', part: 'u-nand' },
+      focus: { part: 'u-nand' },
+      hint: 'It is the third of the four chips on the front breadboard, next to the red LED.',
+      explain: 'The datasheet gives it a supply of 2 V to 6 V and promises a 1 above V_IH = 3.15 V and a 0 below V_IL = 1.35 V at 4.5 V. Every chip on this bench shares one 5 V rail.',
+    },
+    {
+      id: 'power-up',
+      title: 'Connect 5 V',
+      body: 'Press **Connect 5 V**. Both input switches are open, so each input sits at 0 V on its 10 kΩ pull-down. **NAND** should read about **5 V** and the red LED lights.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'action', action: 'power' },
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 4, above: 4.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'A NAND is 0 only when both inputs are 1. With A = B = 0 the output is 1: it sources about (5 − 1.8) / 1 kΩ ≈ 3.3 mA into the LED branch.',
+    },
+    {
+      id: 'a-only',
+      title: 'Switch on A alone',
+      body: 'Slide **Input A** on and leave **Input B** off. **OR** and **XOR** go high, **AND** stays low.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Input A', min: 1 },
+          { kind: 'tweak', target: 'Input B', max: 0 },
+          { kind: 'readout', index: 3, above: 4.5, holdMs: 250 },
+          { kind: 'readout', index: 5, above: 4.5, holdMs: 250 },
+          { kind: 'readout', index: 2, below: 0.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:Input A' },
+      explain: 'OR needs at least one 1. XOR needs exactly one. AND needs both, so with only A on it stays at 0.',
+    },
+    {
+      id: 'both-on',
+      title: 'Switch on A and B',
+      body: 'Now slide **Input B** on as well. **AND** goes high; **NAND** and **XOR** drop to 0.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Input A', min: 1 },
+          { kind: 'tweak', target: 'Input B', min: 1 },
+          { kind: 'readout', index: 2, above: 4.5, holdMs: 250 },
+          { kind: 'readout', index: 4, below: 0.5, holdMs: 250 },
+          { kind: 'readout', index: 5, below: 0.5, holdMs: 250 },
+        ],
+      },
+      focus: { control: 'tweak:Input B' },
+      explain: 'That is the last row of the truth table: A = B = 1 gives AND 1, NAND 0, XOR 0 and OR 1. NAND is the inverse of AND, and XOR is 1 only when the inputs differ.',
+    },
+    {
+      id: 'ripple',
+      title: 'Add 0.4 V of ripple',
+      body: 'On the second board a slow 2 Hz triangle feeds a plain inverter and a Schmitt inverter. Slide **Ripple on the signal** to about **0.4 V**. Watch **EXTRA EDGES** climb above 4.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Ripple on the signal (peak)', min: 0.35 },
+          { kind: 'readout', index: 14, above: 4 },
+        ],
+      },
+      focus: { control: 'tweak:Ripple on the signal (peak)' },
+      hint: 'EXTRA EDGES counts how many more times the plain inverter flipped than the Schmitt one. It takes a couple of seconds.',
+      explain: 'The plain 74HC04 flips at one threshold, about 2.5 V, so a ripple that crosses it back and forth gives a burst of edges at each slow crossing. The 74HC14 needs the input to fall a full volt (V_T+ 2.75 V down to V_T− 1.75 V here) before flipping back, and 0.8 V peak to peak of ripple never gets there.',
+    },
+    {
+      id: 'float-it',
+      title: 'Break it: float input A',
+      body: 'Open **Break something** and choose **Leave input A floating**. The pull-down is gone, so hum rides in and **NOT A EDGES** races above 20.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'floating-input' }, { kind: 'readout', index: 13, above: 20 }] },
+      focus: { control: 'break' },
+      hint: 'Switch A is open now, so nothing at all defines the pin. The count rises about 100 times a second.',
+      explain: 'A CMOS input is a few picofarads of capacitance and no DC path: it holds whatever charge it picks up. Here a coupled 50 Hz hum drags it across the threshold twice per cycle, so NOT A flips about 100 times a second. Tie every unused input to V_CC or GND.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The 10 kΩ pull-down is back.',
+      check: { kind: 'action', action: 'repair' },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the five questions in **Check yourself** below: truth tables, thresholds and the Schmitt trigger.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A NAND gate has A = 1 and B = 1. What is its output?',
