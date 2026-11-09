@@ -2,13 +2,16 @@
 
 *Closing the loop*
 
-> The GM-48 gear motor is a first-order plant with a time constant of about 46 ms and a gain of 0.76 rpm per PWM count, so a PI controller with Kp ≈ 0.40 and Ki ≈ 8.7 holds speed under load in about 0.15 s.
+> The GM-48 gear motor is a first-order plant with a time constant of about 46 ms and a gain of 0.76 rpm per PWM count, so a PI controller with Kp ≈ 0.40 and Ki ≈ 8.7 tracks a speed step with a closed-loop time constant of about 0.15 s (63 % in 0.14 s on the bench, settled within ±3 rpm in about 0.4 s) and wins back a 0.03 N·m brake step in about 0.5 s.
 
 - **Lesson id:** `pid-motor-control` · **Track:** T7 Professional
 - **fig:** 44. Provisional: sidebar order.
 - **Prerequisites:** `tb6612fng`, `encoders`, `interrupts-timers`
 - **Power element:** `usb_plug` (powerLabel: "Plug USB"). The motor battery is the tweak `bat_sw`.
-- **Behaviors:** `tb6612`, `quad-encoder`, `dyno-load`, `mcu-supply`, `serial-plotter`
+- **Behaviors:** `tb6612`, `quad-encoder`, `dyno-load`, `pid-tune`, `mcu-supply`, `serial-plotter`
+- **Guide:** 9 steps: power, upload (P only, Kp 1), raise Kp to 2 (steady error ≈ 62 rpm), the IMC PI 0.40 / 8.7 (error → 0), Kd 0.02 (PWM jitter ≈ 0.5 → 7 counts/sample), a 0.03 N·m brake, swap A/B (runaway), repair, quiz.
+
+> **Implementation notes (2026-11-09, checked on the bench):** the gains, the loop period and the anti-windup switch are bench sliders read by the sketch every sample through the `pid-tune` behavior (`Tune.kp()`, `Tune.ki()`, `Tune.kd()`, `Tune.periodMs()`, `Tune.antiWindup()`), not code constants. The integrator stores the term Σ Ki·e·dt, so a Ki change is bumpless. The original QEM table below counted forward as negative for this encoder (A leads B forward, as in `encoders`): it is corrected. Measured: K = 0.76 rpm/count incremental (86 counts for 60 rpm, 205 for 150) with a ~7-count friction deadband; P-only error at 150 rpm 88 rpm (Kp 1) and 62 rpm (Kp 2), matching e = (sp + K·u₀)/(1 + K·Kp). The sim's frame-coupled encoder and PWM add a few tens of ms of loop lag, so the bench oscillates above Kp ≈ 3 (period ≈ 0.4 s); an ideal 100 Hz loop would reach Kp ≈ 14. A sample-rate failure was added (Kp 1.5 / Ki 20, crisp at 100 Hz, rings 110–175 rpm at 10 Hz), and a too-much-gain failure (Kp 8).
 - **transient:** true
 
 ## Learning goals
@@ -51,7 +54,8 @@ Identical to `encoders` (USB/Uno block, battery with `gnd_link`, two averaged ha
 
 - **`tb6612`**: see `tb6612fng`.
 - **`quad-encoder`**: see `encoders` (CPR 2112 at the output).
-- **`dyno-load`**. Parameters: `brakeNm` (output-shaft torque, tweak 0–0.15 N·m) and `stepAtS` (optional time for an automatic step disturbance). It sets `m1.load` = coulomb friction 0.0002 N·m + brakeNm / (48 × 0.7), using a gearbox efficiency of 0.7 (illustrative), with the sign following ω. It publishes `brake_Nm` and `out_power_W`.
+- **`dyno-load`**. Parameters: `brakeNm` (output-shaft torque, tweak 0–0.15 N·m) and `stepAtS` (optional time for an automatic step disturbance). It sets `m1.load` = coulomb friction 0.0002 N·m + brakeNm / (48 × 0.7), using a gearbox efficiency of 0.7 (illustrative), always as a positive magnitude: the MOTOR element applies `load` against ω, faded in over ±1 rad/s, so no sign handling or stiction band is needed in the behavior. `stepAtS` counts from power-on. It publishes `brake_Nm`, `motor_load_Nm`, `rpm_out` and `out_power_W`.
+- **`pid-tune`**. Params `kp` (1), `ki` (0), `kd` (0), `periodMs` (10), `antiWindup` (1); exposes them to the sketch as `Tune.*()` calls, read live, so sliders and failure overrides land at the next sample.
 - **`mcu-supply`**, **`serial-plotter`**: see `arduino-uno`.
 
 ## Sketch
@@ -80,7 +84,8 @@ const float KI = 8.7;            // PWM counts per (rpm * s)
 const float KD = 0.0;            // start with PI. D is optional on speed loops
 const float U_MAX = 255.0;
 
-const int QEM[16] = {0, 1, -1, 0,  -1, 0, 0, 1,  1, 0, 0, -1,  0, -1, 1, 0};
+// Corrected: A leads B going forward (00 -> 10 -> 11 -> 01 is +1), the quad-encoder behavior's convention.
+const int QEM[16] = {0, -1, 1, 0,  1, 0, 0, -1,  -1, 0, 0, 1,  0, 1, -1, 0};
 volatile long count = 0;
 volatile int lastState = 0;
 
@@ -195,14 +200,14 @@ SIM NOTE: plot set/rpm/pwm together on a strip chart. This lesson is unreadable 
 | Battery voltage | `bat` | value | 4 | 9 | 0.1 | no | V |
 | Battery internal R | `bat` | rInternal | 0.1 | 3 | — | yes | Ω |
 
-The gains live in the code: edit `KP`, `KI` and `KD` and re-upload. Try KP = 2.0 with KI = 0: it is fast but leaves a steady error and is noisy. Try KI = 40: it overshoots and rings.
+As built, the gains are sliders (`behavior:tune` kp 0–10, ki 0–60, kd 0–0.05), with a Loop period enum (5/10/20/50/100 ms) and an Anti-windup toggle; the sketch above reads constants for clarity, the lesson's sketch reads `Tune.*()` instead. Try Kp = 2.0 with Ki = 0: it is fast but leaves a steady error (≈ 62 rpm at 150) and rings. Try Kp 0.4, Ki = 40: it overshoots by about 20 % and rings. The brake tweak spans 0–0.15 N·m, but above about 0.04 N·m the 150 rpm step needs more than 255 counts and saturates.
 
 ## Status lines
 
 | when | text |
 |---|---|
 | state RUNNING | RUNNING: setpoint steps of 60 → 150 → −100 → 0 rpm. Apply the brake and watch the integral recover. |
-| readout 3 above 250 | Control saturated: the motor cannot go faster. Anti-windup is holding the integrator. |
+| PWM duty above 99 % | Control saturated: the motor cannot go faster. Anti-windup is holding the integrator. |
 
 ## Failures
 
@@ -213,17 +218,17 @@ The gains live in the code: edit `KP`, `KI` and `KD` and re-upload. Try KP = 2.0
 
 ### F2: Encoder pull-ups missing (lost feedback)
 - **Patches:** `{op:'remove', elementId:'r_pa'}`, `{op:'remove', elementId:'r_pb'}`
-- **Sim shows:** the measured speed is noise around 0. The controller sees a huge error, so the integrator (capped only by anti-windup) and the P term drive full PWM. The motor runs at maximum speed no matter what the setpoint is.
+- **Sim shows:** the measured speed is noise around 0. The controller sees a huge error, so the integrator (capped only by anti-windup) and the P term drive full PWM. The motor runs flat out (≈ 187 rpm) in the direction of the setpoint, whatever its size.
 - **Why:** a feedback controller trusts its sensor completely. With no signal, it does whatever drives the measured error to zero, which is impossible. Detect it: if PWM is high and no counts arrive for 100 ms, stop and flag a sensor fault.
 
 ### F3: Tired battery (actuator saturation)
 - **Patches:** `{op:'set', elementId:'bat', key:'value', value:4.6}`, `{op:'set', elementId:'bat', key:'rInternal', value:2.0}`
-- **Sim shows:** the 150 rpm step can't be reached. PWM sits at 255 and the speed tops out around 120–130 rpm with no brake, and drops further under brake load. Without the anti-windup branch, try deleting it: the −100 rpm step afterwards would overshoot badly while the oversized integral unwinds.
+- **Sim shows:** the 150 rpm step can't be reached. PWM sits at 255 and the speed tops out around 136 rpm with no brake (ω = (kt·V/R − T_f)/(kt·ke/R + b), R = 6.5 Ω), and drops further under brake load. Without the anti-windup branch (the lesson's failure also switches it off), the integral winds to about 550 counts in 3 s, and on the −100 rpm step the motor stays at full forward and crosses zero about 0.2 s later than with the clamp.
 - **Why:** no gain makes up for a missing volt. A controller can only use the authority the actuator has. Size the supply for the worst case (low battery, maximum load), and always guard the integrator.
 
 ## Meet the board
 
-**The plant.** A DC motor obeys V = I·R + ke·ω and J·dω/dt = kt·I − b·ω − T_load. For a step in voltage it behaves like a first-order system, like an RC circuit or a mass with viscous damping, with time constant **τ_m ≈ J·R/(kt·ke)**. For the GM-48 on this bench, 3e-7 × 5.1 / 3.3e-5 ≈ **46 ms**. The steady-state gain is about 193 rpm per 255 counts = **0.76 rpm/count**.
+**The plant.** A DC motor obeys V = I·R + ke·ω and J·dω/dt = kt·I − b·ω − T_load. For a step in voltage it behaves like a first-order system, like an RC circuit or a mass with viscous damping, with time constant **τ_m = J·R/(kt·ke + R·b)** (≈ J·R/(kt·ke) = 52 ms if friction is ignored). For the GM-48 on this bench, 3e-7 × 5.1 / 3.33e-5 ≈ **46 ms**. The steady-state gain is about 193 rpm per 255 counts = **0.76 rpm/count** (measured incrementally on the bench; the gearbox friction takes the first ~7 counts).
 
 **The controller (PI):** u = Kp·e + Ki·∫e dt. Choose the closed-loop time constant τ_c = 0.15 s (about 3 times slower than the plant: safe and smooth). Model-based tuning (internal model control, IMC) gives:
 - Kp = τ/(K·τ_c) = 0.046/(0.76 × 0.15) ≈ **0.40**
@@ -279,6 +284,6 @@ The gains live in the code: edit `KP`, `KI` and `KD` and re-upload. Try KP = 2.0
 
 - Everything from `encoders` (edge injection at kHz rates) and `tb6612fng` (averaged bridge, ground-referenced inputs).
 - **Strip-chart readout** of several `serial.*` keys over time, with a 10–20 s window. This is essential for control lessons.
-- `dyno-load` sets `MOTOR.load` each tick with sign(ω), so friction must not overshoot zero speed. Implement Coulomb friction with a stiction band near ω ≈ 0 to avoid numerical chatter.
+- `dyno-load` sets `MOTOR.load` each tick as a magnitude; the MOTOR element already applies it against ω with a tanh band of ±1 rad/s, so it never overshoots zero speed.
 - Float-to-int `constrain` result assigned to `int` (truncation), as in other lessons.
 - Long sims (8 s profiles at 1 ms steps plus 7 000 encoder interrupts/s) are a performance check for the MCU scheduler.
