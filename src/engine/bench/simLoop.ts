@@ -625,6 +625,11 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   // ── actions ──
   function lifecycle(ev: BehaviorLifecycleEvent): void {
     for (const inst of instances) inst.def.onEvent?.(inst.ctx, ev)
+    // params a behavior set in onEvent (a mode selector at power-on) act on the very next step
+    if (liveDirty) {
+      liveDirty = false
+      rebuild(false)
+    }
   }
   function resetBehaviors(): void {
     for (const inst of instances) inst.def.reset?.(inst.ctx)
@@ -941,6 +946,12 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         for (const p of sim.instants) {
           sample(p.t, p.solution)
           for (let j = 0; j < steppers.length; j++) steppers[j].def.onStep!(steppers[j].ctx, p.t, p.solution)
+        }
+        // an onStep behavior that setParam'd (a comparator flipping a switch) acts on the very next step,
+        // not a frame later
+        if (liveDirty && steppers.length) {
+          liveDirty = false
+          rebuild(false)
         }
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
         if (burnt) {
