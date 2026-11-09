@@ -428,6 +428,101 @@ describe('createBench: behaviors', () => {
     return out
   }
 
+  it('ctx.setParam from onStep applies on the next step, not the next frame (sub-ms switch bounce)', async () => {
+    // a 5 V source, a switch and 1 kΩ: a behavior toggles the switch every step (1 ms) and records
+    // whether each step's solution saw it closed
+    const seen: number[] = []
+    let closed = false
+    const bounce: Behavior = {
+      id: 'bounce',
+      onStep(ctx, _t, sol) {
+        seen.push(sol.currentOf ? sol.currentOf('R1') : sol.current['R1'])
+        closed = !closed
+        ctx.setParam('S1', 'closed', closed)
+      },
+    }
+    const l: Lesson = {
+      ...dcLesson,
+      transient: true,
+      sim: { dt: 1e-3 },
+      circuit: {
+        elements: [
+          { id: 'B1', type: 'V', nodes: ['v', '0'], value: 5 },
+          { id: 'S1', type: 'SW', nodes: ['v', 'm'], closed: false },
+          { id: 'R1', type: 'R', nodes: ['m', '0'], value: 1000 },
+        ],
+      },
+      readouts: [],
+      tweaks: [],
+      behaviors: [{ id: 'bounce', instance: 'b' }],
+    }
+    const b = createBench(l, { registry: { bounce } })
+    b.dispatch('power')
+    await b.frame(FRAME)
+    await b.frame(FRAME)
+    // steps alternate open / closed inside the frame: 0, 5 mA, 0, 5 mA, …
+    const tail = seen.slice(-10)
+    for (let k = 1; k < tail.length; k++) expect(Math.abs(tail[k] - tail[k - 1])).toBeGreaterThan(4e-3)
+    b.dispose()
+  })
+
+  it('starts at lesson.sim.speed unless the options say otherwise', async () => {
+    const slow: Lesson = { ...dcLesson, sim: { ...dcLesson.sim, speed: 0.1 } }
+    let b = createBench(slow)
+    expect(b.snapshot().speed).toBe(0.1)
+    b.dispatch('power')
+    await b.frame(0.1)
+    expect(b.t).toBeCloseTo(0.01, 9) // 0.1 s of real time at ×0.1
+    b.dispose()
+    b = createBench(slow, { speed: 2 })
+    expect(b.snapshot().speed).toBe(2)
+    b.dispose()
+    b = createBench(dcLesson)
+    expect(b.snapshot().speed).toBe(1)
+    b.dispose()
+  })
+
+  it('analogRead a few ms after an analogWrite reads a switched PWM buck at its real 10 kHz period', async () => {
+    // 12 V → P-FET (gate on a vccNode PWM pin, LOW = on) → 22 mH → 470 µF ‖ 330 Ω, catch diode.
+    // analogWrite(9, 186): on for 1 − 186/255 = 27 %, so Vout ≈ 0.27·12 − 0.73·0.7 ≈ 2.73 V
+    // (≈ 559 counts). Each loop rewrites the pin and reads 8 ms later, inside the frame, so the read
+    // is a look-ahead (peek) over 10 steps of 0.8 ms; stretching the PWM period over it went
+    // discontinuous and read ≈ 2.9 V (593 counts).
+    const code = `int x = 186;
+void setup() { Serial.begin(9600); pinMode(9, OUTPUT); analogWrite(9, x); delay(1500); }
+void loop() { x = x == 186 ? 187 : 186; analogWrite(9, x); delay(8); Serial.println(analogRead(A1)); delay(30); }
+`
+    const l: Lesson = {
+      ...dcLesson,
+      transient: true,
+      sim: { dt: 8e-4 },
+      circuit: {
+        elements: [
+          { id: 'B1', type: 'V', nodes: ['vin', '0'], value: 12 },
+          { id: 'G9', type: 'PIN', nodes: ['g', '0'], pin: 9, vcc: 5, vccNode: 'vin', rOut: 10 },
+          { id: 'Q1', type: 'PMOS', nodes: ['sw', 'g', 'vin'], vth: 2, k: 2 },
+          { id: 'D1', type: 'D', nodes: ['0', 'sw'] },
+          { id: 'L1', type: 'L', nodes: ['sw', 'vout'], value: 22e-3 },
+          { id: 'C1', type: 'C', nodes: ['vout', '0'], value: 470e-6 },
+          { id: 'RL', type: 'R', nodes: ['vout', '0'], value: 330 },
+        ],
+      },
+      readouts: [],
+      tweaks: [],
+      statusLines: [],
+      failures: [],
+      sketch: { title: 'Buck', code, pins: { 9: 'G9' }, analogPins: { A1: 'vout' }, vcc: 5, board: 'generic', pwmFreq: 10000 },
+    }
+    const b = createBench(l)
+    b.dispatch('power')
+    await b.frame(FRAME)
+    b.upload()
+    await runUntil(b, (x) => x.serial.length >= 12, 4)
+    const reads = b.snapshot().serial.slice(4).map(Number)
+    for (const r of reads) expect(Math.abs(r - 559)).toBeLessThanOrEqual(12)
+    b.dispose()
+  })
+
   it('digitalRead right after pinMode(INPUT_PULLUP) sees the pull-up, even in a transient circuit', async () => {
     const l = pinBench([], 'void setup() { Serial.begin(9600); pinMode(2, INPUT_PULLUP); Serial.println(digitalRead(2)); }\nvoid loop() { delay(100); }\n')
     expect(await serialOf(l)).toEqual(['1'])

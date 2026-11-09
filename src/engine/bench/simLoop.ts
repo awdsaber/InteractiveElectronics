@@ -69,7 +69,7 @@ export interface BenchOptions {
   /** toasts and sounds */
   onNote?(n: Note): void
   snapshotHz?: number
-  /** sim seconds per real second (default 1) */
+  /** sim seconds per real second (default: lesson.sim.speed, else 1) */
   speed?: number
   /** sketch text to start from (default: the lesson's) */
   code?: string
@@ -253,7 +253,7 @@ function initialTweaks(l: Lesson, behaviors: ResolvedBehavior[]): Record<string,
 export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const reg = opts.registry ?? defaultRegistry
   const hz = opts.snapshotHz ?? 15
-  let speed = opts.speed ?? 1
+  let speed = opts.speed ?? lesson.sim?.speed ?? 1
   const budget = opts.stepBudgetMs ?? Infinity
   const now = opts.now ?? (() => globalThis.performance?.now() ?? Date.now())
   let code = opts.code ?? lesson.sketch?.code ?? ''
@@ -269,6 +269,8 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const events: BehaviorEvent[] = []
   const live: Record<string, number | boolean> = {} // `${id}\u0000${key}` → value set by behaviors
   let liveDirty = false
+  /** keys set by behaviors since the last step (onStep changes apply from the next step) */
+  const liveQueue: string[] = []
 
   const resolved = (lesson.behaviors ?? []).map(resolveBehaviorRef)
   const tweakDefaults = initialTweaks(lesson, resolved)
@@ -367,6 +369,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
    */
   function rebuild(structural = true): void {
     behaviorOverrides()
+    liveQueue.length = 0 // the rebuilt netlist carries every live value
     netlist = buildNetlist()
     if (dynamic) {
       if (!sim) {
@@ -541,6 +544,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         if (live[k] === value) return
         live[k] = value
         liveDirty = true
+        liveQueue.push(k)
       },
       setMotorLoad(elementId, torque) {
         ctx.setParam(elementId, 'load', torque)
@@ -607,6 +611,34 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   const pendingBurns: BurnEvent[] = []
   /** the instances that watch every instantaneous solve (Behavior.onStep) */
   const steppers = instances.filter((i) => !!i.def.onStep)
+
+  /**
+   * Apply behavior setParam calls made inside the stepping loop (onStep) to the running transient
+   * before the next step: Transient.setParam patches one element in place (same matrix layout: no
+   * recompile). Skipped, and left to the frame-end rebuild, for an element a failure patch, a burn,
+   * a thermal shutdown or a power-off also touches (their patches apply after behavior values).
+   */
+  function applyLiveNow(): void {
+    if (!liveQueue.length || !sim) return
+    let slow = false
+    for (const k of liveQueue) {
+      const [id, key] = k.split('\u0000')
+      const touched =
+        asm.burns.some((b) => b.elementId === id) ||
+        asm.disabled.has(id) ||
+        (powerIds(lesson).includes(id) && !asm.powered[id]) ||
+        asm.failures.some((fid) => lesson.failures.find((f) => f.id === fid)?.patches.some((p) => 'elementId' in p && p.elementId === id))
+      if (touched) slow = true
+      else sim.setParam(id, key, live[k])
+    }
+    liveQueue.length = 0
+    if (slow) return
+    // the transient's netlist now equals what buildNetlist would give: no frame-end rebuild needed
+    netlist = sim.netlist
+    liveDirty = false
+    dcDirty = true
+    peekCache = null
+  }
 
   /** active failures' `set` patches on `behavior:<instance>` override that instance's params */
   function behaviorOverrides(): void {
@@ -942,6 +974,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
           sample(p.t, p.solution)
           for (let j = 0; j < steppers.length; j++) steppers[j].def.onStep!(steppers[j].ctx, p.t, p.solution)
         }
+        if (liveQueue.length) applyLiveNow()
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
         if (burnt) {
           k++

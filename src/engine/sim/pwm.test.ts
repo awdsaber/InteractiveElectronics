@@ -118,6 +118,39 @@ describe('PWM into an LED', () => {
   })
 })
 
+describe('peek on a switched PWM buck', () => {
+  // 12 V → P-FET high side (gate on a vccNode PWM pin: LOW = on) → 22 mH → 470 µF ‖ 330 Ω, catch
+  // diode; 10 kHz, so a 0.8 ms step holds 8 real periods. On for 27 % of the time the inductor
+  // current stays continuous: I_load ≈ 8 mA > ripple/2 = 12·0.27·0.73/(2·22 mH·10 kHz) ≈ 5 mA, so
+  // Vout ≈ D·12 − (1 − D)·V_D ≈ 3.24 − 0.73·0.7 ≈ 2.73 V. A period stretched over a long look-ahead
+  // (16 ms / 8 = 2 ms) has 20× the ripple, goes discontinuous and read 3.46 V.
+  const buck = (): Netlist => ({
+    elements: [
+      { id: 'VIN', type: 'V', nodes: ['vin', '0'], value: 12 },
+      pin(9, 'g', { vccNode: 'vin', rOut: 10 }),
+      { id: 'Q1', type: 'PMOS', nodes: ['sw', 'g', 'vin'], vth: 2, k: 2 },
+      { id: 'D1', type: 'D', nodes: ['0', 'sw'] },
+      { id: 'L1', type: 'L', nodes: ['sw', 'vout'], value: 22e-3 },
+      { id: 'C1', type: 'C', nodes: ['vout', '0'], value: 470e-6 },
+      { id: 'RL', type: 'R', nodes: ['vout', '0'], value: 330 },
+    ],
+  })
+
+  it('a peek several steps long keeps the real 10 kHz period (no discontinuous-mode Vout)', () => {
+    const sim = createTransient(buck(), 8e-4)
+    sim.setPin(9, pwm(0.73, 10000))
+    for (let k = 0; k < 2000; k++) sim.step()
+    const v = sim.lastGood!.nodeV['vout']
+    within(v, 2.73, 0.03)
+    // an analogWrite in the same frame, then an ADC read 5 ms later: the look-ahead stays on the
+    // converter's real operating point (a period stretched over the peek read ≈ 4.7 V)
+    sim.setPin(9, pwm(0.731, 10000))
+    for (const h of [5e-5, 3e-4, 5e-3, 1.6e-2]) within(sim.peek(h).nodeV['vout'], v, 0.01)
+    // and peek committed nothing: the next step carries on from the same state
+    within(sim.step().nodeV['vout'], v, 0.01)
+  })
+})
+
 describe('PWM into an NPN switch', () => {
   // 5 V → 1 kΩ → collector; pin → 47 kΩ → base. HIGH: Ib = (5 − 0.65)/47 025 ≈ 92 µA, β·Ib ≈ 9 mA
   // exceeds (5 − 0.1)/1 kΩ ≈ 4.9 mA, so Q1 saturates. The 2.5 V average would give Ib ≈ 40 µA,
