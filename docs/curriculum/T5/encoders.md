@@ -8,7 +8,7 @@
 - **fig:** 33. Provisional: sidebar order.
 - **Prerequisites:** `interrupts-timers`, `tb6612fng`
 - **Power element:** `usb_plug` (powerLabel: "Plug USB"). The motor battery is the tweak `bat_sw`.
-- **Behaviors:** `tb6612`, `quad-encoder`, `mcu-supply`, `serial-plotter`
+- **Behaviors:** `tb6612`, `quad-encoder` (instance `enc`), `mcu-supply`, `serial-plotter`
 - **transient:** true
 
 ## Learning goals
@@ -56,13 +56,13 @@ The motor and driver are as in `tb6612fng` (two averaged half-bridges, GM-48 mot
 ### Behaviors
 
 - **`tb6612`**: see `tb6612fng`.
-- **`quad-encoder`** (reused in `pid-motor-control` and the capstone). Parameters: `ppr` 11 (per channel per motor revolution), `gear` 48, `pins {a:2, b:3}`, `swapAB` false, `isrUs` 6 µs (ISR cost including two `digitalRead` calls on an Uno; approximate), `glitchRate` 0 per second.
+- **`quad-encoder`** (reused in `pid-motor-control` and the capstone). Parameters: `ppr` 11 (per channel per motor revolution), `gear` 48, `a` 2, `b` 3 (the MCU pins), `swapAB` false, `isrUs` 12 µs (ISR cost: two `digitalRead` calls at about 4 µs each plus entry and exit on an Uno; approximate), `glitchRate` 0 per second.
   - **Shaft angle:** each tick it integrates the motor shaft angle from `extra['m1.omega']`.
-  - **Edges:** it generates the A/B levels as two square waves with 50 % duty, offset by 90° electrical (A leads B for positive ω, unless `swapAB`), and emits each **edge** with a µs timestamp into the MCU's interrupt queue (SIM NOTE). Each sim step it sets `enc_sa/enc_sb.closed` to the level at the end of the step, for the scope and LED visuals.
-  - **Signal validity:** for each channel the edge is delivered only if the pin net actually reaches a valid HIGH (a pull-up present, V > 0.6 × VCC with the switch open). Without the pull-up the pin floats, so it injects random edges at 50–500 Hz (as in `interrupts-timers` F2).
-  - **ISR capacity:** if two edges arrive closer than `isrUs`, the second is merged with the first and the decoder sees an invalid (double) transition.
-  - **Glitches:** `glitchRate` injects short spurious pulses (motor noise coupling).
-  - **Publishes:** `count_true` (ideal ×4 count at the output), `rpm_out_true` (from ω / 48), `edge_rate` (edges/s) and `edges_lost`.
+  - **Edges:** it generates the A/B levels as two square waves with 50 % duty, offset by 90° electrical (A leads B for positive ω, unless `swapAB`; forward state order 00 → 10 → 11 → 01), and emits each **edge** with a µs timestamp into the MCU's interrupt queue with `mcu.injectEdge` (SIM NOTE). At every solve it sets `enc_sa/enc_sb.closed` (closed = pin LOW) to the level at that instant, for the scope and LED visuals.
+  - **Signal validity:** for each channel the edge is delivered only if the pin net actually reaches a valid HIGH (a pull-up present, V > 0.6 × VCC with the switch open). Without the pull-up the pin floats, so it injects random edges at about 200 Hz (as in `interrupts-timers` F2). A single floating line only steps the count up and down; with both floating the noise on A and B interleaves and the count random-walks.
+  - **ISR capacity:** if two edges arrive closer than `isrUs`, the second is merged with the first (both level changes land at one instant) and the decoder sees an invalid (double) transition.
+  - **Glitches:** `glitchRate` per second injects common-mode spikes (motor noise coupled into both wires): A and B both flip for `glitchUs` (20 µs) and flip back. A table decoder flags two invalid jumps per spike. A single-channel glitch would be harmless to a table decoder (it steps +1 then −1), which is the point of quadrature.
+  - **Publishes:** `count_true` (ideal ×4 count at the motor shaft, signed, since the sketch started), `count_sync` (the same at the instant the sketch last printed), `rev_out_true`, `deg_out_true`, `rpm_true`, `rpm_out_true` (from ω / 48), `cpr_out`, `edge_rate` (edges/s), `edges_lost`, `glitches`, `noise_edges`, `floating`.
 - **`mcu-supply`**, **`serial-plotter`**: see `arduino-uno`.
 
 ## Sketch
@@ -83,24 +83,35 @@ The motor and driver are as in `tb6612fng` (two averaged half-bridges, GM-48 mot
 #define AIN2 8
 #define STBY 4
 
-const float CPR = 11.0 * 4 * 48;      // 2112 counts per output revolution
+const float CPR = 11.0 * 4 * 48;      // 2112 counts per output revolution (x4)
 const unsigned long WINDOW_MS = 50;   // speed window
 
 // Transition table indexed by (old state << 2) | new state, state = A<<1 | B.
-// +1 = one step forward, -1 = one step back, 0 = no change or invalid jump.
-const int QEM[16] = {0, 1, -1, 0,  -1, 0, 0, 1,  1, 0, 0, -1,  0, -1, 1, 0};
+// A leads B going forward: 00 -> 10 -> 11 -> 01 -> 00 is +1 per step.
+// 0 = no change, or an invalid jump (both bits changed at once: an edge was missed).
+const int QEM[16] = {0, -1, 1, 0,  1, 0, 0, -1,  -1, 0, 0, 1,  0, 1, -1, 0};
 
-volatile long count = 0;
+volatile long count = 0;               // x4: every edge of both channels
+volatile long count2 = 0;              // x2: both edges of A only
+volatile long count1 = 0;              // x1: rising edges of A only
 volatile int lastState = 0;
 volatile unsigned long invalid = 0;
 
 void onEdge() {
-  int s = (digitalRead(ENC_A) << 1) | digitalRead(ENC_B);
+  int a = digitalRead(ENC_A);
+  int s = (a << 1) | digitalRead(ENC_B);
   int idx = (lastState << 2) | s;
-  if (s != lastState && QEM[idx] == 0) {
+  int step = QEM[idx];
+  if (s != lastState && step == 0) {
     invalid++;                         // both bits changed at once: an edge was missed
   }
-  count += QEM[idx];
+  count += step;
+  if ((s >> 1) != (lastState >> 1)) {  // channel A moved
+    count2 += step;
+    if (a == 1) {
+      count1 += step;
+    }
+  }
   lastState = s;
 }
 
@@ -139,8 +150,10 @@ void setup() {
 void loop() {
   if (millis() - lastT >= WINDOW_MS) {
     lastT += WINDOW_MS;
-    noInterrupts();
+    noInterrupts();                    // copy multi-byte volatiles atomically
     long c = count;
+    long c2 = count2;
+    long c1 = count1;
     unsigned long bad = invalid;
     interrupts();
     long delta = c - lastCount;
@@ -148,7 +161,7 @@ void loop() {
     float rpm = delta / CPR * 60000.0 / WINDOW_MS;
     float deg = c * 360.0 / CPR;
 
-    // Slow triangle sweep of the drive: -200 .. +200
+    // Triangle sweep of the drive: -200 .. +200, 4 steps per window
     demand = demand + dir * 4;
     if (demand >= 200 || demand <= -200) {
       dir = -dir;
@@ -162,7 +175,13 @@ void loop() {
     Serial.print(",deg:");
     Serial.print(deg);
     Serial.print(",invalid:");
-    Serial.println(bad);
+    Serial.print(bad);
+    Serial.print(",x4:");
+    Serial.print(c);
+    Serial.print(",x2:");
+    Serial.print(c2);
+    Serial.print(",x1:");
+    Serial.println(c1);
   }
 }
 ```
@@ -176,16 +195,22 @@ void loop() {
 | POSITION | `{kind:'behavior', key:'serial.deg'}` | ° |
 | EDGE RATE | `{kind:'behavior', key:'edge_rate'}` | Hz |
 | INVALID TRANSITIONS | `{kind:'behavior', key:'serial.invalid'}` | '' |
+| COUNT (TRUE) / (SKETCH) / LOST | `enc.count_sync`, `serial.x4`, derived diff | counts |
+| POSITION (TRUE) | `enc.deg_out_true` | ° |
+| SIGN CHECK | derived product of true and measured speed (negative = opposite signs) | '' |
 | ENC A PIN | `{kind:'voltage', node:'d2'}` | V |
 
 ## Tweaks
 
 | label | elementId | key | min | max | step | log | unit |
 |---|---|---|---|---|---|---|---|
-| Battery switch | `bat_sw` | closed | 0 | 1 | 1 | no | — |
+| Battery switch | `bat_sw` | closed | 0 | 1 | toggle | no | — |
 | Motor supply | `bat` | value | 3 | 12 | 0.1 | no | V |
-| Pull-up value | `r_pa` | value | 1000 | 100000 | — | yes | Ω |
-| Glitch rate | `behavior:quad-encoder` | glitchRate | 0 | 200 | 1 | no | /s |
+| ISR cost | `behavior:enc` | isrUs | 4 | 500 | — | yes | µs |
+| Glitch rate | `behavior:enc` | glitchRate | 0 | 200 | 1 | no | /s |
+| Swap A and B | `behavior:enc` | swapAB | 0 | 1 | toggle | no | — |
+
+The earlier draft had a pull-up value slider. It was dropped: the sim models a pull-up as present or absent, so the slider changed nothing visible.
 
 ## Status lines
 
@@ -198,7 +223,7 @@ void loop() {
 
 ### F1: Missing pull-ups
 - **Patches:** `{op:'remove', elementId:'r_pa'}`, `{op:'remove', elementId:'r_pb'}`
-- **Sim shows:** with the motor stopped, POSITION wanders and `invalid` climbs. Running, the measured speed is noise.
+- **Sim shows:** POSITION no longer follows the shaft: the floating inputs deliver noise edges at about 200 Hz, so the count random-walks and the measured speed is noise. Invalid transitions stay near zero, because the two lines rarely change at the same instant (a single floating line only steps the count up and down).
 - **Why:** open-drain hall outputs can only pull low. Floating inputs pick up switching noise from the motor driver right next to them. Fit 4.7–10 kΩ pull-ups, or use `INPUT_PULLUP` for short cables only (20–50 kΩ is weak against noise).
 
 ### F2: A and B swapped
@@ -208,18 +233,18 @@ void loop() {
 
 ### F3: Overdrive it on 12 V with noisy wiring
 - **Patches:** `{op:'set', elementId:'bat', key:'value', value:12}`, `{op:'set', elementId:'behavior:quad-encoder', key:'glitchRate', value:150}`
-- **Sim shows:** the motor-shaft speed nears 20 000 rpm, so the edge rate is 11 × 4 × 20 000 / 60 ≈ 15 000 edges/s, with only about 67 µs between edges. That is still within the ISR's capacity, but the glitches produce invalid transitions and the count drifts by several degrees per minute.
+- **Sim shows:** at the sketch's 200/255 duty on 12 V the motor shaft runs at about 14 500 rpm, so the edge rate is 11 × 4 × 14 500 / 60 ≈ 10 600 edges/s, about 94 µs apart (at full duty it would be about 20 000 rpm, 15 000 edges/s and 67 µs). That is still within the 12 µs ISR's capacity, but each common-mode glitch gives two invalid transitions, and a real edge inside one can be mis-stepped: in the simulation about 3 500 invalid transitions and 26 lost counts (4°) in 12 s.
 - **Why:** an encoder is only as good as its edges. Use twisted or shielded encoder cables away from the motor leads, add small RC filters (for example 100 Ω and 1 nF, τ = 0.1 µs, which leaves real edges intact), or use a hardware quadrature decoder. Also: 12 V on a 6 V motor is a lifetime and heat problem of its own.
 
 ## Meet the board
 
-Two hall sensors sit 90° apart (electrically) around a magnet disc, so A and B are square waves in **quadrature**. Turning forward, the state sequence is 00 → 01 → 11 → 10. Backward, it runs the other way. Each change is one count, and the direction is whichever way the sequence goes.
+Two hall sensors sit 90° apart (electrically) around a magnet disc, so A and B are square waves in **quadrature**. Turning forward, the state sequence (A, B) is 00 → 10 → 11 → 01: A leads B. Backward, it runs the other way. Each change is one count, and the direction is whichever way the sequence goes.
 
 **Counting modes:** ×1 counts rising edges of A only, ×2 counts both edges of A, and ×4 counts every edge of both. With 11 pulses per revolution at the motor and a 48:1 gearbox, ×4 gives 11 × 4 × 48 = **2112 counts per output revolution**, or 360 / 2112 = **0.17°** per count.
 
 **Speed:** counts in a window divided by the window length. At 100 rpm on the output, 100 / 60 × 2112 = 3520 counts/s, so a 50 ms window catches 176 counts, a resolution of 100 / 176 ≈ 0.57 rpm. A shorter window reacts faster but is coarser: at 10 ms, one count is **2.8 rpm**.
 
-**ISR load:** that 3520 counts/s is 3520 interrupts/s. At about 6 µs each that is about 2 % of the CPU. At the motor's full speed (~190 rpm out) it is about 4 %. That is fine on an Uno, but at much higher rates you'd use direct port reads (about 10 times faster than `digitalRead`) or a chip with a hardware decoder (the ESP32's PCNT, or STM32 timers).
+**ISR load:** that 3520 counts/s is 3520 interrupts/s. At about 12 µs each (two `digitalRead` calls at about 4 µs each, plus entry and exit) that is about 4 % of the CPU. At the motor's full speed (~190 rpm out, about 6700 edges/s) it is about 8 %. That is fine on an Uno, but at much higher rates you'd use direct port reads (about 10 times faster than `digitalRead`) or a chip with a hardware decoder (the ESP32's PCNT, or STM32 timers).
 
 **The table decoder** rejects "both bits changed" as invalid instead of guessing.
 
