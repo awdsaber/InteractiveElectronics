@@ -217,6 +217,85 @@ Now break it. Put both legs of a part in one strip and it is shorted on itself: 
     "Before you power up, use the meter's continuity mode to check rail-to-rail (it must not beep) and each intended connection (it must beep).",
   ],
 
+  guide: [
+    {
+      id: 'find-the-limiter',
+      title: 'Find the resistor',
+      body: 'Click the resistor **R1** to open its inspector. It is **330 Ω** (orange-orange-brown).',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'The striped part standing in two different numbered columns.',
+      explain: 'Its two legs are in two different strips, strip 10 and strip 15. A resistor only does its job when each leg is on its own node.',
+    },
+    {
+      id: 'connect-usb',
+      title: 'Connect USB power',
+      body: 'Press **Connect USB power**. The path runs rail, strip 10, R1, strip 15, LED, strip 16, rail. **LED CURRENT** is about **10 mA** and **STRIP 15** sits near **1.7 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 0.009, below: 0.011, holdMs: 300 },
+          { kind: 'readout', index: 2, above: 1.6, below: 1.8, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'Strip 15 sits one LED drop above the return rail, 1.7 V. The resistor gets the rest: (5 − 1.7) / 330 = 10 mA. The strips are the wires of this circuit.',
+    },
+    {
+      id: 'bigger-resistor',
+      title: 'Fit a 1 kΩ resistor',
+      body: 'Slide **Limit resistor** to about **1 kΩ**. The current falls to about **3.4 mA** and the LED dims.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Limit resistor', min: 900, max: 1100 },
+          { kind: 'readout', index: 0, above: 0.003, below: 0.0037, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Limit resistor' },
+      explain: '(5 − 1.6) / 1000 = 3.4 mA. This also gives a handy test current for the next breaks: with a resistor you can tell cleanly what each wiring mistake does.',
+    },
+    {
+      id: 'one-strip',
+      title: 'Break it: both legs in one strip',
+      body: 'Open **Break something** and choose **Both resistor legs in one strip**. **LED CURRENT** drops to 0 and **STRIP 15** falls to 0 V.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'resistor-one-strip' }, { kind: 'readout', index: 0, below: 0.00001, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'A strip is one piece of metal, so a part whose legs share a strip joins the strip to itself and bridges nothing. Strip 15 is never connected to the supply, and the path is open. The same mistake with any part makes it do nothing.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The LED lights again.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 0.002, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'split-rail',
+      title: 'Break it: split the ground rail',
+      body: 'Choose **Split ground rail (bridge left out)**. The LED goes dark, yet the **- RAIL** reads about **4.5 V**, not 0 V.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'split-rail' }, { kind: 'readout', index: 4, above: 3, holdMs: 300 }] },
+      focus: { control: 'break' },
+      hint: 'Look at the - RAIL readout, not the LED.',
+      explain: 'On a full-length breadboard each power rail breaks at the middle. Without the bridge jumper the right half of the - rail is cut off from the ground, so with almost no current to drop any voltage it floats up close to the + rail. A reading that looks like power is not a working return path.',
+    },
+    {
+      id: 'repair-again',
+      title: 'Repair again',
+      body: 'Choose **Repair all** to put the bridge back. The **- RAIL** returns to 0 V.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 4, below: 0.1, holdMs: 300 }, { kind: 'readout', index: 0, above: 0.002, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: which holes are connected, and which are not.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'How many holes does one standard terminal strip connect?',

@@ -227,6 +227,99 @@ Low-resistance loads suffer most. Use the 10 A range (lower burden) or measure t
     'To measure a current without breaking the circuit, read the voltage across a known low-value series resistor (or use a clamp meter for larger currents).',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-voltmeter',
+      title: 'Meet the voltmeter',
+      body: 'Click the **voltmeter** to open its inspector. Its input is a **10 MΩ** resistance to ground.',
+      check: { kind: 'inspect', part: 'vmeter' },
+      focus: { part: 'vmeter' },
+      hint: 'The meter whose leads wait beside the two 1 MΩ resistors.',
+      explain: 'A voltmeter reads by letting a tiny current flow through its own big resistance. That current is small, but it is not zero, and the circuit feels it.',
+    },
+    {
+      id: 'output-on',
+      title: 'Switch the output on',
+      body: 'Press **Output ON**. **MIDPOINT** sits at **5.00 V**. The **AMMETER** reads about **205 mA** while **TRUE (NO METER)** shows **213 mA**: the meter already costs you 8 mA.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 3, above: 4.9, below: 5.1, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.19, below: 0.22, holdMs: 300 },
+          { kind: 'readout', index: 4, above: 0.2, below: 0.22, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'An ammeter goes in series, so its 1.7 Ω shunt plus the fuse add to the 47 Ω load: I = 10 / 48.9 = 205 mA instead of 10 / 47 = 213 mA. That voltage lost across the meter is the burden (about 0.37 V).',
+    },
+    {
+      id: 'leads-on',
+      title: 'Touch the midpoint',
+      body: 'Switch **Leads on midpoint** on. The divider read exactly 5 V before; now **MIDPOINT** sags to about **4.76 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Leads on midpoint', min: 1 },
+          { kind: 'readout', index: 0, above: 4.6, below: 4.9, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Leads on midpoint' },
+      explain: 'The meter puts 10 MΩ in parallel with the lower 1 MΩ resistor: 0.91 MΩ, so the midpoint is 10 × 0.91 / (1 + 0.91) = 4.76 V. Measuring changed the thing measured, by about 5 %.',
+    },
+    {
+      id: 'analog-meter',
+      title: 'Break it: an old analog meter',
+      body: 'Open **Break something** and choose **Use an old analog meter**. **METER READS** drops to about **1.4 V**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'analog-meter' }, { kind: 'readout', index: 0, above: 1.2, below: 1.7, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'A 20 kΩ/V meter on its 10 V range has 200 kΩ of input resistance. 1 MΩ ∥ 200 kΩ = 167 kΩ, so it reads 10 × 167k / (1M + 167k) = 1.43 V instead of 5 V. A low-impedance meter on a high-impedance circuit gives an answer that is simply wrong.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. The modern meter is back.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 4.6, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'weak-meter',
+      title: 'Drag the meter resistance down',
+      body: 'Slide **Meter input resistance** down to about **10 kΩ**. **METER READS** collapses to about **0.1 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Meter input resistance', max: 20000 },
+          { kind: 'readout', index: 0, below: 0.3, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Meter input resistance' },
+      explain: 'Now the meter shorts nearly everything: 1 MΩ ∥ 10 kΩ ≈ 9.9 kΩ, so the midpoint is about 10 × 9.9k / (1M + 9.9k) = 0.1 V. The meter must be much bigger than the resistance it sits across. That is why a good meter has 10 MΩ.',
+    },
+    {
+      id: 'blow-the-fuse',
+      title: 'Break it: amps across the supply',
+      body: 'Choose **Measure with the lead in the mA jack, across the supply**. The fuse blows: **AMMETER** reads 0 and **BURDEN** shows the whole supply.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'amps-across-supply' }, { kind: 'status', is: 'FAULT' }] },
+      focus: { control: 'break' },
+      explain: 'In mA mode the meter is a 1.8 Ω shunt: across 10 V that is over 5 A, twelve times the 0.44 A fuse. The fuse opens in milliseconds, which is its job. Afterwards the meter is dead on its current ranges, and the whole 10 V falls across the open fuse.',
+    },
+    {
+      id: 'repair-again',
+      title: 'Replace the fuse',
+      body: 'Choose **Repair all** to fit a new fuse. The **AMMETER** reads again.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 1, above: 0.19, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: how a meter disturbs what it measures.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A 100 kΩ / 100 kΩ divider on 10 V is measured with a 10 MΩ meter. What does it read?',

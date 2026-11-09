@@ -232,6 +232,93 @@ V_out = V_in · R2 / (R1 + R2) = 9 × 4.7 / 14.7 = **2.88 V**, with I = 9 / 14.7
     'Bands fade and confuse (red and orange, brown and red under warm light). Use the meter on every resistor before it goes in. It takes two seconds.',
   ],
 
+  guide: [
+    {
+      id: 'read-the-bands',
+      title: 'Read the bottom resistor',
+      body: 'Click **R2** to open its inspector. **Yellow-violet-red** is 47 × 100 = **4.7 kΩ**.',
+      check: { kind: 'inspect', part: 'r2' },
+      focus: { part: 'r2' },
+      hint: 'The lower of the two divider resistors, with a gold tolerance band set apart from the rest.',
+      explain: 'Yellow (4), violet (7), red (×100): 47 × 100 = 4700 Ω. The first two bands are digits and the third is the power of ten, so one band is a factor of ten.',
+    },
+    {
+      id: 'connect',
+      title: 'Connect the battery',
+      body: 'Press **Connect battery**. **V OUT** reads about **2.88 V**: 9 V × 4.7 / (10 + 4.7).',
+      check: { kind: 'all', of: [{ kind: 'status', is: 'POWERED' }, { kind: 'readout', index: 0, above: 2.75, below: 3.0, holdMs: 300 }] },
+      focus: { control: 'power' },
+      explain: 'Vout = Vin × R2 / (R1 + R2) = 9 × 4700 / 14 700 = 2.88 V, with 0.61 mA through both legs. The output is the fraction of the supply that falls across the bottom resistor.',
+    },
+    {
+      id: 'bigger-bottom',
+      title: 'Make R2 bigger',
+      body: 'Slide **Bottom resistor R2** to about **10 kΩ**. Its bands repaint and **V OUT** rises to **4.5 V**: half the supply.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Bottom resistor R2', min: 9000, max: 11000 },
+          { kind: 'readout', index: 0, above: 4.3, below: 4.7, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Bottom resistor R2' },
+      explain: 'Equal resistors divide equally: 10 k over 10 k is exactly half. A larger share of the resistance gets a larger share of the voltage.',
+    },
+    {
+      id: 'attach-load',
+      title: 'Hang a 10 kΩ load on it',
+      body: 'Turn **Load attached** on and slide **Load resistance** to about **10 kΩ**. **V OUT** sags from 4.5 V to about **3 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load attached', min: 1 },
+          { kind: 'tweak', target: 'Load resistance', min: 8000, max: 12500 },
+          { kind: 'readout', index: 0, above: 2.7, below: 3.3, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Load attached' },
+      hint: 'Two controls: the Load attached switch first, then the Load resistance slider.',
+      explain: 'The load sits in parallel with R2: 10 k ∥ 10 k = 5 k, so Vout = 9 × 5 / 15 = 3 V. A divider only gives its ratio when the load is 10 to 100 times larger than R2.',
+    },
+    {
+      id: 'heavy-load',
+      title: 'Break it: a heavy load',
+      body: 'Open **Break something** and choose **Hang a 1 kΩ sensor input on the output**. **V OUT** collapses to under **1 V**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'heavy-load' }, { kind: 'readout', index: 0, below: 1.0, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Now 10 k ∥ 1 k = 0.91 kΩ is the bottom of the divider, so Vout = 9 × 0.91 / (10 + 0.91) = 0.75 V. The load, not the colour bands, sets the output.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. **V OUT** returns to about 3 V.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 2.5, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'misread-band',
+      title: 'Break it: misread a band',
+      body: 'Choose **Misread band**. A **47 kΩ** part is fitted in place of 4.7 kΩ, and **V OUT** jumps to **7.4 V**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'misread-band' }, { kind: 'readout', index: 0, above: 7.0, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Orange as the multiplier is ×1000, so 47 kΩ. With no load, V = 9 × 47 / 57 = 7.42 V instead of 2.88 V. A 3.3 V input would see more than double its limit. Measure a part before you fit it.',
+    },
+    {
+      id: 'repair-again',
+      title: 'Repair again',
+      body: 'Choose **Repair all** to fit the right resistor.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, below: 4, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: colour bands and the divider formula.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What is a resistor banded red-red-brown-gold?',

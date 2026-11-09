@@ -185,6 +185,85 @@ The fraction of the energy that reaches the load is η = R_load / (R_load + r): 
     'For high-drain loads (motors, servos), choose NiMH or Li-ion over alkaline. Their much lower internal resistance means less sag and less wasted heat.',
   ],
 
+  guide: [
+    {
+      id: 'meet-the-battery',
+      title: 'Meet the battery',
+      body: 'Click the **9 V battery** to open its inspector. Inside is an ideal **9 V** source in series with **1.5 Ω**.',
+      check: { kind: 'inspect', part: 'bat' },
+      focus: { part: 'bat' },
+      hint: 'The blue battery block on the right of the bench.',
+      explain: 'A real battery is an EMF plus an internal resistance r. The EMF is what a meter shows with nothing connected; r is what makes the terminal voltage fall as you draw current.',
+    },
+    {
+      id: 'connect-load',
+      title: 'Connect the load',
+      body: 'Press **Connect load**. **TERMINAL V** reads about **8.87 V**, not 9 V, with about **89 mA** flowing through the 100 Ω load.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 8.8, below: 8.95, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.085, below: 0.092, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'I = E / (r + R) = 9 / 101.5 = 88.7 mA, and the terminal voltage is E − I·r = 9 − 0.089 × 1.5 = 8.87 V. The missing 0.13 V was spent inside the battery.',
+    },
+    {
+      id: 'heavier-load',
+      title: 'Draw more current',
+      body: 'Slide **Load resistance** down to about **10 Ω**. The current rises to about **0.78 A** and **TERMINAL V** sags to about **7.8 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Load resistance', max: 12 },
+          { kind: 'readout', index: 0, above: 7.5, below: 8.1, holdMs: 300 },
+          { kind: 'readout', index: 3, above: 0.7, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Load resistance' },
+      hint: 'The slider is logarithmic: 10 Ω is about two-thirds of the way along from the right. Stay above 5 Ω so the load stays cool.',
+      explain: 'The terminal voltage is a straight line: V = E − I·r. At 0.78 A the battery wastes 0.78² × 1.5 = 0.91 W inside itself, heat you never get to use (see INTERNAL LOSS).',
+    },
+    {
+      id: 'keys-in-pocket',
+      title: 'Break it: short the terminals',
+      body: 'Open **Break something** and choose **Keys in the pocket**. **TERMINAL V** collapses to about 0 V and **INTERNAL LOSS** shoots past **50 W**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'short' }, { kind: 'readout', index: 3, above: 20, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'Only the 1.5 Ω inside limits the current: 9 / 1.5 = 6 A, and all of 9 × 6 = 54 W is dumped in the battery. A real PP3 heats fast and can rupture, which is why 9 V batteries ship with a cap over the terminals.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. **TERMINAL V** climbs back to about 7.8 V.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 0, above: 7.2, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'age-it',
+      title: 'Let the battery age',
+      body: 'Slide **Internal resistance (age)** up to about **15 Ω**. With the same load, **TERMINAL V** falls to about **3.6 V**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'Internal resistance (age)', min: 14 },
+          { kind: 'readout', index: 0, above: 3.2, below: 4.0, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:Internal resistance (age)' },
+      explain: 'A tired battery loses far more in internal resistance than in EMF. Here I = 9 / 25 = 0.36 A and the terminal sits at 9 − 0.36 × 15 = 3.6 V. Unloaded it would still read about 9 V, which is why you test a battery under load.',
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: EMF, internal resistance and what a load does to the terminal voltage.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'A battery has E = 9 V and r = 2 Ω and drives a 16 Ω load. What is the terminal voltage?',

@@ -224,6 +224,85 @@ The current-divider shortcut gives the same answer: I₂ = I·R₃/(R₂ + R₃)
     "Series resistors share voltage. High-voltage dividers use several resistors in series to stay inside each part's maximum working voltage.",
   ],
 
+  guide: [
+    {
+      id: 'find-r1',
+      title: 'Find the series resistor',
+      body: 'Click **R1** to open its inspector. It is **1 kΩ** and carries the **whole** current.',
+      check: { kind: 'inspect', part: 'r1' },
+      focus: { part: 'r1' },
+      hint: 'The first resistor after the battery, before the two parallel ones.',
+      explain: 'Everything that flows into the parallel pair has to pass through R1 first. That is what series means: one path, one current.',
+    },
+    {
+      id: 'connect',
+      title: 'Connect the battery',
+      body: 'Press **Connect battery**. **TOTAL I** is about **2.6 mA**; it splits into **I(R2)** about **1.55 mA** and **I(R3)** about **1.03 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'status', is: 'POWERED' },
+          { kind: 'readout', index: 0, above: 0.0023, below: 0.0029, holdMs: 300 },
+          { kind: 'readout', index: 1, above: 0.0014, below: 0.0017, holdMs: 300 },
+          { kind: 'readout', index: 2, above: 0.0009, below: 0.0012, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'power' },
+      explain: 'R2 ∥ R3 = 2.2k × 3.3k / 5.5k = 1.32 kΩ, so the total is 1 k + 1.32 k = 2.32 kΩ (plus 0.6 Ω inside the pack) and I = 6 / 2320 ≈ 2.6 mA. The junction sits at 3.41 V, and 1.55 + 1.03 = 2.58 mA: what goes in must come out.',
+    },
+    {
+      id: 'fatten-r3',
+      title: 'Make R3 the easy path',
+      body: 'Slide **R3** down to about **330 Ω**. The low-resistance branch hogs the current: **I(R3)** rises to about **4 mA**.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'R3', min: 250, max: 420 },
+          { kind: 'readout', index: 2, above: 0.0035, below: 0.0046, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:R3' },
+      hint: 'The slider is logarithmic. Anything from 250 to 420 Ω counts.',
+      explain: 'Parallel branches share the same voltage, so each carries V / R: the smaller resistor takes more. The junction fell to about 1.3 V and R2 now carries only 0.6 mA.',
+    },
+    {
+      id: 'starve-r3',
+      title: 'Starve R3',
+      body: 'Slide **R3** up to about **100 kΩ**. **I(R3)** shrinks to almost nothing, and the junction rises toward 4.1 V.',
+      check: {
+        kind: 'all',
+        of: [
+          { kind: 'tweak', target: 'R3', min: 50000 },
+          { kind: 'readout', index: 2, below: 0.0001, holdMs: 300 },
+        ],
+      },
+      focus: { control: 'tweak:R3' },
+      explain: 'A huge resistor in parallel hardly changes anything: the total drops to about 1.9 mA, just R1 + R2 = 3.2 kΩ at work. A parallel combination is always smaller than its smallest branch, and a very large branch almost vanishes from the sum.',
+    },
+    {
+      id: 'solder-bridge',
+      title: 'Break it: a solder bridge',
+      body: 'Open **Break something** and choose **Solder bridge shorts the parallel pair**. **JUNCTION V** falls to about 0 V and **TOTAL I** rises to about **6 mA**.',
+      check: { kind: 'all', of: [{ kind: 'break', failure: 'bridge' }, { kind: 'readout', index: 3, below: 0.1, holdMs: 300 }] },
+      focus: { control: 'break' },
+      explain: 'A short is a zero-ohm branch, and in parallel it takes everything. R2 and R3 carry nothing and R1 alone sets the current: 6 V / 1 kΩ = 6 mA.',
+    },
+    {
+      id: 'repair',
+      title: 'Repair the bench',
+      body: 'Open **Break something** again and choose **Repair all**. **JUNCTION V** comes back above 3 V.',
+      check: { kind: 'all', of: [{ kind: 'action', action: 'repair' }, { kind: 'readout', index: 3, above: 3, holdMs: 300 }] },
+      focus: { control: 'break' },
+    },
+    {
+      id: 'quiz',
+      title: 'Check yourself',
+      body: 'Answer the questions in **Check yourself** below: series adds, parallel shares.',
+      check: { kind: 'quiz' },
+      focus: { control: 'quiz' },
+    },
+  ],
+
   quiz: [
     {
       q: 'What is 4.7 kΩ ∥ 4.7 kΩ?',

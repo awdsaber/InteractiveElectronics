@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultLessonId } from '../../lessons'
+import { defaultLessonId, lessons } from '../../lessons'
 import { DEFAULT_SETTINGS, asCode, asGuideSaves, asProgress, asSettings, debounce, lessonFromHash, loadJSON, saveJSON, useStore } from './store'
 
 afterEach(() => {
@@ -99,7 +99,7 @@ describe('store actions', () => {
 
 describe('part inspector selection', () => {
   it('selects a part of the lesson, ignores unknown ids, clears on close and on lesson change', () => {
-    useStore.getState().selectLesson('resistor-codes-divider')
+    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
     expect(useStore.getState().selectedPart).toBeNull()
     useStore.getState().selectPart('r1')
     expect(useStore.getState().selectedPart).toBe('r1')
@@ -113,7 +113,7 @@ describe('part inspector selection', () => {
   })
 
   it('zoom to part and reset view are camera requests; selecting alone never moves the camera', () => {
-    useStore.getState().selectLesson('resistor-codes-divider')
+    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
     const v0 = useStore.getState().view
     expect(v0.partId).toBeNull()
     useStore.getState().selectPart('r1')
@@ -160,7 +160,7 @@ describe('guided steps in the store', () => {
     useStore.getState().setGuideMode('guided')
     // the inspector is still open on r1, so the step passes as soon as the guide resumes
     expect(useStore.getState().guide?.current).toBe(1)
-    useStore.getState().selectLesson('resistor-codes-divider')
+    useStore.getState().selectLesson(lessons.find((l) => !l.guide)!.id) // any lesson that has no guide yet
     expect(useStore.getState().guide).toBeNull()
     expect(useStore.getState().guideMode).toBe('free')
   })
