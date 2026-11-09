@@ -575,6 +575,8 @@ export interface BehaviorMcu {
   /** restart the uploaded sketch from setup() */
   reset(): void
   injectEdge(pin: number, level: number | boolean, tMicros: number): void
+  /** run `fn` as an interrupt handler at MCU time `tMicros` (timer libraries such as TimerOne); it respects noInterrupts() */
+  schedule?(tMicros: number, fn: () => unknown): void
   serialIn(text: string): void
   /** a line on the serial monitor from outside the sketch (e.g. the ESP32 ROM bootloader) */
   serialOut(line: string): void
