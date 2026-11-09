@@ -4,3 +4,4 @@
 *.glb binary
 graphify-out/** merge=ours
 docs/decisions.md merge=union
+src/engine/behaviors/README.md merge=union
