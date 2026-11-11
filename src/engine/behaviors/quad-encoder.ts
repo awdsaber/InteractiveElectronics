@@ -73,6 +73,25 @@ interface State {
   omega: number
   /** the state index the count is measured from (the shaft position when counting began) */
   baseN: number
+  /** the host runs the MCU in lockstep (ctx.mcu.microsAt): edges are made in onStep, one step at a time */
+  jit: boolean
+  /** ω at the last onStep instant, rad/s (the step's edge rate is the mean of its two ends) */
+  wPrev: number
+  /** the params as of the last tick, so onStep parses nothing */
+  cfg: Cfg
+}
+
+interface Cfg {
+  motor: string
+  key: string
+  /** edges per radian */
+  k: number
+  pins: [number, number]
+  swap: boolean
+  isrUs: number
+  glitchRate: number
+  glitchUs: number
+  noiseHz: number
 }
 
 const states = new WeakMap<BehaviorContext, State>()
@@ -83,7 +102,8 @@ function stateOf(ctx: BehaviorContext): State {
       armed: false, lastNow: 0, tSched: 0, p: 2.5, rt: new Float64Array(CAP), rn: new Int32Array(CAP), total: 0,
       curStep: 0, curNow: 0, lvl: [1, 1], lastInj: [-1e9, -1e9], floating: [false, false], nextNoise: [0, 0],
       lastAcc: -1e9, lastAccT: -1e9, nextGlitch: 1e18, lost: 0, glitches: 0, noise: 0, rng: 1, offset: 0,
-      swClosed: [false, false], omega: 0, baseN: N0,
+      swClosed: [false, false], omega: 0, baseN: N0, jit: false, wPrev: 0,
+      cfg: { motor: 'm1', key: 'm1.omega', k: 44 / TWO_PI, pins: [2, 3], swap: false, isrUs: 12, glitchRate: 0, glitchUs: 20, noiseHz: 200 },
     }
     states.set(ctx, s)
   }
@@ -174,6 +194,7 @@ export const behavior: Behavior = {
     const floatA = pullA !== '' && !ctx.netlist.elements.some((e) => e.id === pullA)
     const floatB = pullB !== '' && !ctx.netlist.elements.some((e) => e.id === pullB)
     const pins: [number, number] = [pinA, pinB]
+    s.cfg = { motor, key, k: edgesPerRev / TWO_PI, pins, swap, isrUs, glitchRate, glitchUs, noiseHz }
 
     // a restart of the sketch (upload, reset) sets the MCU clock back: begin again. A fresh sketch finds both
     // lines HIGH (the pull-ups) and the shaft at state 11.
@@ -191,6 +212,7 @@ export const behavior: Behavior = {
       s.baseN = Math.floor(s.p)
       s.nextNoise = [now + gap(s, noiseHz), now + gap(s, noiseHz)]
       s.nextGlitch = glitchRate > 0 ? now + gap(s, glitchRate) : 1e18
+      s.wPrev = omega
     }
     s.lastNow = now
     s.offset = Math.max(s.offset, now - ctx.t * 1e6)
@@ -217,82 +239,41 @@ export const behavior: Behavior = {
     }
     if (glitchRate <= 0) s.nextGlitch = 1e18
     else if (s.nextGlitch > 1e17) s.nextGlitch = now + gap(s, glitchRate)
-
-    // look ahead so the advance that follows this tick already has its edges: two frames (at least 25 ms)
-    // past the MCU's clock, and past where the bench will advance the MCU to (the end of this frame, which
-    // is further than two frames ahead of `now` when the MCU has fallen behind)
-    const target = ctx.t * 1e6 + s.offset
-    const horizon = Math.max(now + Math.max(2 * dt * 1e6, 25000), target + Math.max(dt * 1e6, 25000))
     if (s.tSched < now) s.tSched = now
 
-    // ── the true edges, from ∫ω ──
-    const rUs = rate * 1e-6 // edges per µs
-    const p0 = s.p
-    const t0 = s.tSched
-    const span = Math.max(0, horizon - t0) // the horizon can fall behind the last one when the MCU catches up: never run time backwards
-    const p1 = p0 + rUs * span
-    if (rUs !== 0 && span > 0) {
-      const up = rUs > 0
-      let guard = 0
-      // integer crossings of p between p0 and p1, in time order
-      let k = up ? Math.floor(p0) + 1 : Math.floor(p0)
-      let nPrev = Math.floor(p0)
-      while ((up ? k <= Math.floor(p1) : k > Math.floor(p1)) && guard++ < 200000) {
-        const t = t0 + (k - p0) / rUs
-        const nNew = up ? k : k - 1
-        pushEdge(ctx, s, t, nNew, nPrev, pins, swap, isrUs)
-        nPrev = nNew
-        k += up ? 1 : -1
-      }
-    }
-    s.p = p1
-    s.tSched = Math.max(s.tSched, horizon)
+    // a lockstep host: onStep makes every step's edges from that step's ω, just in time
+    s.jit = !!m.microsAt
+    if (s.jit) return
 
-    // ── noise on a floating pin, and the common-mode glitches ──
-    for (let i = 0; i < 2; i++) {
-      if (!s.floating[i]) continue
-      let guard = 0
-      while (s.nextNoise[i] < horizon && guard++ < 100000) {
-        const g = Math.max(50, gap(s, noiseHz))
-        const at = Math.max(s.nextNoise[i], now, s.lastInj[i] + 1)
-        m.injectEdge(pins[i], 0, at)
-        m.injectEdge(pins[i], 1, at + 0.3 * g)
-        s.lvl[i] = 1
-        s.lastInj[i] = at + 0.3 * g
-        s.noise++
-        s.nextNoise[i] = at + g
-      }
-    }
-    if (glitchRate > 0) {
-      let guard = 0
-      while (s.nextGlitch < horizon && guard++ < 100000) {
-        const at = Math.max(s.nextGlitch, now)
-        // both channels flip, then flip back to whatever the true level is by then
-        const n1 = nAt(s, at, p1)
-        const n2 = nAt(s, at + glitchUs, p1)
-        for (let i = 0; i < 2; i++) {
-          if (s.floating[i]) continue
-          const cur = i === 0 ? (swap ? levelB(n1) : levelA(n1)) : swap ? levelA(n1) : levelB(n1)
-          const back = i === 0 ? (swap ? levelB(n2) : levelA(n2)) : swap ? levelA(n2) : levelB(n2)
-          m.injectEdge(pins[i], 1 - cur, at)
-          m.injectEdge(pins[i], back, at + glitchUs)
-          s.lvl[i] = back
-          s.lastInj[i] = Math.max(s.lastInj[i], at + glitchUs)
-        }
-        s.glitches++
-        s.nextGlitch = at + glitchUs + gap(s, glitchRate)
-      }
-    }
+    // otherwise look ahead so the advance that follows this tick already has its edges: two frames (at
+    // least 25 ms) past the MCU's clock, and past where the host will advance the MCU to (the end of this
+    // frame, which is further than two frames ahead of `now` when the MCU has fallen behind)
+    const target = ctx.t * 1e6 + s.offset
+    const horizon = Math.max(now + Math.max(2 * dt * 1e6, 25000), target + Math.max(dt * 1e6, 25000))
+    generate(ctx, s, now, horizon, rate)
   },
 
-  // the open-drain outputs for the 3D LED and the scope: the switches follow the true edges
-  onStep(ctx, t) {
+  // Lockstep host: this step's edges, from the mean ω over the step, up to the MCU time of `t` (the MCU
+  // has not passed it yet). Then the open-drain outputs for the 3D LED and the scope: the switches
+  // follow the true edges.
+  onStep(ctx, t, sol) {
     const s = stateOf(ctx)
+    const m = ctx.mcu
+    let T = t * 1e6 + s.offset
+    if (s.jit && m.microsAt) {
+      T = m.microsAt(t)
+      if (s.armed && m.running) {
+        const c = s.cfg
+        const w = ctx.powered ? (sol.extraOf ? sol.extraOf(c.motor, c.key) : (sol.extra[c.key] ?? 0)) || 0 : 0
+        if (T > s.tSched) generate(ctx, s, m.timeMicros, T, ((s.wPrev + w) / 2) * c.k)
+        s.wPrev = w
+      }
+    }
     const ids = [String(ctx.params.swA ?? 'enc_sa'), String(ctx.params.swB ?? 'enc_sb')]
     let a: number = 1
     let b: number = 1
     if (s.armed) {
-      const r = seek(s, s.curStep, t * 1e6 + s.offset)
+      const r = seek(s, s.curStep, T)
       s.curStep = r.c
       a = levelA(r.n)
       b = levelB(r.n)
@@ -336,6 +317,75 @@ export const behavior: Behavior = {
   reset(ctx) {
     disarm(stateOf(ctx))
   },
+}
+
+/**
+ * Make every edge from s.tSched up to MCU time `horizon` at `rate` edges/s (signed): the true edges from
+ * ∫ω, then the noise on a floating pin and the common-mode glitches. `now` is the MCU's clock, the
+ * earliest an edge can still be delivered.
+ */
+function generate(ctx: BehaviorContext, s: State, now: number, horizon: number, rate: number): void {
+  const m = ctx.mcu
+  const { pins, swap, isrUs, noiseHz, glitchRate, glitchUs } = s.cfg
+
+  // ── the true edges, from ∫ω ──
+  const rUs = rate * 1e-6 // edges per µs
+  const p0 = s.p
+  const t0 = s.tSched
+  const span = Math.max(0, horizon - t0) // the horizon can fall behind the last one when the MCU catches up: never run time backwards
+  const p1 = p0 + rUs * span
+  if (rUs !== 0 && span > 0) {
+    const up = rUs > 0
+    let guard = 0
+    // integer crossings of p between p0 and p1, in time order
+    let k = up ? Math.floor(p0) + 1 : Math.floor(p0)
+    let nPrev = Math.floor(p0)
+    while ((up ? k <= Math.floor(p1) : k > Math.floor(p1)) && guard++ < 200000) {
+      const t = t0 + (k - p0) / rUs
+      const nNew = up ? k : k - 1
+      pushEdge(ctx, s, t, nNew, nPrev, pins, swap, isrUs)
+      nPrev = nNew
+      k += up ? 1 : -1
+    }
+  }
+  s.p = p1
+  s.tSched = Math.max(s.tSched, horizon)
+
+  // ── noise on a floating pin, and the common-mode glitches ──
+  for (let i = 0; i < 2; i++) {
+    if (!s.floating[i]) continue
+    let guard = 0
+    while (s.nextNoise[i] < horizon && guard++ < 100000) {
+      const g = Math.max(50, gap(s, noiseHz))
+      const at = Math.max(s.nextNoise[i], now, s.lastInj[i] + 1)
+      m.injectEdge(pins[i], 0, at)
+      m.injectEdge(pins[i], 1, at + 0.3 * g)
+      s.lvl[i] = 1
+      s.lastInj[i] = at + 0.3 * g
+      s.noise++
+      s.nextNoise[i] = at + g
+    }
+  }
+  if (glitchRate > 0) {
+    let guard = 0
+    while (s.nextGlitch < horizon && guard++ < 100000) {
+      const at = Math.max(s.nextGlitch, now)
+      // both channels flip, then flip back to whatever the true level is by then
+      const n1 = nAt(s, at, p1)
+      const n2 = nAt(s, at + glitchUs, p1)
+      for (let i = 0; i < 2; i++) {
+        if (s.floating[i]) continue
+        const cur = i === 0 ? (swap ? levelB(n1) : levelA(n1)) : swap ? levelA(n1) : levelB(n1)
+        const back = i === 0 ? (swap ? levelB(n2) : levelA(n2)) : swap ? levelA(n2) : levelB(n2)
+        m.injectEdge(pins[i], 1 - cur, at)
+        m.injectEdge(pins[i], back, at + glitchUs)
+        s.lvl[i] = back
+        s.lastInj[i] = Math.max(s.lastInj[i], at + glitchUs)
+      }
+      s.glitches++
+      s.nextGlitch = at + glitchUs + gap(s, glitchRate)
+    }
+  }
 }
 
 /** the state index at MCU time T from the ring of generated edges (beyond it, the end phase pEnd) */

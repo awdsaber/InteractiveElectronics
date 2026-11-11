@@ -446,6 +446,24 @@ describe('VirtualMcu: errors and guards', () => {
     expect(pins.length).toBe(1)
   })
 
+  it('keepBudget: advances in chunks share one statement budget, as if advanced at once', async () => {
+    const run = async (chunks: number, keepBudget: boolean) => {
+      let last = 0
+      const { mcu } = harness({ libraries: { Probe: { set: (v: number) => (last = v) } } })
+      mcu.load(`long x = 0;\nvoid loop() { while (true) { x++; Probe.set(x); } }`)
+      mcu.start()
+      for (let i = 0; i < chunks; i++) await mcu.advance(50 / chunks, { keepBudget: keepBudget && i > 0 })
+      expect(mcu.timeMs).toBeCloseTo(50, 9)
+      return last
+    }
+    const whole = await run(1, false)
+    const kept = await run(5, true)
+    const fresh = await run(5, false)
+    expect(kept).toBeGreaterThan(whole * 0.9)
+    expect(kept).toBeLessThan(whole * 1.1)
+    expect(fresh).toBeGreaterThan(whole * 2) // each fresh advance hands out a whole new budget
+  })
+
   it('for(;;) and a loop() that never waits are also bounded', async () => {
     const a = harness()
     a.mcu.load(`void loop() { for (;;) { } }`)

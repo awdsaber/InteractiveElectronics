@@ -407,3 +407,80 @@ describe('tb6612: two channels, several instances', () => {
     expect(cool.set['i_vm.value']).toBeUndefined()
   })
 })
+
+// onPin: a sketch write reaches the bridge at once (the bench applies it from the next transient step),
+// not at the next frame's tick. It trusts a pin only where the last tick saw the input follow it.
+describe('tb6612: inputs follow the sketch between ticks (onPin)', () => {
+  /** the sketch writes `pin` (the circuit has not solved it yet: the node keeps its old voltage) */
+  const write = (f: Fake, pin: number, level: number, mode: PinState['mode'] = 'OUTPUT') => {
+    f.pins[pin] = { mode, level }
+    behavior.onPin!(f.ctx, pin, { mode, level }, 0)
+  }
+
+  it('a new PWM duty sets the driving half at once', () => {
+    const f = fake()
+    drive(f, 1, 0, 150 / 255)
+    f.tick()
+    expect(f.set['ha.value']).toBeCloseTo((150 / 255) * 6, 3)
+    write(f, 5, 0)
+    expect(f.set['ha.value']).toBe(0)
+    write(f, 5, 1)
+    expect(f.set['ha.value']).toBeCloseTo(6, 6)
+  })
+
+  it('IN1/IN2 swapped by the sketch reverse the bridge at once; IN1 = IN2 = HIGH brakes; STBY low opens it', () => {
+    const f = fake()
+    drive(f, 1, 0, 0.5)
+    f.tick()
+    write(f, 7, 0)
+    write(f, 8, 1)
+    expect(f.set['ha.value']).toBe(0)
+    expect(f.set['hb.value']).toBeCloseTo(3, 3)
+    expect([f.set['en_a.closed'], f.set['en_b.closed']]).toEqual([true, true])
+    write(f, 7, 1)
+    expect([f.set['ha.value'], f.set['hb.value'], f.set['en_a.closed'], f.set['en_b.closed']]).toEqual([0, 0, true, true])
+    write(f, 4, 0)
+    expect([f.set['en_a.closed'], f.set['en_b.closed']]).toEqual([false, false])
+  })
+
+  it('the next tick, with the circuit caught up, agrees with what onPin set', () => {
+    const f = fake()
+    drive(f, 1, 0, 0.5)
+    f.tick()
+    write(f, 5, 0.25)
+    const fast = f.set['ha.value']
+    expect(fast).toBeCloseTo(1.5, 3)
+    f.pin(5, 0.25)
+    f.tick()
+    expect(f.set['ha.value']).toBe(fast)
+  })
+
+  it('an input that did not follow its pin at the last tick (a broken wire) waits for the tick', () => {
+    const f = fake()
+    drive(f, 1, 0, 1)
+    f.nodeV.d5 = 0 // PWMA's wire is off: the input sits LOW whatever the pin does
+    f.tick()
+    expect(f.set['ha.value']).toBe(0)
+    write(f, 5, 0.5)
+    expect(f.set['ha.value']).toBe(0)
+  })
+
+  it('a pin let go (INPUT, as on stop or hold) is left to the tick, which reads the voltage', () => {
+    const f = fake()
+    drive(f, 1, 0, 1)
+    f.tick()
+    write(f, 5, 0, 'INPUT')
+    expect(f.set['ha.value']).toBeCloseTo(6, 6)
+  })
+
+  it('nothing before the first tick, and pins it does not use are ignored', () => {
+    const f = fake()
+    write(f, 5, 1)
+    expect(f.set['ha.value']).toBeUndefined()
+    drive(f, 1, 0, 1)
+    f.tick()
+    const before = { ...f.set }
+    write(f, 9, 1)
+    expect(f.set).toEqual(before)
+  })
+})

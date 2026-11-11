@@ -39,12 +39,14 @@ interface State {
   /** MCU time (µs) at which the last queued edge happens */
   tFree: number
   edgesLast: number
+  /** the pin's level has been handed to the MCU: from then on it reads this model, not the circuit */
+  claimed: boolean
 }
 
 const states = new WeakMap<BehaviorContext, State>()
 function stateOf(ctx: BehaviorContext): State {
   let s = states.get(ctx)
-  if (!s) states.set(ctx, (s = { target: 0, presses: 0, events: 0, lastNow: 0, lvl: 1, v: 5, tFree: 0, edgesLast: 0 }))
+  if (!s) states.set(ctx, (s = { target: 0, presses: 0, events: 0, lastNow: 0, lvl: 1, v: 5, tFree: 0, edgesLast: 0, claimed: false }))
   return s
 }
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
@@ -72,6 +74,7 @@ function restart(s: State, vcc: number) {
   s.v = vcc
   s.tFree = 0
   s.edgesLast = 0
+  s.claimed = false
 }
 
 export const behavior: Behavior = {
@@ -141,6 +144,14 @@ function inject(ctx: BehaviorContext, s: State, closing: boolean, now: number) {
   let t = Math.max(now + 20, s.tFree)
   s.edgesLast = 0
   if (R === null) return // the button is not connected to the pin
+
+  // Hand the MCU the pin's settled level now, before the first edge: until then it reads the pin from
+  // the circuit, which models the same RC and (the MCU running in lockstep with it) may already show the
+  // contact's effect, so the first crossing would find the pin at its new level and raise no interrupt.
+  if (!s.claimed) {
+    m.injectEdge(pin, s.lvl, now)
+    s.claimed = true
+  }
 
   let lastAt = t
   const emit = (at: number, level: 0 | 1) => {
