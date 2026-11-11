@@ -50,8 +50,11 @@ function SwitchSlideBody({ part, state }: PartProps) {
 }
 
 function PotentiometerBody({ part, state }: PartProps) {
-  const v = Math.min(1, Math.max(0, state.value ?? num(part, 'value', 0.5)))
-  const angle = deg(135 - v * 270)
+  // params.endless: a rotary encoder's knob, turning freely (value 0..1 = one turn) with a knurled cap
+  const endless = bool(part, 'endless', false)
+  const raw = state.value ?? num(part, 'value', endless ? 0 : 0.5)
+  const v = endless ? raw - Math.floor(raw) : Math.min(1, Math.max(0, raw))
+  const angle = endless ? deg(-v * 360) : deg(135 - v * 270)
   const knob = part.color ?? '#33302c'
   return (
     <group>
@@ -60,13 +63,14 @@ function PotentiometerBody({ part, state }: PartProps) {
       ))}
       <Leg x={-0.48} z={-0.3} top={0.05} square r={0.035} />
       <Leg x={0.48} z={-0.3} top={0.05} square r={0.035} />
-      <Block p={[0, 0.02, 0]} s={[0.98, 0.55, 0.78]} color={'#2f4f8f'} />
+      <Block p={[0, 0.02, 0]} s={[0.98, 0.55, 0.78]} color={endless ? '#2b2d30' : '#2f4f8f'} />
       <CylY p={[0, 0.57, 0]} r={0.3} h={0.16} seg={18} color={C.steel} />
       <group position={[0, 0.73, 0]} rotation={[0, angle, 0]} userData={SPINS}>
-        <CylY p={[0, 0, 0]} r={0.29} h={0.5} seg={14} color={knob} />
+        <CylY p={[0, 0, 0]} r={0.29} h={0.5} seg={endless ? 20 : 14} color={knob} />
         <Decal p={[0, 0.502, -0.13]} size={[0.05, 0.22]} color={C.white} />
+        {endless && <Decal p={[0, 0.503, 0]} size={[0.34, 0.34]} round color="#55504a" />}
       </group>
-      <Decal p={[0, 0.571, 0]} size={[0.9, 0.9]} round color="#3c5d9c" />
+      <Decal p={[0, 0.571, 0]} size={[0.9, 0.9]} round color={endless ? '#3f4448' : '#3c5d9c'} />
     </group>
   )
 }

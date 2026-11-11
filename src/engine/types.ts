@@ -615,10 +615,15 @@ export interface InstrumentDefaults {
   chart?: ChartDefaults
   /** a logic analyzer tab (timeline + protocol decode), fed by the `logic-analyzer` behavior */
   logic?: LogicDefaults
+  /**
+   * a "Game controller" tab (axes, buttons, raw counts, the report descriptor), fed by a `usb-hid`
+   * behavior instance's exposed HidView
+   */
+  hid?: { instance: string }
   /** the instrument panel starts open (default closed) */
   open?: boolean
   /** which instrument the panel shows first (default: scope when it has one, else chart) */
-  view?: 'scope' | 'chart' | 'logic'
+  view?: 'scope' | 'chart' | 'logic' | 'hid'
 }
 
 /** a bench action a guide step can wait for ('place' = any single part placed by hand) */

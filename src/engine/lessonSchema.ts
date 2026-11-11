@@ -146,8 +146,9 @@ const instruments = z.object({
       span: num.positive().optional(),
     })
     .optional(),
+  hid: z.object({ instance: z.string().min(1) }).optional(),
   open: z.boolean().optional(),
-  view: z.enum(['scope', 'chart', 'logic']).optional(),
+  view: z.enum(['scope', 'chart', 'logic', 'hid']).optional(),
 })
 
 const status = z.enum(['BARE PCB', 'ASSEMBLING', 'READY', 'POWERED', 'RUNNING', 'FAULT'])
@@ -407,6 +408,9 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
     })
   }
   if (ins?.view === 'logic' && !ins.logic) errs.push('instruments.view: "logic" needs instruments.logic')
+  if (ins?.hid && !refs.some((r) => r.id === 'usb-hid' && r.instance === ins.hid!.instance))
+    errs.push(`instruments.hid: no "usb-hid" behavior instance "${ins.hid.instance}"`)
+  if (ins?.view === 'hid' && !ins.hid) errs.push('instruments.view: "hid" needs instruments.hid')
   ins?.chart?.signals.forEach((sig, i) => {
     const where = `instruments.chart.signals.${i}`
     if (typeof sig === 'number') {

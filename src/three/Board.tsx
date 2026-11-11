@@ -99,6 +99,8 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     if (pin && pin.type === 'PIN') s.value = snap.pins[pin.pin]?.servoDeg ?? 90
   }
   if (p.kind === 'potentiometer' && cid) s.value = snap.elementValues[`${cid}.pos`] ?? 0.5
+  // a knob a behavior turns (a rotary encoder): params.valueKey names a published 0..1 value
+  if (p.kind === 'potentiometer' && typeof p.params?.valueKey === 'string') s.value = snap.published[p.params.valueKey] ?? 0
   // a slide switch that is the lesson's power element sits on while the bench is powered
   if (p.kind === 'switch-slide' && cid && cid === lesson.powerElementId) s.value = snap.assembly.powered[cid] ? 1 : 0
   if (p.kind === 'multimeter') {
