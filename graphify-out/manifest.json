@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794426308.3458717,
-    "seen": 1794426552.5891886,
-    "ast_hash": "317ff7d4338cf6704886435850ea3a3a",
+    "mtime": 1794426590.4749205,
+    "seen": 1794426781.96791,
+    "ast_hash": "573aac27bd2e0a4f65bfb7743d1f690c",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -210,9 +210,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/controls.tsx": {
-    "mtime": 1794003642.2178974,
-    "seen": 1794010374.609711,
-    "ast_hash": "3b96f1427efe4c0d2f3a8e9bd793bf4f",
+    "mtime": 1794426590.4854598,
+    "seen": 1794426781.96791,
+    "ast_hash": "07a74c0ab6c4e201c98f42107a0d9a39",
     "semantic_hash": ""
   },
   "src/three/parts/footprints.ts": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794426308.3072367,
-    "seen": 1794426552.5891886,
-    "ast_hash": "13b18a9ee67380759579d49ae2107b68",
+    "mtime": 1794426590.4674067,
+    "seen": 1794426781.968915,
+    "ast_hash": "a27941c8639f1894cf31622d37fde51a",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794426308.3177688,
-    "seen": 1794426552.5891886,
-    "ast_hash": "ff74d06ce2382397c87a36a21e2b4981",
+    "mtime": 1794426590.4729218,
+    "seen": 1794426781.96791,
+    "ast_hash": "4294232ac2d34f720a3590cbabc5647a",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -960,9 +960,9 @@
     "semantic_hash": ""
   },
   "src/lessons/index.ts": {
-    "mtime": 1794426308.3694654,
-    "seen": 1794426552.5891886,
-    "ast_hash": "463d2e8ced03f81429cef5783fee78f9",
+    "mtime": 1794426602.4639504,
+    "seen": 1794426781.96791,
+    "ast_hash": "8871aca5ad81024943c3730714761a1f",
     "semantic_hash": ""
   },
   "src/lessons/layout.ts": {
@@ -984,21 +984,21 @@
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794420754.493369,
-    "seen": 1794420985.5195775,
-    "ast_hash": "b5dc51badf7481154badcd6fa0eadeef",
+    "mtime": 1794426590.4844553,
+    "seen": 1794426781.96791,
+    "ast_hash": "6d6a746a867d784d4ed449d38ccefc6e",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794420754.3635745,
-    "seen": 1794420985.520086,
-    "ast_hash": "80cf7bb9f79604f1997d21d3fc61212a",
+    "mtime": 1794426590.4694054,
+    "seen": 1794426781.968915,
+    "ast_hash": "00337df87a6093db5bd49eb071272f6a",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794420754.4685304,
-    "seen": 1794420985.520086,
-    "ast_hash": "b1fcfa0581956b60844d8fac71fd66f0",
+    "mtime": 1794426590.4759207,
+    "seen": 1794426781.968915,
+    "ast_hash": "2fe649bfac50563b88808d74d12539ca",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "src/ui/Instruments.tsx": {
-    "mtime": 1794224366.9285595,
-    "seen": 1794224535.4952052,
-    "ast_hash": "92565cb75208b191a7fc0ef9e72a3f19",
+    "mtime": 1794426590.488463,
+    "seen": 1794426781.96791,
+    "ast_hash": "fa477da027c66d800de6ccdea02154d8",
     "semantic_hash": ""
   },
   "src/ui/RadioSeg.tsx": {
@@ -2565,6 +2565,48 @@
     "mtime": 1794426308.3017118,
     "seen": 1794426552.5891886,
     "ast_hash": "2c40d2de6f3a17c9bcecd24b9fbbbcf3",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/usb-hid.test.ts": {
+    "mtime": 1794426590.4704063,
+    "seen": 1794426781.96791,
+    "ast_hash": "39eb7190bcb7b8656e1b1800a88f385b",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/usb-hid.ts": {
+    "mtime": 1794426590.4719172,
+    "seen": 1794426781.96791,
+    "ast_hash": "113e0df2adf620c4ca8b704fd0b5ed39",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/leo-bodnar-bu0836.guide.test.ts": {
+    "mtime": 1794426590.4769204,
+    "seen": 1794426781.96791,
+    "ast_hash": "a2a431693673e9e180582d5205212391",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/leo-bodnar-bu0836.test.ts": {
+    "mtime": 1794426590.477924,
+    "seen": 1794426781.96791,
+    "ast_hash": "9548167a43f081bd6ff1b64894709130",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/leo-bodnar-bu0836.ts": {
+    "mtime": 1794426590.4789228,
+    "seen": 1794426781.96791,
+    "ast_hash": "3a035cd31f5cd5d03651b161198b99f4",
+    "semantic_hash": ""
+  },
+  "src/ui/GameController.tsx": {
+    "mtime": 1794426590.486459,
+    "seen": 1794426781.96791,
+    "ast_hash": "dba25c34f14cd1c621da8375c0e846fb",
+    "semantic_hash": ""
+  },
+  "docs/curriculum/T4/leo-bodnar-bu0836.md": {
+    "mtime": 1794426590.465402,
+    "seen": 1794426781.968915,
+    "ast_hash": "023753775e4cba609104140a71094b98",
     "semantic_hash": ""
   },
   "package-lock.json": {
