@@ -217,6 +217,15 @@ const loopGeo = () => geo('testpoint-loop', () => new THREE.TorusGeometry(0.075,
 
 function TestpointBody({ part }: PartProps) {
   const color = wireColor(part.params?.color ?? part.color, C.wireRed)
+  // params.stub: a bare wire stub soldered into the pad (a practice joint), no sleeve or loop,
+  // so the fillet around it stays in view
+  if (part.params?.stub === true) {
+    return (
+      <group>
+        <Rod a={[0, 0.42, 0]} b={[0, -0.05, 0]} r={0.032} color={C.copper} outline={1} />
+      </group>
+    )
+  }
   return (
     <group>
       <Rod a={[-0.075, 0.18, 0]} b={[-0.03, -0.05, 0]} r={0.018} color={C.tin} outline={1} />

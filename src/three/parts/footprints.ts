@@ -402,7 +402,8 @@ function rawFootprint(part: PartPlacement): Footprint {
         silk: { w: 3.1, d: 2.7 },
       }
     case 'testpoint':
-      return { pads: [tht(0, 0, 0.2, 'round', 0.1)] }
+      // params.pad: pad diameter in board units (default 0.2; a big practice pad for hand soldering)
+      return { pads: [tht(0, 0, num(part, 'pad', 0.2), 'round', 0.1)] }
     case 'oled':
       return { pads: row(4, PITCH, -1.27, (x, z) => tht(x, z, 0.17)) }
     case 'sensor-ultrasonic':

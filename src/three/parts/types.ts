@@ -24,6 +24,12 @@ export interface PartRenderState {
   readingUnit?: string
   /** live LED colour '#rrggbb' (addressable RGB LEDs); not in the bake key, so it never rebakes */
   glowColor?: string
+  /**
+   * hand-soldered joint quality (an index into `QUALITIES` of the `solder-joints` behavior: 0 good,
+   * 1 cold, 2 insufficient, 3 excess, 4 bridge, 5 overheated, 6 lifted), from the published value
+   * named by `params.jointKey`. Discrete, so it is in the bake key; unset, the fillet is the default
+   */
+  joint?: number
 }
 
 export const DEFAULT_PART_STATE: PartRenderState = {
