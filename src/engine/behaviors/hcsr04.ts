@@ -62,6 +62,8 @@ interface State {
   viewT0: number
   viewDelay: number
   viewWidth: number
+  /** viewT0 moves to the first solve at or after it */
+  viewSnap: boolean
   echoHi: boolean
   trigHi: boolean
   /** MCU µs at sim time 0: maps a frame's sim time to MCU time */
@@ -77,7 +79,7 @@ function stateOf(ctx: BehaviorContext): State {
   if (!s) {
     s = {
       trigRise: -1, busyUntil: -1e12, rng: 1, pings: 0, lost: 0, ignored: 0, strays: 0, echoUs: 0,
-      pend: false, pendTf: 0, pendDelay: 0, pendWidth: 0, viewT0: -1e9, viewDelay: 0, viewWidth: 0,
+      pend: false, pendTf: 0, pendDelay: 0, pendWidth: 0, viewT0: -1e9, viewDelay: 0, viewWidth: 0, viewSnap: false,
       echoHi: false, trigHi: false, offset: 0, hasEcho: false, hasMon: false, hasWire: true,
     }
     states.set(ctx, s)
@@ -125,6 +127,7 @@ function disarm(ctx: BehaviorContext, s: State) {
   s.echoUs = 0
   s.pend = false
   s.viewT0 = -1e9
+  s.viewSnap = false
   if (s.echoHi && s.hasEcho) ctx.setParam(String(ctx.params.echoSrc ?? 'echo_src'), 'value', 0)
   if (s.trigHi && s.hasMon) ctx.setParam(String(ctx.params.trigMon ?? 'trig_mon'), 'value', 0)
   s.echoHi = false
@@ -231,12 +234,19 @@ export const behavior: Behavior = {
       s.viewT0 = Math.max(ctx.t, (s.pendTf - s.offset) * 1e-6)
       s.viewDelay = s.pendDelay
       s.viewWidth = s.pendWidth
+      s.viewSnap = true
     }
   },
 
   // the scope's ECHO and TRIG marker: set from the replay window at each solve
   onStep(ctx, t) {
     const s = stateOf(ctx)
+    // the replay starts at the first solve at or after viewT0 (that solve is r = 0, so the marker
+    // shows even when viewT0 falls exactly on a step's start)
+    if (s.viewSnap && t >= s.viewT0 - 1e-12) {
+      s.viewT0 = t
+      s.viewSnap = false
+    }
     const r = (t - s.viewT0) * 1e6
     const echo = r >= s.viewDelay && r < s.viewDelay + s.viewWidth && s.hasWire
     if (echo !== s.echoHi) {

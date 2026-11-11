@@ -91,8 +91,13 @@ describe('T7 pid-motor-control lesson', () => {
     expect(t63).toBeGreaterThan(0.15 * 0.85)
     expect(t63).toBeLessThan(0.15 * 1.15)
     expect(peak).toBeLessThan(153) // first order: no overshoot beyond the 2.8 rpm quantisation
+    // no steady-state error in the true speed; the printed measurement is within one count (2.84 rpm) of
+    // it. (Its mean is not zero: 150 rpm is 52.8 counts a sample, a 53-53-53-53-52 pattern that repeats
+    // every 5 samples, exactly the sketch's 50 ms print period, so the print catches one phase of it.)
     const e = await window(b, 3.2, 4.9, ERR)
-    expect(Math.abs(e.mean)).toBeLessThan(2)
+    expect(e.lo).toBeGreaterThan(-2.9)
+    expect(e.hi).toBeLessThan(2.9)
+    expect(Math.abs((await window(b, 3.2, 4.9, TRUE)).mean - 150)).toBeLessThan(0.5)
     const tr = await window(b, 4.0, 4.9, TRUE)
     expect(tr.lo).toBeGreaterThan(147)
     expect(tr.hi).toBeLessThan(153)
@@ -147,13 +152,25 @@ describe('T7 pid-motor-control lesson', () => {
     expect(Math.abs(tr.mean - 150)).toBeLessThan(3) // the speed itself barely changes
   })
 
-  it('failure too-much-gain: Kp 8 oscillates between the limits instead of settling', async () => {
+  it('the stability limit: P only holds at Kp 10 and oscillates for good at Kp 14 (Ku ≈ 12; an ideal 100 Hz loop: 14)', async () => {
+    // on the 60 rpm step, where the PWM has room both ways
+    const calm = build({ tweaks: { [KP]: 10 } })
+    const c = await window(calm, 1.0, 1.9, TRUE)
+    calm.dispose()
+    expect(c.hi - c.lo).toBeLessThan(20) // the encoder's 2.84 rpm steps × Kp: chatter, not a growing swing
+    const ring = build({ tweaks: { [KP]: 14 } })
+    const r = await window(ring, 1.0, 1.9, TRUE)
+    ring.dispose()
+    expect(r.hi - r.lo).toBeGreaterThan(30)
+  })
+
+  it('failure too-much-gain: Kp 20 oscillates between the PWM limits instead of settling', async () => {
     const b = build({ failure: 'too-much-gain' })
-    await runTo(b, 3.5)
-    const tr = await window(b, 3.5, 4.9, TRUE)
-    const du = await window(b, 3.5, 4.9, DUTY)
-    expect(tr.hi - tr.lo).toBeGreaterThan(80)
-    expect(du.hi - du.lo).toBeGreaterThan(100)
+    const tr = await window(b, 1.0, 1.9, TRUE)
+    const du = await window(b, 1.0, 1.9, DUTY)
+    expect(tr.hi - tr.lo).toBeGreaterThan(40) // about 25 to 80 rpm round the 60 rpm setpoint
+    expect(du.lo).toBeLessThan(-95) // full reverse …
+    expect(du.hi).toBeGreaterThan(95) // … to full forward
     b.dispose()
   })
 
@@ -173,7 +190,7 @@ describe('T7 pid-motor-control lesson', () => {
   })
 
   it('failure slow-loop: a tight PI that is crisp at 100 Hz rings without end at 10 Hz', async () => {
-    const tight = { [KP]: 1.5, [KI]: 20 }
+    const tight = { [KP]: 2, [KI]: 35 }
     const fast = build({ tweaks: tight })
     await runTo(fast, 3.5)
     const f = await window(fast, 3.5, 4.9, TRUE)

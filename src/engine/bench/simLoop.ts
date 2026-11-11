@@ -1,9 +1,10 @@
 // The bench engine: assembly state + simulator + virtual MCU + behaviors, framework-free.
 // The zustand store (store.ts) drives it from requestAnimationFrame; tests drive it headless.
 //
-// Per frame: step the circuit (DC or transient), advance the MCU to the same sim time
-// (serially; a frame whose MCU advance is still pending skips it), tick behaviors, check
-// ratings once, then publish a throttled snapshot (~15 Hz) for the UI.
+// Per frame: step the circuit (DC or transient) with the MCU in lockstep (after every ≤ 1 ms of steps
+// the MCU is advanced to the same sim time, so pin writes land at the next step and onStep behaviors
+// feed it edges just in time; a frame asked for while one still awaits the MCU is skipped), then tick
+// behaviors, check ratings once, and publish a throttled snapshot (~15 Hz) for the UI.
 
 import { registry as defaultRegistry, resolveBehaviorRef, type ResolvedBehavior } from '../behaviors'
 import { TranspileError, VirtualMcu } from '../mcu'
@@ -211,6 +212,8 @@ export interface Bench {
 }
 
 const MAX_FRAME = 0.1
+/** the MCU is advanced in lockstep with the circuit, at least every this much sim time (s) */
+const MCU_CHUNK = 1e-3
 /** scope ring default: 32768 rows ≈ 33 s at the default 1 ms step (fewer with substeps) */
 export const SCOPE_SAMPLES = 1 << 15
 /** strip-chart rows kept; the chart samples every 2·span / CHART_SAMPLES of sim time */
@@ -310,8 +313,16 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
 
   // ── MCU ──
   let mcu: VirtualMcu | null = null
+  /** sim time at which the MCU's clock read 0: MCU µs = (t − mcuStart)·1e6 */
   let mcuStart = 0
-  let mcuPending: Promise<void> | null = null
+  /** a sketch was just started: it first runs after the next frame's tick (see frameBody) */
+  let freshSketch = false
+  /**
+   * the MCU time (µs) of sim time `tt`, on a 1 ns grid: sim time is a sum of float steps, and without the
+   * rounding a sketch timer due exactly at a step boundary (a 10 ms control tick) could miss the chunk
+   * that ends there by 1e-12 µs and run a whole chunk late
+   */
+  const mcuUs = (tt: number) => Math.round((tt - mcuStart) * 1e9) / 1e3
   let held = false
   /** bumps on every upload / stop / dispose: results from an older run are dropped */
   let gen = 0
@@ -511,6 +522,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     held = false
     m.start()
     mcuStart = t
+    freshSketch = true
     // a fresh run restarts the MCU clock: a pin change logged at the old run's time would skew h
     pinsChangedAt = null
     peekCache = null
@@ -613,6 +625,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         get timeMicros() {
           return mcu?.timeMicros ?? 0
         },
+        microsAt: mcuUs,
         get running() {
           return mcuLive()
         },
@@ -700,6 +713,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
     if (prev.running && !state.running) stopSketch()
     else if (state.running && (!prev.running || a === 'upload')) uploaded = startSketch()
     rebuild()
+    syncPowered()
     if ((!wasOn && isOn) || a === 'repair' || a === 'strip') peaks.reset()
     if (!wasOn && isOn) lifecycle('power-on')
     if (wasOn && !isOn) {
@@ -954,13 +968,92 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
   }
 
   // ── frame ──
+  /** the frame being run, while it awaits an MCU chunk (frames never overlap: one asked for meanwhile is skipped) */
+  let inFlight: Promise<void> | null = null
+  let busy = false
   function frame(realDt: number): Promise<void> {
     if (disposed || !(isPowered(lesson, asm) || asm.running)) return Promise.resolve()
+    if (busy && inFlight) return inFlight
+    const p = runFrame(realDt)
+    // runFrame runs synchronously up to its first MCU await (to the end when no sketch runs)
+    inFlight = busy ? p : null
+    return p
+  }
+
+  /** advance the MCU to the circuit's time `t`; `keep` continues this frame's loop-guard budget */
+  async function mcuCatchUp(keep: boolean): Promise<void> {
+    const m = mcu!
+    const ms = (mcuUs(t) - m.timeMicros) / 1000
+    if (!(ms > 1e-6)) return
+    const runGen = gen
+    try {
+      await m.advance(ms, { keepBudget: keep })
+    } catch (e: unknown) {
+      if (disposed || runGen !== gen) return
+      sketchError = String(e instanceof Error ? e.message : e)
+      note(act({ type: 'stopped' }))
+    }
+  }
+
+  /** the circuit's solution is now at sim.t: reads re-solve only for pin changes after this */
+  function syncT(): void {
+    t = sim!.t
+    stale = false
+    pinsChangedAt = null
+    peekCache = null
+  }
+
+  async function runFrame(realDt: number): Promise<void> {
+    busy = true
+    try {
+      await frameBody(realDt)
+    } finally {
+      busy = false
+      inFlight = null
+    }
+  }
+
+  /**
+   * ctx.powered follows the assembly at once, not only at tick: the MCU now runs before the frame's tick,
+   * so an onPin right after upload (a ranger's first TRIG in setup()) must already see the board powered
+   */
+  function syncPowered(): void {
+    const pw = mcuPowered(lesson, asm)
+    for (const inst of instances) inst.ctx.powered = pw
+  }
+
+  /** every behavior's tick, on the latest solution; params they set apply from the next step */
+  function runTicks(tickDt: number): void {
+    const s = solution()
+    const pw = mcuPowered(lesson, asm)
+    for (const k in readView) if (!(k in published)) delete readView[k]
+    for (const k in published) readView[k] = published[k]
+    for (const inst of instances) {
+      const c = inst.ctx
+      c.t = t
+      c.solution = s
+      c.powered = pw
+      inst.def.tick?.(c, tickDt)
+    }
+    if (liveDirty) {
+      liveDirty = false
+      rebuild(false)
+    }
+  }
+
+  async function frameBody(realDt: number): Promise<void> {
+    // A freshly started sketch first runs after this frame's tick, as it always has: whatever behaviors
+    // derive from the circuit in tick (a sensor's bus health, a driver's inputs) is in place before
+    // setup(). From the next frame on the MCU catches up and runs in lockstep.
+    const fresh = freshSketch
+    const lockstep = () => !fresh && mcuLive()
     const rdt = Math.min(MAX_FRAME, Math.max(0, realDt))
     const simDt = rdt * speed
     const t0 = t
     const subBurns: BurnEvent[] = []
     realClock += rdt
+    /** the MCU was advanced this frame: later chunks continue its loop-guard budget */
+    let advanced = false
     if (dynamic && sim) {
       // steps owed this frame: ⌈simDt/dt⌉, or in slow motion (under one step a frame) one step each
       // time a whole dt of sim time has built up; capped by stepsPerFrame (default: a whole
@@ -978,6 +1071,21 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       const n = Math.min(cap, need)
       if (n < need) cappedAt = realClock
       const deadline = budget === Infinity ? Infinity : now() + budget
+      // The MCU runs in lockstep: it catches up with the circuit now and after every MCU_CHUNK of steps,
+      // so its pin writes reach the circuit at the next step and onStep behaviors can feed it edges just
+      // in time. The frame ends on steps, not on an MCU chunk, so tick sees a solution that already
+      // carries every pin write (the MCU is then up to one chunk behind, and catches up first next frame).
+      const chunk = Math.max(1, Math.round(MCU_CHUNK / dt))
+      let sinceMcu = 0
+      // (not while the circuit is stale, as after power-on or a failure: its reads would come from the
+      // operating point, a capacitor already charged; the MCU then first runs after the first chunk)
+      if (lockstep() && !stale) {
+        await mcuCatchUp(false)
+        advanced = true
+        if (disposed) return
+      }
+      // setParams from outside the steps (onPin on a float at hold / stop, a driver's onPin) apply first
+      if (liveQueue.length) applyLiveNow()
       let k = 0
       for (; k < n; k++) {
         sim.step()
@@ -1000,62 +1108,34 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         // not a frame later
         if (liveQueue.length) applyLiveNow()
         // a part just failed: apply it before simulating on, so the instruments show the failed circuit
-        if (burnt) {
+        const stop = burnt || (k + 1 < n && deadline !== Infinity && now() > deadline)
+        if (stop && !burnt) cappedAt = realClock
+        if (stop) {
           k++
           break
         }
-        if (k + 1 < n && deadline !== Infinity && now() > deadline) {
-          k++
-          cappedAt = realClock
-          break
+        if (++sinceMcu >= chunk && k + 1 < n && lockstep()) {
+          syncT()
+          sinceMcu = 0
+          await mcuCatchUp(advanced)
+          advanced = true
+          if (disposed) return
+          // what the sketch's writes set through behaviors (a driver's onPin) acts from the next step
+          if (liveQueue.length) applyLiveNow()
         }
       }
-      if (k > 0) {
-        t = sim.t
-        stale = false
-        pinsChangedAt = null
-        peekCache = null
-      }
+      if (k > 0) syncT()
     } else {
       t += simDt
+      if (lockstep()) {
+        await mcuCatchUp(false)
+        if (disposed) return
+      }
     }
     if (rdt > 0) rate += Math.min(1, rdt / 0.5) * ((t - t0) / rdt - rate)
 
-    // MCU: catch up to sim time, one advance at a time
-    let wait: Promise<void> = Promise.resolve()
-    if (mcuLive() && !mcuPending) {
-      const m = mcu!
-      const ms = (t - mcuStart) * 1000 - m.timeMs
-      if (ms > 0) {
-        const runGen = gen
-        const p = m.advance(ms).catch((e: unknown) => {
-          if (disposed || runGen !== gen) return
-          sketchError = String(e instanceof Error ? e.message : e)
-          note(act({ type: 'stopped' }))
-        })
-        mcuPending = p.finally(() => {
-          mcuPending = null
-        })
-        wait = mcuPending
-      }
-    } else if (mcuPending) wait = mcuPending
-
-    // behaviors
-    const s = solution()
-    const pw = mcuPowered(lesson, asm)
-    for (const k in readView) if (!(k in published)) delete readView[k]
-    for (const k in published) readView[k] = published[k]
-    for (const inst of instances) {
-      const c = inst.ctx
-      c.t = t
-      c.solution = s
-      c.powered = pw
-      inst.def.tick?.(c, t - t0)
-    }
-    if (liveDirty) {
-      liveDirty = false
-      rebuild(false)
-    }
+    runTicks(t - t0)
+    if (fresh) freshSketch = false
 
     // ratings: once per frame, on the latest good solution
     const sol = solution()
@@ -1076,7 +1156,6 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
       since += rdt
       if (since >= 1 / hz - 1e-9) emit()
     }
-    return wait
   }
 
   rebuild()

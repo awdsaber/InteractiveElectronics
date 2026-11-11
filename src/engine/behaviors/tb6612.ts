@@ -3,7 +3,8 @@
 // The netlist models each output (AO1, AO2, and BO1, BO2 for channel B) as a V source
 // (value = duty·VM, referenced to the driver ground) behind half of Ron, followed by a SW that
 // opens for high-Z. This behavior reads the logic inputs as voltages every tick, applies the
-// datasheet truth table, and sets those sources and switches. It also sets the VM supply draw
+// datasheet truth table, and sets those sources and switches; between ticks, a sketch write to an
+// input that followed its pin at the last tick is applied at once (onPin). It also sets the VM supply draw
 // (an I source), runs the die's first-order thermal model with thermal shutdown, and applies
 // the undervoltage lockout. The PWM ripple is not simulated: the sources carry the average, and
 // the ripple only enters the I²R heating (see bridgeLoss).
@@ -22,7 +23,7 @@
 // Publishes: mode (0 standby, 1 CW, 2 CCW, 3 brake, 4 coast), duty, motor_A, rpm_out, and with
 // channel B mode_b, duty_b, motor_b_A, rpm_out_b; plus vm_V, tj, tsd_active, bridge_W, gnd_ok.
 
-import type { Behavior, BehaviorContext, Element, Netlist, Solution } from '../types'
+import type { Behavior, BehaviorContext, Element, Netlist, PinState, Solution } from '../types'
 
 export const MODE = { STANDBY: 0, CW: 1, CCW: 2, BRAKE: 3, COAST: 4 } as const
 export type Mode = (typeof MODE)[keyof typeof MODE]
@@ -95,6 +96,15 @@ interface State {
   /** channels resolved for `chNet` (rebuilt only when the netlist object changes) */
   chs: Channel[]
   chNet: Netlist | null
+  // ── the last tick's view, for onPin between ticks ──
+  /** a tick has run with a valid ground, so onPin may act */
+  ready: boolean
+  /** input pins whose node voltage followed the pin's driven level at the last tick (the wire is intact) */
+  follows: Map<number, boolean>
+  vm: number
+  vih: number
+  vil: number
+  uvlo: boolean
 }
 
 /** the random states a floating input set lands in (coast twice as likely) */
@@ -126,7 +136,10 @@ const str = (ctx: BehaviorContext, k: string, d: string): string => {
 function state(ctx: BehaviorContext): State {
   let s = states.get(ctx)
   if (!s) {
-    s = { tj: T_AMB, tsd: false, latch: new Map(), rng: prng(num(ctx, 'seed', 1)), chatter: [], chs: [], chNet: null }
+    s = {
+      tj: T_AMB, tsd: false, latch: new Map(), rng: prng(num(ctx, 'seed', 1)), chatter: [], chs: [], chNet: null,
+      ready: false, follows: new Map(), vm: 0, vih: 3.5, vil: 1.5, uvlo: false,
+    }
     states.set(ctx, s)
   }
   return s
@@ -262,6 +275,36 @@ function setHalf(ctx: BehaviorContext, info: NetInfo, src: string, en: string, v
   if (en && info.els.has(en)) ctx.setParam(en, 'closed', closed)
 }
 
+const isOut = (ps: PinState | undefined) => !!ps && (ps.mode === 'OUTPUT' || ps.mode === 'OUTPUT_OPEN_DRAIN')
+
+/** the input on `pin` follows the pin's driven level in the latest solution (an intact wire) */
+function follows(ctx: BehaviorContext, info: NetInfo, pin: number, gnd: string): boolean {
+  const p = info.pinNode.get(pin)
+  const ps = ctx.pins[pin]
+  if (pin < 0 || !p || !isOut(ps)) return false
+  return Math.abs(ctx.v(p.node, gnd) - ps!.level * p.vcc) < 0.2 * p.vcc
+}
+
+/** set the half-bridges from the inputs as onPin knows them (latched levels, followed PWM duty) */
+function applyFast(ctx: BehaviorContext, st: State, info: NetInfo): void {
+  const lv = (pin: number) => pin >= 0 && info.pinNode.has(pin) && (st.latch.get(pin) ?? false)
+  const stbyPin = num(ctx, 'stby', 4)
+  const stby = stbyPin < 0 ? true : lv(stbyPin)
+  for (const ch of st.chs) {
+    const mode: Mode = st.uvlo ? MODE.STANDBY : decode(lv(ch.in1), lv(ch.in2), stby)
+    let d = 0
+    if (mode === MODE.CW || mode === MODE.CCW) {
+      const ps = ctx.pins[ch.pwm]
+      d = ch.pwm < 0 ? 1 : st.follows.get(ch.pwm) && isOut(ps) ? Math.min(1, Math.max(0, ps.level)) : lv(ch.pwm) ? 1 : 0
+    }
+    const out: Mode = st.tsd && mode !== MODE.STANDBY ? MODE.COAST : mode
+    const v = quant(d * Math.max(0, st.vm), 1e-3)
+    const on = out === MODE.CW || out === MODE.CCW || out === MODE.BRAKE
+    setHalf(ctx, info, ch.out1, ch.en1, out === MODE.CW ? v : 0, on)
+    setHalf(ctx, info, ch.out2, ch.en2, out === MODE.CCW ? v : 0, on)
+  }
+}
+
 /** both halves of every channel high-Z, and no supply draw */
 function allOpen(ctx: BehaviorContext): void {
   const info = netInfo(ctx.netlist)
@@ -377,11 +420,40 @@ export const behavior: Behavior = {
     const supply = str(ctx, 'supply', 'i_vm')
     if (supply && info.els.has(supply)) ctx.setParam(supply, 'value', vm > 0.1 ? quant(draw + num(ctx, 'iq', 0.001), 1e-5) : 0)
 
+    // 5. what onPin needs until the next tick: which inputs follow their pins, the supply, the thresholds
+    st.ready = gndOk
+    st.vm = vm
+    st.vih = vih
+    st.vil = vil
+    st.uvlo = uvlo
+    st.follows.clear()
+    if (stbyPin >= 0) st.follows.set(stbyPin, follows(ctx, info, stbyPin, gnd))
+    for (const ch of chs) {
+      if (ch.in1 >= 0) st.follows.set(ch.in1, follows(ctx, info, ch.in1, gnd))
+      if (ch.in2 >= 0) st.follows.set(ch.in2, follows(ctx, info, ch.in2, gnd))
+      if (ch.pwm >= 0) st.follows.set(ch.pwm, follows(ctx, info, ch.pwm, gnd))
+    }
+
     ctx.publish('vm_V', vm)
     ctx.publish('tj', st.tj)
     ctx.publish('tsd_active', st.tsd ? 1 : 0)
     ctx.publish('bridge_W', loss)
     ctx.publish('gnd_ok', gndOk ? 1 : 0)
+  },
+
+  // A sketch write, at the MCU's time: where the last tick saw that input follow its pin, the input
+  // takes the new level now and the bridge is set at once (the bench applies it from the next transient
+  // step), so a control loop's PWM reaches the motor within a step, not at the next frame's tick. Pins
+  // let go (INPUT on stop / hold) and inputs that did not follow (a broken wire) wait for the tick.
+  onPin(ctx, pin, ps) {
+    const st = states.get(ctx)
+    if (!st || !st.ready || !st.follows.get(pin) || !isOut(ps)) return
+    const info = netInfo(ctx.netlist)
+    const p = info.pinNode.get(pin)
+    if (!p) return
+    const v = ps.level * p.vcc
+    st.latch.set(pin, v >= st.vih ? true : v <= st.vil ? false : (st.latch.get(pin) ?? false))
+    applyFast(ctx, st, info)
   },
 
   onEvent(ctx, ev) {

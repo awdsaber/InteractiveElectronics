@@ -413,9 +413,13 @@ export class VirtualMcu {
   /**
    * Run the program until virtual time has advanced by `ms`. Await each call before making the next.
    * Resolves once the program is parked on its next delay at (or after) the new time.
+   * `keepBudget`: this advance continues the previous one's loop-guard statement budget instead of
+   * starting a fresh one (a host that advances one frame in several small chunks passes it for every
+   * chunk after the first, so a loop that never waits is bounded per frame, not per chunk).
    */
-  advance(ms: number): Promise<void> {
-    const next = this.chain.then(() => this.doAdvance(ms))
+  advance(ms: number, opts?: { keepBudget?: boolean }): Promise<void> {
+    const keep = !!opts?.keepBudget
+    const next = this.chain.then(() => this.doAdvance(ms, keep))
     this.chain = next.catch(() => undefined)
     return next
   }
@@ -506,13 +510,13 @@ export class VirtualMcu {
     return this.running && gen === this.gen
   }
 
-  private async doAdvance(ms: number): Promise<void> {
+  private async doAdvance(ms: number, keepBudget = false): Promise<void> {
     if (!this.running) return
     const gen = this.gen
     const target = this.now + ms * 1000
-    // The statement budget for the loop guard is per advance() call: a loop that never waits gets
-    // STATEMENT_LIMIT iterations, then is paused 1 ms per iteration for the rest of this advance.
-    this.guard.n = 0
+    // The statement budget for the loop guard is per advance() call (or per run of keepBudget calls): a
+    // loop that never waits gets STATEMENT_LIMIT iterations, then is paused 1 ms per iteration after that.
+    if (!keepBudget) this.guard.n = 0
     await this.settle()
     if (!this.alive(gen)) return
     this.pollInterruptPins()

@@ -209,7 +209,7 @@ export const lesson: LessonDef = {
       },
       focus: { control: 'tweak:Kp' },
       hint: 'The error only shows on the 150 rpm step, which comes round every 8 s.',
-      explain: 'A P loop needs an error to make any output at all: the PWM is Kp × error, so the motor can only run as fast as the error it is left with allows. It is a proportional governor’s droop. More Kp shrinks it, but the loop’s lags soon make it ring, and above Kp ≈ 3 it oscillates for good.',
+      explain: 'A P loop needs an error to make any output at all: the PWM is Kp × error, so the motor can only run as fast as the error it is left with allows. It is a proportional governor’s droop. More Kp shrinks it, but the loop’s lags soon make it ring, and above Kp ≈ 12 it oscillates for good.',
     },
     {
       id: 'add-i',
@@ -231,7 +231,7 @@ export const lesson: LessonDef = {
     {
       id: 'add-d',
       title: 'Add D: hear the noise',
-      body: 'Slide **Kd** up to about **0.02**. The speed hardly changes, but **PWM DUTY** turns to fuzz: **PWM JITTER** goes from about 0.5 to about 7 counts per sample.',
+      body: 'Slide **Kd** up to about **0.02**. The speed hardly changes, but **PWM DUTY** turns to fuzz: **PWM JITTER** goes from about 0.5 to about 5 counts per sample.',
       check: {
         kind: 'all',
         of: [
@@ -246,7 +246,7 @@ export const lesson: LessonDef = {
     {
       id: 'brake',
       title: 'Load it with the brake',
-      body: 'Set **Kd** back to 0 and slide **Brake torque** to **0.03 N·m**. At 150 rpm the speed dips by about 20 rpm, then the integrator winds up the extra PWM and **ERROR** is back to zero within about half a second, with **PWM DUTY** some 14 % higher to hold the load.',
+      body: 'Set **Kd** back to 0 and slide **Brake torque** to **0.03 N·m**. At 150 rpm the speed dips by about 15 rpm, then the integrator winds up the extra PWM and **ERROR** is back to zero within about half a second, with **PWM DUTY** some 14 % higher to hold the load.',
       check: {
         kind: 'all',
         of: [
@@ -527,7 +527,7 @@ export const lesson: LessonDef = {
   sketch: { title: 'Fixed-rate PID speed loop', code: SKETCH, pins: { 2: 'pin2', 3: 'pin3', 4: 'pin4', 5: 'pin5', 7: 'pin7', 8: 'pin8' }, vcc: 5, board: 'uno' },
 
   tweaks: [
-    { label: 'Kp', elementId: 'behavior:tune', key: 'kp', min: 0, max: 10, step: 0.05, unit: '' },
+    { label: 'Kp', elementId: 'behavior:tune', key: 'kp', min: 0, max: 20, step: 0.05, unit: '' },
     { label: 'Ki', elementId: 'behavior:tune', key: 'ki', min: 0, max: 60, step: 0.1, unit: '' },
     { label: 'Kd', elementId: 'behavior:tune', key: 'kd', min: 0, max: 0.05, step: 0.001, unit: '' },
     { label: 'Brake torque', elementId: 'behavior:dyno', key: 'brakeNm', min: 0, max: 0.15, step: 0.005, unit: '' },
@@ -569,22 +569,24 @@ export const lesson: LessonDef = {
     },
     {
       id: 'too-much-gain',
-      label: 'Crank up the gain (Kp = 8)',
+      label: 'Crank up the gain (Kp = 20)',
       explain:
-        'A loop is never instantaneous: the speed is an average over the last sample, the new PWM lands after it, and the motor takes 46 ms to answer. Add up those lags and at some frequency the loop turns a correction half a cycle round, so it arrives just in time to push the wrong way. If the loop gain at that frequency is above 1, the swing grows until the PWM limits stop it: a limit cycle. On this bench that happens above Kp ≈ 3, with a period of about 0.4 s, and at Kp = 8 the speed swings between about 35 and 165 rpm. Gain margin, the factor between your Kp and that limit, is what keeps you clear of it (2 to 3 is usual).',
+        'A loop is never instantaneous: the speed is an average over the last sample, the new PWM then holds for a whole sample, and the motor takes 46 ms to answer. Add up those lags and at some frequency the loop turns a correction half a cycle round, so it arrives just in time to push the wrong way. If the loop gain at that frequency is above 1, the swing grows until the PWM limits stop it: a limit cycle. On this bench that happens above Kp ≈ 12, with a period of about 37 ms (under 4 samples), and at Kp = 20 the PWM slams between full reverse and full forward while the speed swings between about 25 and 80 rpm on the 60 rpm step. Gain margin, the factor between your Kp and that limit, is what keeps you clear of it (2 to 3 is usual).',
       patches: [
-        { op: 'set', elementId: 'behavior:tune', key: 'kp', value: 8 },
+        { op: 'set', elementId: 'behavior:tune', key: 'kp', value: 20 },
         { op: 'set', elementId: 'behavior:tune', key: 'ki', value: 8.7 },
       ],
     },
     {
       id: 'slow-loop',
       label: 'Run a tight loop at 10 Hz (100 ms period)',
+      // Kp 2 / Ki 35: the ideal discrete loop (averaged speed, PWM held one sample) on K = 0.76, τ = 46 ms
+      // has its slowest mode at |z| ≈ 0.87 per sample at 100 Hz and ≈ 1.06 at 10 Hz (unstable)
       explain:
-        'These gains, Kp = 1.5 and Ki = 20, make a crisp loop at 100 Hz: no overshoot, settled in about 0.35 s. At 10 Hz each sample covers 100 ms, twice the motor’s time constant. The speed reading is a 100 ms average, the PWM then holds for 100 ms, and the integrator adds Ki·e·0.1 in one jump, so every correction acts on old news and overshoots. The speed never settles: it swings between about 110 and 175 rpm. Sample at least 5 to 10 times per plant time constant (here 100 to 200 Hz), or detune the gains to suit a slower rate (the IMC values survive 10 Hz, with a 20 rpm overshoot).',
+        'These gains, Kp = 2 and Ki = 35, make a crisp loop at 100 Hz: no overshoot, settled in about 0.2 s. At 10 Hz each sample covers 100 ms, twice the motor’s time constant. The speed reading is a 100 ms average, the PWM then holds for 100 ms, and the integrator adds Ki·e·0.1 in one jump, so every correction acts on old news and overshoots. The speed never settles: it swings between about 95 and 175 rpm on the 150 rpm step. Sample at least 5 to 10 times per plant time constant (here 100 to 200 Hz), or detune the gains to suit a slower rate (the IMC values survive 10 Hz with only a few rpm of overshoot).',
       patches: [
-        { op: 'set', elementId: 'behavior:tune', key: 'kp', value: 1.5 },
-        { op: 'set', elementId: 'behavior:tune', key: 'ki', value: 20 },
+        { op: 'set', elementId: 'behavior:tune', key: 'kp', value: 2 },
+        { op: 'set', elementId: 'behavior:tune', key: 'ki', value: 35 },
         { op: 'set', elementId: 'behavior:tune', key: 'periodMs', value: 100 },
       ],
     },
@@ -622,13 +624,13 @@ u = Kp·e + Σ Ki·e·dt − Kd·(rpm − rpm_prev) / dt
 
 The derivative acts on the **measurement**, not the error, so a setpoint step gives no kick. The integral is kept as the term itself (Σ Ki·e·dt), so changing Ki on the slider is bumpless.
 
-**Tuning from the model (IMC).** Choose a closed-loop time constant τc = 0.15 s, about 3 times slower than the plant: safe and smooth. Then Kp = τ / (K·τc) = 0.046 / (0.76 × 0.15) ≈ **0.40**, and Ti = τ, so Ki = Kp / τ ≈ **8.7 per second**. The integral zero cancels the motor's pole, so the closed loop is first order with time constant τc: a step reaches 63 % in about 0.15 s with no overshoot. Ziegler–Nichols gets there by experiment instead: raise Kp until the loop oscillates (Ku ≈ 3 here, period Pu ≈ 0.4 s) and take Kp = 0.45·Ku ≈ 1.35, Ti = Pu / 1.2 ≈ 0.33 s. That works, but it creeps in more slowly than the model-based tuning.
+**Tuning from the model (IMC).** Choose a closed-loop time constant τc = 0.15 s, about 3 times slower than the plant: safe and smooth. Then Kp = τ / (K·τc) = 0.046 / (0.76 × 0.15) ≈ **0.40**, and Ti = τ, so Ki = Kp / τ ≈ **8.7 per second**. The integral zero cancels the motor's pole, so the closed loop is first order with time constant τc: a step reaches 63 % in about 0.15 s with no overshoot. Ziegler–Nichols gets there by experiment instead: raise Kp until the loop oscillates (Ku ≈ 12 here, period Pu ≈ 37 ms) and take Kp = 0.45·Ku ≈ 5.4, Ti = Pu / 1.2 ≈ 31 ms (Ki ≈ 175). That holds the speed, but hard: every 2.84 rpm count step becomes 15 PWM counts, so the output chatters by about 13 counts a sample. The rules aim at a fast, lightly damped loop; on a quantised sensor the model-based tuning is the calmer choice.
 
 **Sampling.** 100 Hz is about 5 samples per plant time constant, the comfortable minimum. One encoder count in 10 ms is (1/2112) rev / 0.01 s × 60 = **2.84 rpm**: the measurement is a staircase, and Kp and especially Kd turn it into PWM chatter.
 
 **Anti-windup.** When the PWM is pinned at ±255, the sketch stops integrating further into the limit (conditional integration). Otherwise the integral keeps growing while it can do nothing, and pays it back later as overshoot.
 
-*Sim note:* the gains, the loop period and the anti-windup switch are bench sliders that the sketch reads every sample with Tune.kp(), Tune.ki(), Tune.kd(), Tune.periodMs() and Tune.antiWindup(). The brake is a torque on the output shaft, reflected to the motor through the 48:1 gearbox at an illustrative 70 % efficiency. The simulator passes the encoder edges and the PWM between the sketch and the circuit once per animation frame, which adds a few tens of milliseconds of lag to the loop. That is why it oscillates above Kp ≈ 3; an ideal 100 Hz loop on this motor, with only its own sampling lag, would hold out to a Kp of about 14. Every real loop has some such lag, and its limit is set the same way.`,
+*Sim note:* the gains, the loop period and the anti-windup switch are bench sliders that the sketch reads every sample with Tune.kp(), Tune.ki(), Tune.kd(), Tune.periodMs() and Tune.antiWindup(). The brake is a torque on the output shaft, reflected to the motor through the 48:1 gearbox at an illustrative 70 % efficiency. The simulator runs the sketch in lockstep with the circuit, 1 ms at a time: each encoder edge reaches the ISR at its own microsecond, and a new PWM duty reaches the motor within 1 ms. So the loop has little more than its own lags, the 10 ms speed average and the 10 ms hold of the PWM, and P alone oscillates above Kp ≈ 12 (period ≈ 37 ms), close to the Kp ≈ 14 of an ideal 100 Hz loop on this motor. Every extra millisecond of delay, in a real controller or a simulator, lowers that limit the same way.`,
 
   mechanicalAnalogy: `You already know this loop: it is a Watt governor, or cruise control. The P term is a spring: the further from the setpoint, the harder it pushes. Alone it leaves a steady droop under load, exactly like a proportional governor. The I term is a slowly winding preload that removes the droop. The D term is a damper on the *speed*, not the position. The motor itself is a mass with viscous damping, a first-order system, so PI is enough.
 

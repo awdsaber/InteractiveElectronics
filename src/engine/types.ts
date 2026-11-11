@@ -708,6 +708,12 @@ export interface BehaviorMcu {
   /** MCU virtual time, µs */
   readonly timeMicros: number
   readonly running: boolean
+  /**
+   * The MCU time (µs) that sim time `t` (s) maps to. Present when the host runs the MCU in lockstep with
+   * the circuit (the bench advances it in ≤ 1 ms chunks between transient steps): from onStep, the MCU
+   * has not yet passed `microsAt(t)`, so edges injected up to there arrive on time, just in time.
+   */
+  microsAt?(t: number): number
 }
 
 export interface BehaviorContext {

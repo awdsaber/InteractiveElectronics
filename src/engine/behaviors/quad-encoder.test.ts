@@ -418,7 +418,7 @@ describe('quad-encoder: bookkeeping', () => {
     expect(replay(r.edges, r.mcu.timeMicros).invalid).toBe(0)
   })
 
-  it('nothing is delivered unpowered or with the sketch stopped, and the count restarts on upload', () => {
+  it('nothing is delivered unpowered or with the sketch stopped, and the count restarts on upload (lookahead host)', () => {
     const r = rig()
     r.omega(W)
     ;(r.ctx as { powered: boolean }).powered = false
@@ -430,5 +430,102 @@ describe('quad-encoder: bookkeeping', () => {
     behavior.onEvent!(r.ctx, 'upload')
     r.run(1 / 60)
     expect(Math.abs(r.pub.count_true as number)).toBeLessThan(40)
+  })
+})
+
+// A lockstep host (the bench): it gives ctx.mcu.microsAt and advances the MCU in 1 ms chunks between
+// transient steps, so the encoder injects each step's edges from onStep, from ω as it is at that step,
+// instead of scheduling them a frame or two ahead from the ω of the last frame.
+function lockstep(params: Record<string, number | string | boolean> = {}, net: Netlist = netlist()) {
+  const r = rig(params, net)
+  Object.assign(r.mcu, { microsAt: (t: number) => t * 1e6 })
+  let t = 0
+  let beyond = 0
+  const extra = (r.ctx.solution as Solution).extra
+  behavior.tick!(r.ctx, 0) // arms at t = 0
+  return {
+    ...r,
+    /** the most any injected edge ran ahead of the step being solved, µs (0 = just in time) */
+    get beyond() {
+      return beyond
+    },
+    /** whole frames of 1/60 s in 1 ms steps; `w(t)` is the motor's ω at each step */
+    steps(seconds: number, w: (t: number) => number) {
+      const frames = Math.round(seconds * 60)
+      for (let f = 0; f < frames; f++) {
+        const end = t + 1 / 60
+        while (t < end - 1e-9) {
+          t = Math.min(end, t + 1e-3)
+          extra['m1.omega'] = w(t)
+          behavior.onStep!(r.ctx, t, r.ctx.solution as Solution)
+          for (const e of r.raw) beyond = Math.max(beyond, e.t - t * 1e6)
+          r.mcu.timeMicros = t * 1e6 // the MCU catches up before the next chunk
+        }
+        ;(r.ctx as { t: number }).t = t
+        behavior.tick!(r.ctx, 1 / 60)
+        for (const e of r.raw) beyond = Math.max(beyond, e.t - t * 1e6)
+      }
+    },
+  }
+}
+
+describe('quad-encoder: just in time on a lockstep host', () => {
+  it('no edge is ever injected beyond the step being solved', () => {
+    const r = lockstep()
+    r.steps(1, () => W)
+    expect(r.edges.length).toBeGreaterThan(600)
+    expect(r.beyond).toBeLessThanOrEqual(1e-6)
+    expect(replay(r.edges, r.mcu.timeMicros).count).toBe(r.pub.count_true)
+  })
+
+  it('the count follows ∫ω exactly, from the first step (no frame of motion lost at arming)', () => {
+    const r = lockstep()
+    r.steps(2, () => W)
+    const want = motorRevPerS * 2 * 44
+    expect(Math.abs((r.pub.count_true as number) - want)).toBeLessThanOrEqual(1)
+    expect(replay(r.edges, r.mcu.timeMicros).invalid).toBe(0)
+  })
+
+  it('a change of ω shows in the edge rate at the next step, not a frame or two later', () => {
+    const r = lockstep()
+    r.steps(0.5, (t) => (t <= 0.25 ? W : 2 * W))
+    const fast = (2 * W * 44) / (2 * Math.PI) // edges per second at 2W
+    // edges between 1 ms and 10 ms after the change already run at the new rate
+    const ev = r.edges.filter((e) => e.t > 251e3 && e.t <= 260e3)
+    expect(ev.length).toBeGreaterThanOrEqual(Math.floor(fast * 0.009) - 1)
+    expect(ev.length).toBeLessThanOrEqual(Math.ceil(fast * 0.009) + 1)
+    // and the total is ∫ω to within the one step that straddles the change
+    const want = ((W * 0.25 + 2 * W * 0.25) / (2 * Math.PI)) * 44
+    expect(Math.abs((r.pub.count_true as number) - want)).toBeLessThanOrEqual(fast * 0.0005 + 1)
+  })
+
+  it('a reversal counts back down with no invalid transitions', () => {
+    const r = lockstep()
+    r.steps(2, (t) => W * Math.cos(Math.PI * t))
+    const s = replay(r.edges, r.mcu.timeMicros)
+    expect(s.invalid).toBe(0)
+    expect(s.count).toBe(r.pub.count_true)
+    expect(Math.abs(s.count)).toBeLessThanOrEqual(2) // ∫ cos over a whole period is 0
+  })
+
+  it('noise on a floating pin and glitches still arrive (each pulse starts within its step, and is made whole)', () => {
+    const net = netlist()
+    net.elements = net.elements.filter((e) => e.id !== 'r_pb')
+    const r = lockstep({ glitchRate: 50 }, net)
+    r.steps(1, () => W)
+    expect(r.pub.noise_edges).toBeGreaterThan(100)
+    expect(r.pub.glitches).toBeGreaterThan(20)
+    expect(r.edges.some((e) => e.pin === 3)).toBe(true) // the floating B line chatters
+  })
+
+  it('the open-drain switches follow the edges (closed = pin LOW)', () => {
+    const r = lockstep()
+    const seen = new Set<string>()
+    r.steps(1, () => 2 * Math.PI * 2)
+    for (let k = 0; k < 50; k++) {
+      behavior.onStep!(r.ctx, 1 + k * 1e-3, r.ctx.solution as Solution)
+      seen.add(`${r.set['enc_sa.closed']}/${r.set['enc_sb.closed']}`)
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(3)
   })
 })
