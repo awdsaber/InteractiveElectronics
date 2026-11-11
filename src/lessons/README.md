@@ -47,6 +47,9 @@ export const lesson: LessonDef = {
 
 The template above is a skeleton. `T2/led-resistor.ts` is the complete reference lesson.
 
+## Hand-soldered joints (`params.jointKey`)
+A THT or SMD part on a soldered board can show a joint quality instead of the default fillet: `params.jointKey` names a published value (an index into the `solder-joints` behavior's `QUALITIES`), and the Board passes it to the fillets as `PartRenderState.joint` (cold: a dull lump; insufficient: a thin film; excess: a ball; bridge: a bar to the nearest other pad; overheated: charred; lifted: the pad standing proud with copper showing). `params.jointPads: [i]` limits it to those pads (an LED's anode is pad 1). A `testpoint` takes `params.pad` (pad diameter, default 0.2) and `params.stub: true` (a bare wire stub instead of the sleeve and loop) so the fillet stays in view. `T7/soldering-rework.ts` is the reference.
+
 ## Part inspector and `facts`
 Clicking a part (or its callout pill) opens the part inspector: label, kind, `role`, a turning close-up, the band decode for resistors, live I / V / P / Tj of its `circuitIds` elements and their use of each `rating`. Give a part a `circuitIds` link and a real `rating` and the card fills itself. Optionally add `facts: string[]`, short datasheet lines shown under "Datasheet", e.g. `facts: ['Vf 2.0 V typ. at 20 mA', 'IF 30 mA abs. max']`. Use real datasheet values and name the condition; leave `facts` out rather than guess.
 

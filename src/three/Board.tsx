@@ -67,6 +67,11 @@ export function partState(lesson: Lesson, p: PartPlacement, snap: BenchSnapshot)
     // labels are drawn by the Board (always mounted, see Callout `hidden`)
     showLabel: false,
   }
+  // a hand-soldered joint (`solder-joints` behavior): params.jointKey names its published quality
+  if (s.soldered && typeof p.params?.jointKey === 'string') {
+    const q = snap.published[p.params.jointKey]
+    if (q !== undefined) s.joint = Math.round(q)
+  }
   if (rgb?.color) s.glowColor = rgb.color
   else if (tj !== undefined) s.glowColor = '#ff6a1f'
   // a button a failure holds down (e.g. BOOT held at power-up): params.pressedWhen = failure id

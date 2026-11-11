@@ -38,6 +38,8 @@ export function partBakeKey(part: PartPlacement, state: PartRenderState, meta: P
     state.soldered,
     state.glow > 0.01,
     meta.bakeValue ? meta.bakeValue(state) : null,
+    // appended only when set, so every other part's key is unchanged
+    ...(state.joint !== undefined ? [state.joint] : []),
   ])
 }
 
@@ -50,13 +52,76 @@ const filletWedge = () =>
     ]),
   )
 
-/** Solder fillets: cones on THT pads, low ramps on SMD pads. */
-export function SolderJoints({ part }: { part: PartPlacement }) {
-  const { cones, ramps } = useMemo(() => {
+// hand-soldered joint looks (PartRenderState.joint, from the `solder-joints` behavior)
+const DULL_TIN = '#9c9d99' // a cold joint's grainy grey
+const CHARRED = '#8a6f4e' // an overheated joint: dull solder under charred flux
+const J_COLD = 1
+const J_THIN = 2
+const J_EXCESS = 3
+const J_BRIDGE = 4
+const J_HOT = 5
+const J_LIFTED = 6
+
+/** `params.jointPads`: the pad indices a joint quality applies to (default: every pad) */
+function jointPads(part: PartPlacement): number[] | null {
+  const v = part.params?.jointPads
+  return Array.isArray(v) && v.every((x) => typeof x === 'number') ? (v as number[]) : null
+}
+
+/**
+ * Solder fillets: cones on THT pads, low ramps on SMD pads. With a `joint` quality the THT pads it
+ * applies to change shape: cold is a dull convex lump, insufficient a thin film, excess a ball,
+ * a bridge adds a solder bar to the neighbouring pad, overheated is charred, and a lifted pad
+ * stands proud of the board with the copper showing under it.
+ */
+export function SolderJoints({ part, joint }: { part: PartPlacement; joint?: number }) {
+  const { cones, ramps, lumps, dull, charred, copper, bars } = useMemo(() => {
     const fp = footprint(part)
     const c: InkInstance[] = []
     const r: InkInstance[] = []
-    for (const pad of fp.pads) {
+    const lump: InkInstance[] = []
+    const d: InkInstance[] = []
+    const ch: InkInstance[] = []
+    const cu: InkInstance[] = []
+    const bar: InkInstance[] = []
+    const only = jointPads(part)
+    fp.pads.forEach((pad, i) => {
+      const q = joint !== undefined && joint > 0 && !pad.smd && (!only || only.includes(i)) ? joint : 0
+      if (q) {
+        const rad = Math.min(pad.w, pad.d) * 0.48
+        if (q === J_COLD) d.push({ p: [pad.x, 0.005, pad.z], s: [rad * 0.8, 0.14, rad * 0.8] })
+        else if (q === J_THIN) c.push({ p: [pad.x, 0.012, pad.z], s: [rad * 0.85, 0.025, rad * 0.85] })
+        else if (q === J_EXCESS) lump.push({ p: [pad.x, rad * 0.75, pad.z], s: [rad * 1.05, rad * 0.95, rad * 1.05] })
+        else if (q === J_HOT) ch.push({ p: [pad.x, 0.0375, pad.z], s: [rad, 0.075, rad] })
+        else if (q === J_LIFTED) {
+          cu.push({ p: [pad.x, 0.05, pad.z], r: [0.25, 0, 0.12], s: [rad * 1.15, 0.02, rad * 1.15] })
+          d.push({ p: [pad.x, 0.06, pad.z], r: [0.25, 0, 0.12], s: [rad * 0.85, 0.09, rad * 0.85] })
+        } else {
+          c.push({ p: [pad.x, 0.0375, pad.z], s: [rad, 0.075, rad] })
+          if (q === J_BRIDGE) {
+            // a solder bar to the nearest other pad
+            let best: { x: number; z: number } | null = null
+            let bd = Infinity
+            fp.pads.forEach((o, k) => {
+              const dd = Math.hypot(o.x - pad.x, o.z - pad.z)
+              if (k !== i && dd < bd) {
+                bd = dd
+                best = o
+              }
+            })
+            if (best) {
+              const o = best as { x: number; z: number }
+              const len = Math.hypot(o.x - pad.x, o.z - pad.z)
+              bar.push({
+                p: [(o.x + pad.x) / 2, 0.035, (o.z + pad.z) / 2],
+                r: [0, -Math.atan2(o.z - pad.z, o.x - pad.x), 0],
+                s: [len, 0.06, rad * 0.9],
+              })
+            }
+          }
+        }
+        return
+      }
       if (pad.smd) {
         const [ox, oz] = pad.out ?? [Math.sign(pad.x) || 1, 0]
         const alongX = Math.abs(ox) >= Math.abs(oz)
@@ -68,15 +133,20 @@ export function SolderJoints({ part }: { part: PartPlacement }) {
         const rad = Math.min(pad.w, pad.d) * 0.48
         c.push({ p: [pad.x, 0.0375, pad.z], s: [rad, 0.075, rad] })
       }
-    }
-    return { cones: c, ramps: r }
-  }, [part])
+    })
+    return { cones: c, ramps: r, lumps: lump, dull: d, charred: ch, copper: cu, bars: bar }
+  }, [part, joint])
   return (
     <>
       {cones.length > 0 && (
         <InkInstances geometry={G.cone(0.32, 10)} items={cones} color={C.tin} outline={1} noChar />
       )}
       {ramps.length > 0 && <InkInstances geometry={filletWedge()} items={ramps} color={C.tin} outline={1} noChar />}
+      {lumps.length > 0 && <InkInstances geometry={G.sphere(12, 8)} items={lumps} color={C.tin} outline={1} noChar />}
+      {dull.length > 0 && <InkInstances geometry={G.dome(12, 5)} items={dull} color={DULL_TIN} outline={1} noChar />}
+      {charred.length > 0 && <InkInstances geometry={G.cone(0.32, 10)} items={charred} color={CHARRED} outline={1} noChar />}
+      {copper.length > 0 && <InkInstances geometry={G.cyl(14)} items={copper} color={C.copper} outline={1} noChar />}
+      {bars.length > 0 && <InkInstances geometry={G.box()} items={bars} color={C.tin} outline={1} noChar />}
     </>
   )
 }
@@ -97,7 +167,7 @@ export function definePart(Body: ComponentType<PartProps>, meta: PartMeta): Part
             <InkContext.Provider value={{ burnt: state.burnt }}>
               <Body part={part} state={state} />
             </InkContext.Provider>
-            {state.soldered && <SolderJoints part={part} />}
+            {state.soldered && <SolderJoints part={part} joint={state.joint} />}
           </Bake>
         </group>
         {state.burnt && <Smoke position={[0, h, 0]} scale={Math.min(2, 0.6 + h * 0.5)} />}
