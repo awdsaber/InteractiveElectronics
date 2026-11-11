@@ -226,4 +226,17 @@ describe('logic-analyzer behavior', () => {
     expect(cap.decode('spi', now - 100000, now).map((f) => f.value)).toContain(0x0f)
     b.dispose()
   })
+  it('sdaCap / sclCap may list several capacitors (bus + a scope probe): the rise uses their sum', async () => {
+    const L = lesson()
+    L.circuit.elements.push({ id: 'c_px', type: 'C', nodes: ['scl', '0'], value: 100e-12 })
+    L.behaviors = [{ id: 'logic-analyzer', params: { uartRx: 'ad_rx', sclCap: 'c_scl, c_px' } }, { id: 'hc595', params: { cs: 10, outs: 'q0,q1,q2,q3,q4,q5,q6,q7' } }, { id: 'imu-mpu6050' }]
+    const b = createBench(L, { registry: { 'logic-analyzer': behavior, hc595, 'imu-mpu6050': imu } })
+    b.dispatch('power')
+    b.upload(SKETCH)
+    await run(b, 0.6)
+    // SCL: 0.8473 x 4.7k x (100 + 100) pF = 796 ns, the slower line
+    expect(pub(b, 'i2c_tr') * 1e9).toBeCloseTo(796, 0)
+    expect(pub(b, 'i2c_nacks')).toBe(0)
+    b.dispose()
+  })
 })

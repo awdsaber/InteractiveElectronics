@@ -28,7 +28,8 @@
 // sketch's baud: a mismatch decodes garbage and framing errors), SPI at `spiMode` (-1: the master's).
 //
 // Params (defaults): laBaud 115200, txPin 1, sdaPin 18, sclPin 19 (Uno A4/A5), sckPin 13, mosiPin 11,
-//   misoPin 12, csPin 10, sdaPull 'r_sda', sclPull 'r_scl', sdaCap 'c_sda', sclCap 'c_scl', uartRx ''
+//   misoPin 12, csPin 10, sdaPull 'r_sda', sclPull 'r_scl', sdaCap 'c_sda', sclCap 'c_scl' (each cap may be a
+//   comma-separated list, summed: bus + a scope probe), uartRx ''
 //   (the node the UART decoder watches; '' = TX), spiMode -1, vth 1.5 V (node channels), depth 16384
 //   edges per trace.
 // Publishes: uart_byte_us (10 bit times at the sketch's baud), la_baud, uart_rx_bytes, uart_rx_rate
@@ -181,14 +182,21 @@ function elementValue(net: Netlist, id: string, missing: number): number {
   return num(el.value, missing)
 }
 
+/** a comma-separated list of capacitors on one line (bus + a probe): their sum */
+function capSum(net: Netlist, ids: string): number {
+  let sum = 0
+  for (const id of ids.split(',')) if (id.trim()) sum += elementValue(net, id.trim(), 0)
+  return sum
+}
+
 function updateRise(s: State, t: number): void {
   const ctx = s.ctx
   const P = ctx.params
   const net = ctx.netlist
   const rS = elementValue(net, str(P.sdaPull, 'r_sda'), Infinity)
   const rC = elementValue(net, str(P.sclPull, 'r_scl'), Infinity)
-  const cS = elementValue(net, str(P.sdaCap, 'c_sda'), 0)
-  const cC = elementValue(net, str(P.sclCap, 'c_scl'), 0)
+  const cS = capSum(net, str(P.sdaCap, 'c_sda'))
+  const cC = capSum(net, str(P.sclCap, 'c_scl'))
   s.riseSda = i2cRiseDelay(rS, cS) * 1e6
   s.riseScl = i2cRiseDelay(rC, cC) * 1e6
   s.lines.setRise(s.riseSda, s.riseScl, t)
