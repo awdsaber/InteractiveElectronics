@@ -102,7 +102,7 @@ See `src/engine/types.ts`, the source of truth. Summary:
 | T1 | Passives | resistor-codes-divider, capacitor-rc, inductor-rl, rlc-resonance, ac-oscilloscope, transformer |
 | T2 | Semiconductors | diode-rectifier, led-resistor (video Fig. 02), zener, transistor-switch (video Fig. 03), mosfet-switch, opamp-basics, regulators-linear-buck |
 | T3 | Digital | logic-gates, flipflops-counters, timer-555, adc-dac-pwm |
-| T4 | Microcontrollers | arduino-uno (video Fig. 01, the "start here" lesson), esp32-s3 (video Fig. 04), interrupts-timers |
+| T4 | Microcontrollers | arduino-uno (video Fig. 01, the "start here" lesson), esp32-s3 (video Fig. 04), teensy-41, interrupts-timers |
 | T5 | Motors & drivers | tb6612fng (video Fig. 05), l298n (video Fig. 06), a4988-stepper (video Fig. 07), pca9685-servo (video Fig. 08), encoders |
 | T6 | Sensors | mpu6050-imu (video Fig. 09), ultrasonic-hcsr04, loadcell-hx711, thermistor |
 | T7 | Professional | serial-protocols, power-grounding-emc, thermal-design, pcb-design-workflow, soldering-rework, debugging-instruments, pid-motor-control, capstone-balancing-robot |

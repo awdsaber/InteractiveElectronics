@@ -11,7 +11,7 @@
 // next loop iteration (the loop guard checks `__g.irq`), at the next blocking call, or at interrupts().
 
 import type { BusEvent, BusMonitor, PinMode, PinState, Sketch } from '../types'
-import { ARDUINO_CONSTANTS, CHANGE, DEFAULT, ESP32S3_ANALOG, EXTERNAL, FALLING, INPUT_PULLUP, INTERNAL, LOW, MSBFIRST, OUTPUT, RISING, SPI_MODE0 } from './constants'
+import { ARDUINO_CONSTANTS, CHANGE, DEFAULT, ESP32S3_ANALOG, EXTERNAL, TEENSY41_GLOBALS, FALLING, INPUT_PULLUP, INTERNAL, LOW, MSBFIRST, OUTPUT, RISING, SPI_MODE0 } from './constants'
 import {
   CharBox,
   FloatBox,
@@ -74,6 +74,8 @@ export interface VirtualMcuOptions {
   /**
    * 'uno': 16-bit int that wraps, 10-bit ADC, analogReference, interrupts on pins 2 and 3.
    * 'esp32s3': 32-bit int, 12-bit ADC (analogReadResolution), A0..A19 = GPIO1..20, interrupts on every pin.
+   * 'teensy41': 32-bit int, 10-bit ADC (analogReadResolution up to 12), no analogReference, analogWriteResolution
+   * and analogWriteFrequency (PJRC defaults: 8-bit, FlexPWM 4.482 kHz, QuadTimer 3.611 kHz), A0..A17, F_CPU_ACTUAL.
    * 'generic' (default): unbounded ints, 10-bit ADC, interrupts on every pin (the pre-M1.5 behaviour).
    */
   board?: Board
@@ -97,8 +99,23 @@ export interface VirtualMcuOptions {
   pwmFreq?: number
 }
 
-/** analogWrite frequency of a pin: Uno 490 Hz (pins 5 and 6 on timer 0: 980 Hz), ESP32-S3 1 kHz */
+/** Teensy 4.1 pins on QuadTimers (PJRC td_pulse: default 3.611 kHz); the other PWM pins are FlexPWM (4.482 kHz) */
+const TEENSY41_QUADTIMER_PINS = new Set([10, 11, 12, 13, 14, 15, 18, 19])
+/** Teensy 4.1 PWM pins that share a FlexPWM timer, so analogWriteFrequency moves them together (PJRC td_pulse) */
+const TEENSY41_TIMER_GROUPS: readonly number[][] = [
+  [1, 44, 45],
+  [0, 42, 43],
+  [24, 46, 47],
+  [7, 8, 25],
+  [4, 33],
+  [6, 9],
+  [36, 37],
+  [2, 3],
+]
+
+/** analogWrite frequency of a pin: Uno 490 Hz (pins 5 and 6 on timer 0: 980 Hz), ESP32-S3 1 kHz, Teensy 4.1 4.482 / 3.611 kHz */
 export function pwmHzFor(board: Board, pin: number): number {
+  if (board === 'teensy41') return TEENSY41_QUADTIMER_PINS.has(pin) ? 3611 : 4482
   if (board === 'esp32s3') return 1000
   if (board === 'uno' && (pin === 5 || pin === 6)) return 980
   return 490
@@ -280,6 +297,10 @@ export class VirtualMcu {
   // analog
   private adcBits = 10
   private aref = DEFAULT
+  /** analogWrite resolution, bits (teensy41: analogWriteResolution) */
+  private pwmBits = 8
+  /** per-pin analogWriteFrequency overrides, Hz (teensy41) */
+  private pwmHzSet = new Map<number, number>()
 
   // buses
   private readonly i2c = new Map<number, I2cDevice>()
@@ -328,8 +349,8 @@ export class VirtualMcu {
     const { js, warnings } = transpile(src, {
       classTypes,
       knownLibraries: Object.keys(libs),
-      intBits: this.board === 'uno' ? 16 : this.board === 'esp32s3' ? 32 : undefined,
-      extraGlobals: this.board === 'esp32s3' ? Object.keys(ESP32S3_ANALOG) : [],
+      intBits: this.board === 'uno' ? 16 : this.board === 'esp32s3' || this.board === 'teensy41' ? 32 : undefined,
+      extraGlobals: this.board === 'esp32s3' ? Object.keys(ESP32S3_ANALOG) : this.board === 'teensy41' ? Object.keys(TEENSY41_GLOBALS) : [],
     })
     this.js = js
     for (const w of warnings) this.warn(w)
@@ -366,6 +387,8 @@ export class VirtualMcu {
     this.woke = false
     this.adcBits = this.board === 'esp32s3' ? 12 : 10
     this.aref = DEFAULT
+    this.pwmBits = 8
+    this.pwmHzSet.clear()
     this.csActive.clear()
     this.uartBaud = 9600
     this.i2cClock = 100000
@@ -869,9 +892,31 @@ export class VirtualMcu {
   }
 
   private analogWrite(pin: number, value: number): void {
-    const level = constrain(Math.trunc(Number(value) || 0), 0, 255) / 255
+    const max = 2 ** this.pwmBits - 1
+    const level = constrain(Math.trunc(Number(value) || 0), 0, max) / max
     this.latch.set(pin, level > 0 ? 1 : 0)
-    this.notify(pin, { mode: 'OUTPUT', level, pwmHz: this.opts.pwmFreq ?? pwmHzFor(this.board, pin) })
+    this.notify(pin, { mode: 'OUTPUT', level, pwmHz: this.pwmHzSet.get(pin) ?? this.opts.pwmFreq ?? pwmHzFor(this.board, pin) })
+  }
+
+  /** Teensy: analogWrite's range becomes 0..2^bits - 1 (PJRC's table covers 2..15 bits; default 8) */
+  private analogWriteResolution(bits: number): void {
+    if (this.board !== 'teensy41') {
+      this.warn('analogWriteResolution() is not modelled on this board - it is ignored (analogWrite stays 0..255)')
+      return
+    }
+    this.pwmBits = constrain(Math.trunc(bits), 2, 15)
+  }
+
+  /** Teensy: PWM frequency of a pin and of every pin on the same timer */
+  private analogWriteFrequency(pin: number, hz: number): void {
+    if (this.board !== 'teensy41') {
+      this.warn('analogWriteFrequency() is a Teensy function - it is ignored on this board')
+      return
+    }
+    const f = Number(hz)
+    if (!(f > 0)) return
+    const group = TEENSY41_TIMER_GROUPS.find((g) => g.includes(pin)) ?? [pin]
+    for (const p of group) this.pwmHzSet.set(p, f)
   }
 
   private digitalRead(pin: number): number {
@@ -887,7 +932,7 @@ export class VirtualMcu {
     const v = this.opts.readAnalog(pin)
     const max = 2 ** this.adcBits - 1
     let ref = this.opts.vcc
-    if (this.board !== 'esp32s3') {
+    if (this.board !== 'esp32s3' && this.board !== 'teensy41') {
       if (this.aref === INTERNAL) ref = 1.1
       else if (this.aref === EXTERNAL) ref = this.opts.readAref ? this.opts.readAref() : this.opts.vcc
     }
@@ -901,12 +946,21 @@ export class VirtualMcu {
       this.warn('analogReference() does not exist on the ESP32 - it is ignored')
       return
     }
+    if (this.board === 'teensy41') {
+      this.warn('analogReference() has no effect on the Teensy 4.x: the analog range is fixed at 0-3.3 V')
+      return
+    }
     this.aref = Math.trunc(mode)
   }
 
   private analogReadResolution(bits: number): void {
     if (this.board === 'uno') {
       this.warn('analogReadResolution() is not available on the Uno (its ADC is 10-bit) - it is ignored')
+      return
+    }
+    if (this.board === 'teensy41' && Math.trunc(bits) > 12) {
+      this.warn(`analogReadResolution(${bits}): the Teensy 4.x ADC is 12-bit at most - using 12`)
+      this.adcBits = 12
       return
     }
     this.adcBits = constrain(Math.trunc(bits), 1, 16)
@@ -1158,6 +1212,7 @@ export class VirtualMcu {
     const arduino: Record<string, unknown> = {
       ...ARDUINO_CONSTANTS,
       ...(this.board === 'esp32s3' ? ESP32S3_ANALOG : {}),
+      ...(this.board === 'teensy41' ? TEENSY41_GLOBALS : {}),
       pinMode: (pin: number, mode: number) => mcu.pinMode(Math.trunc(pin), mode),
       digitalWrite: (pin: number, v: number) => mcu.digitalWrite(Math.trunc(pin), v),
       digitalRead: (pin: number) => mcu.digitalRead(Math.trunc(pin)),
@@ -1165,6 +1220,8 @@ export class VirtualMcu {
       analogRead: (pin: number) => mcu.analogRead(Math.trunc(pin)),
       analogReference: (m: number) => mcu.analogReference(m),
       analogReadResolution: (b: number) => mcu.analogReadResolution(b),
+      analogWriteResolution: (b: number) => mcu.analogWriteResolution(b),
+      analogWriteFrequency: (pin: number, hz: number) => mcu.analogWriteFrequency(Math.trunc(pin), hz),
       delay: (ms: number) => wait(() => mcu.sleep(Number(ms) > 0 ? Number(ms) * 1000 : 10)),
       delayMicroseconds: (us: number) => wait(() => mcu.sleep(Number(us) > 0 ? Number(us) : 1)),
       millis: () => Math.floor(mcu.now / 1000 + 1e-9),

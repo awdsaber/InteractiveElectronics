@@ -225,11 +225,12 @@ const DYNAMIC: Element['type'][] = ['C', 'L', 'MOTOR']
 
 const isThermal = (b: BurnEvent) => b.reason === 'thermal-shutdown' || b.reason === 'thermal-recover'
 
-/** Arduino analog pin name → pin number the sketch passes to analogRead (Uno A0 = 14, ESP32-S3 A0 = GPIO1). */
-export function analogPinNumber(name: string, board: 'uno' | 'esp32s3' | 'generic'): number {
+/** Arduino analog pin name → pin number the sketch passes to analogRead (Uno A0 = 14, ESP32-S3 A0 = GPIO1, Teensy 4.1 A14 = 38). */
+export function analogPinNumber(name: string, board: 'uno' | 'esp32s3' | 'teensy41' | 'generic'): number {
   const m = /^A(\d+)$/i.exec(name)
   if (!m) return Number(name)
   const n = Number(m[1])
+  if (board === 'teensy41' && n >= 14) return 38 + (n - 14)
   return board === 'esp32s3' ? n + 1 : 14 + n
 }
 

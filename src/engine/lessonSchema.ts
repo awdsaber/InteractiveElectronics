@@ -275,7 +275,7 @@ export const lessonSchema = z.object({
       pins: z.record(z.string(), z.string()),
       analogPins: z.record(z.string(), node).optional(),
       vcc: num.positive(),
-      board: z.enum(['uno', 'esp32s3', 'generic']),
+      board: z.enum(['uno', 'esp32s3', 'teensy41', 'generic']),
     })
     .optional(),
   tweaks: z.array(tweak).optional(),
