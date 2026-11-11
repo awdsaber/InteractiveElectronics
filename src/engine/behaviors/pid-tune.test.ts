@@ -108,6 +108,38 @@ describe('pid-tune behavior', () => {
     b.dispose()
   })
 
+  it('Tune.get(name, fallback) hands over any other param live (signed), or the fallback when unset', async () => {
+    const code = `void setup() { Serial.begin(115200); }
+void loop() {
+  float a = Tune.get("alpha", 0.5);
+  float tr = Tune.get("trim", 0);
+  float z = Tune.get("missing", 7.25);
+  Serial.print("a:"); Serial.print(a, 3);
+  Serial.print(",tr:"); Serial.print(tr, 2);
+  Serial.print(",z:"); Serial.println(z, 2);
+  delay(20);
+}`
+    const l: Lesson = {
+      ...lesson,
+      sketch: { ...lesson.sketch!, code },
+      readouts: [
+        { label: 'A', source: { kind: 'behavior', key: 'serial.a' }, unit: '' },
+        { label: 'TR', source: { kind: 'behavior', key: 'serial.tr' }, unit: '' },
+        { label: 'Z', source: { kind: 'behavior', key: 'serial.z' }, unit: '' },
+      ],
+      behaviors: [{ id: 'pid-tune', instance: 'tune', params: { alpha: 0.98, trim: -1.5 } }, { id: 'serial-plotter', instance: 'serial' }],
+    }
+    const b = createBench(l, { registry: REG })
+    b.dispatch('power')
+    b.upload()
+    await run(b, 0.1)
+    expect(b.snapshot().values).toEqual([0.98, -1.5, 7.25])
+    b.setTweak('behavior:tune.trim', 2)
+    await run(b, 0.1)
+    expect(b.snapshot().values[1]).toBe(2)
+    b.dispose()
+  })
+
   it('clamps: gains are never negative, the period is 1..1000 ms', async () => {
     const b = createBench(lesson, { registry: REG })
     b.setTweak('behavior:tune.kp', -3)

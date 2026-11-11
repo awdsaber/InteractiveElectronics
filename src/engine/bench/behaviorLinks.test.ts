@@ -105,6 +105,42 @@ describe('behavior links', () => {
     }
   })
 
+  it('ctx.readNow from onStep sees what an earlier stepper published in the same step (read sees last tick)', async () => {
+    const steps = new WeakMap<object, number>()
+    const source: Behavior = {
+      id: 'source',
+      onStep(ctx) {
+        const n = (steps.get(ctx) ?? 0) + 1
+        steps.set(ctx, n)
+        ctx.publish('n', n)
+      },
+    }
+    let mismatches = 0
+    let calls = 0
+    let lagged = 0
+    const sink: Behavior = {
+      id: 'sink',
+      onStep(ctx) {
+        calls++
+        const now = ctx.readNow?.('source.n')
+        const snap = ctx.read?.('source.n') ?? 0
+        if (now === undefined || now !== (steps.get(lastSource!) ?? -1)) mismatches++
+        if (snap < (now ?? 0)) lagged++
+      },
+    }
+    let lastSource: object | null = null
+    const wrapped: Behavior = { ...source, init: (ctx) => void (lastSource = ctx) }
+    const b = createBench(
+      { ...lessonWith(), transient: true, behaviors: ['source', 'sink'], tweaks: [], failures: ledResistor.failures, readouts: ledResistor.readouts },
+      { registry: { source: wrapped, sink } },
+    )
+    b.dispatch('power')
+    for (let i = 0; i < 3; i++) await b.frame(FRAME)
+    expect(calls).toBeGreaterThan(30)
+    expect(mismatches).toBe(0)
+    expect(lagged).toBe(calls)
+  })
+
   it('a failure set patch on behavior:<instance> overrides the param until repaired, then the tweak value returns', async () => {
     const l = lessonWith()
     expect(validateLesson(l, { writer, reader })).toEqual([])

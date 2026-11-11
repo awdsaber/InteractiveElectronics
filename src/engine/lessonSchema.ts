@@ -19,7 +19,7 @@ const OPTIONAL_KEYS: Record<string, string[]> = {
   PMOS: ['vth', 'k', 'vBreak'],
   C: ['v0', 'polarized'],
   L: ['i0'],
-  MOTOR: ['l', 'kt', 'j', 'b', 'load'],
+  MOTOR: ['l', 'kt', 'j', 'b', 'load', 'omegaSet'],
   PIN: ['rOut', 'vccNode'],
   OPAMP: ['gain'],
   XFMR: ['lm'],
@@ -251,6 +251,17 @@ export const lessonSchema = z.object({
     frame: z.object({ size: z.tuple([num.positive(), num.positive()]), center: z.tuple([num, num]).optional() }).optional(),
     parts: z.array(part),
     layers: pcbLayers.optional(),
+    dynamic: z
+      .object({
+        lift: num.nonnegative().optional(),
+        pivot: z.tuple([num, num, num]),
+        pitchKey: z.string().min(1).optional(),
+        travelKey: z.string().min(1).optional(),
+        unitsPerM: num.positive().optional(),
+        maxTravel: num.nonnegative().optional(),
+        fixed: z.array(z.string()).optional(),
+      })
+      .optional(),
   }),
   circuit: z.object({ elements: z.array(element).min(1) }),
   powerElementId: z.string().min(1),
@@ -333,6 +344,7 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
   for (const id of new Set(dupEl)) errs.push(`circuit: duplicate element id "${id}"`)
   const partIds = lesson.board.parts.map((p) => p.id)
   for (const id of new Set(partIds.filter((id, i) => partIds.indexOf(id) !== i))) errs.push(`board.parts: duplicate part id "${id}"`)
+  for (const id of lesson.board.dynamic?.fixed ?? []) if (!partIds.includes(id)) errs.push(`board.dynamic.fixed: no part "${id}"`)
   const lay = lesson.board.layers
   if (lay) {
     const known = new Set(partIds)

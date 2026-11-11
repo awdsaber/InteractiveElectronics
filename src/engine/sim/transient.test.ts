@@ -104,6 +104,32 @@ describe('createTransient', () => {
     expect(s.extra['M1.rpm']).toBeCloseTo((s.extra['M1.omega'] * 60) / (2 * Math.PI), 6)
   })
 
+  it('a motor with omegaSet has its shaft speed prescribed (a co-simulated load owns the mechanics)', () => {
+    const n: Netlist = {
+      elements: [
+        { id: 'V1', type: 'V', nodes: ['vcc', '0'], value: 6 },
+        { id: 'M1', type: 'MOTOR', nodes: ['vcc', '0'], r: 2, l: 1e-3, ke: 0.01, j: 1e-6, b: 1e-6, omegaSet: 200 },
+      ],
+    }
+    // DC: i = (V − ke·ω) / R, ω exactly the set value
+    const dc = solveDC(n)
+    expect(dc.extra['M1.omega']).toBeCloseTo(200, 9)
+    expect(dc.current['M1']).toBeCloseTo((6 - 0.01 * 200) / 2, 9)
+    expect(dc.extra['M1.torque']).toBeCloseTo(0.01 * 2, 9)
+    // transient: the speed follows setParam at once, the current through the winding's L/R (0.5 ms)
+    const sim = createTransient(n, 1e-4)
+    for (let k = 0; k < 50; k++) sim.step()
+    sim.setParam('M1', 'omegaSet', -100)
+    let s = sim.step()
+    expect(s.extra['M1.omega']).toBeCloseTo(-100, 9)
+    for (let k = 0; k < 200; k++) s = sim.step()
+    expect(s.current['M1']).toBeCloseTo((6 + 0.01 * 100) / 2, 3)
+    // a motor driven backwards by its load generates: the current reverses
+    sim.setParam('M1', 'omegaSet', 1000)
+    for (let k = 0; k < 200; k++) s = sim.step()
+    expect(s.current['M1']).toBeCloseTo((6 - 10) / 2, 3)
+  })
+
   it('setPin drives PIN elements by pin number', () => {
     const sim = createTransient(
       {

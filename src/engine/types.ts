@@ -84,6 +84,12 @@ export type Element =
       j?: number // kg·m²
       b?: number // viscous friction N·m·s
       load?: number // N·m
+      /**
+       * prescribed shaft speed, rad/s: a behavior that owns the mechanics (a robot's wheels and body) sets it
+       * every step with setParam and reads the torque (extra `<id>.torque` = kt·i) back; j, b and load are then
+       * unused. Absent: the motor integrates its own J·dω/dt = kt·i − b·ω − load.
+       */
+      omegaSet?: number
     })
   | (ElementBase & {
       type: 'PIN'
@@ -330,6 +336,29 @@ export interface BoardSpec {
    * isolates one layer or overlays the DRC (src/engine/pcb, src/three/PcbLayers.tsx)
    */
   layers?: PcbLayersSpec
+  /**
+   * the board as one rigid body that a behavior moves (a balancing robot's chassis): its PCB and parts are
+   * lifted, pitched about a pivot and moved along x from published values (src/three/dynamicPose.ts)
+   */
+  dynamic?: BoardDynamic
+}
+
+/** a board that moves: every part except `fixed` rides on it */
+export interface BoardDynamic {
+  /** the board (PCB and parts) sits this far above the mat, board units: a chassis deck on its wheels (default 0) */
+  lift?: number
+  /** the point the pitch turns about, [x, y, z] in board coordinates (before the lift): the axle */
+  pivot: [number, number, number]
+  /** published key of the pitch, degrees; + tips the board's +y toward +x (a forward lean) */
+  pitchKey?: string
+  /** published key of the travel along +x, metres */
+  travelKey?: string
+  /** board units per metre of travel (default 100: one unit is 1 cm) */
+  unitsPerM?: number
+  /** the drawn travel is clamped to ±this, board units (default 8), so it stays on the mat */
+  maxTravel?: number
+  /** parts that stay put on the mat */
+  fixed?: string[]
 }
 
 /** a copper trace: a polyline in board units, its width in mm */
@@ -790,6 +819,12 @@ export interface BehaviorContext {
   publish(key: string, value: number): void
   /** a value another behavior published, by its full key `<instance>.<key>` (undefined when unset) */
   read?(key: string): number | undefined
+  /**
+   * the value as published right now, not last tick's snapshot: from onStep, what a behavior listed earlier
+   * published in this same step (a robot's pitch feeding its IMU every step). Order-dependent, so use `read`
+   * unless one step of lag matters.
+   */
+  readNow?(key: string): number | undefined
   /**
    * change a netlist element parameter live (e.g. sensor resistance). From tick it applies at the next
    * frame; from onStep it applies from the next transient step (switch bounce, sub-ms events)

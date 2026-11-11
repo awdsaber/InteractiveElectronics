@@ -34,6 +34,8 @@ export const behavior: Behavior = {
       kd: () => gain(ctx, 'kd', 0),
       periodMs: () => period(ctx),
       antiWindup: () => aw(ctx),
+      /** any other param by name, unclamped (a filter α, a setpoint trim), or `fallback` when it is not set */
+      get: (name: unknown, fallback?: unknown) => num(ctx.params[String(name)], num(fallback, 0)),
     }
     return { Tune }
   },

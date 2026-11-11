@@ -11,6 +11,18 @@
 - **Behaviors:** `balance-bot`, `imu-mpu6050`, `tb6612` (two channels), `quad-encoder` (two instances), `mcu-supply`, `serial-plotter`
 - **transient:** true
 
+## As built (2026-11-11)
+
+The lesson (`src/lessons/T7/capstone-balancing-robot.ts`) follows this draft with these changes. Where they disagree, the lesson and this section win.
+
+- **Model.** `balance-bot` integrates the Lagrangian cart-pendulum including the motors' rotor inertia reflected through the gearbox, J_r = 2·48²·J_m = 1.38e-3 kg·m² (1.31 kg of apparent cart mass), which the draft left out (`src/engine/robot/pendulum.ts`, tested for √(g/l), energy conservation and fall detection). Poles: point mass √(g/l) = 11.1 rad/s; √(M·g·l/(I_c + M·l²)) = 8.8 rad/s; free wheels 8.2 rad/s (84 ms doubling); with the motors on the bridge (back-EMF damping 0.020 N·m·s) the linearised open-loop poles are +7.4, 0, −5.8, −15.8 rad/s.
+- **Coupling.** Not `setMotorLoad`: a MOTOR's `load` is an unsigned drag against ω, so it cannot carry a reaction torque that drives the shaft. The MOTOR elements get a prescribed shaft speed (`omegaSet`, new and optional) set every 1 ms step from the pendulum, and the wheels get η·N·kt·i from the solved currents.
+- **Gains, derived.** The cascade's three gains are a full state feedback on [θ, θ̇, ẋ]; placing the poles at −12 ± 9i (ω_n 15 rad/s, ζ 0.8) and −3 rad/s gives Kp = 20.7 counts/°, Kd = 2.3 counts/(°/s), KV = 0.11 °/rpm (the draft's 18 / 0.6 / 0.05 were not derived). Angle PD alone leaves a slow pole at +1.7 rad/s: the speed loop is required. MAX_LEAN is 10° (6° could not brake after a 3 N push and fell on the second push). The gains, α, loop period and trim are `pid-tune` sliders read with `Tune.*` / `Tune.get(...)`.
+- **IMU.** `imu-mpu6050` with `perStep` 1 samples the robot's pitch every step and adds the robot's own acceleration at the sensor (1.5 cm above the axle), which is what defeats an accelerometer-only estimate.
+- **Hold and fall.** The robot is held upright (wheels on the floor) until the sketch has run 0.9 s (its gyro calibration), and with the momentary **Hold it upright**; past 45° it falls to 78° and lies with its wheels free. Push is momentary, with a separate **Push size** (3 N for 50 ms by default).
+- **Failures, as built:** accelerometer only (falls within ~2 s), gyro only plus a 20 °C warm-up (0.6 °/s drift, runs away), 10 Hz loop (100 ms; 50 ms still stands), both motors' leads swapped (falls in under a second), tired pack 6.2 V / 1.5 Ω (stands, but a 5 N push that a fresh pack catches knocks it over), battery on a mast (COM 20 cm: ζ falls to ≈ 0.23, it rings at ≈ 2 Hz). Deferred: IMU mount offset, a single reversed motor (needs yaw), gearbox backlash, floor slope, the right encoder (pins 11/12 have no external interrupt; only the left wheel is counted).
+- **Board.** Three decks on M3 standoffs (PCB deck with driver, IMU, switch, bulk cap and dividers; Uno; battery on top), two TT-class motors below, drawn with the new `board.dynamic` so the whole robot tilts and rolls. Guide: power, upload, watch it stand, push, break the filter, repair, slow loop, gyro-only drift, quiz.
+
 ## Learning goals
 
 1. Model the robot as an inverted pendulum on wheels, and compute its unstable pole √(g/l) and the time scale it sets for the control loop.
