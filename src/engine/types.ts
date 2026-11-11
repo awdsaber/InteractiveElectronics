@@ -526,8 +526,8 @@ export interface Sketch {
   /** analog inputs: A0.. -> node id (read voltage) */
   analogPins?: Record<string, NodeId>
   vcc: number // 5 for Uno, 3.3 for ESP32
-  board: 'uno' | 'esp32s3' | 'generic'
-  /** ADC resolution in bits (board default when omitted: Uno 10, ESP32-S3 12) */
+  board: 'uno' | 'esp32s3' | 'teensy41' | 'generic'
+  /** ADC resolution in bits (board default when omitted: Uno 10, ESP32-S3 12, Teensy 4.1 10) */
   adcBits?: number
   /** analogWrite PWM frequency, Hz (board default when omitted) */
   pwmFreq?: number

@@ -89,6 +89,25 @@ export const ARDUINO_CONSTANTS: Record<string, number> = {
 /** ESP32-S3 analog pins are GPIO numbers: A0..A9 = GPIO1..10 (ADC1), A10..A19 = GPIO11..20 (ADC2). */
 export const ESP32S3_ANALOG: Record<string, number> = Object.fromEntries(Array.from({ length: 20 }, (_, k) => [`A${k}`, k + 1]))
 
+/**
+ * Teensy 4.1 extras (PJRC pinout card): A0..A7 = 14..21 as on the Uno, then A8..A13 = 22..27 and
+ * A14..A17 = 38..41, plus Teensyduino's CPU clock constants at the default 600 MHz.
+ */
+export const TEENSY41_GLOBALS: Record<string, number> = {
+  A8: 22,
+  A9: 23,
+  A10: 24,
+  A11: 25,
+  A12: 26,
+  A13: 27,
+  A14: 38,
+  A15: 39,
+  A16: 40,
+  A17: 41,
+  F_CPU: 600_000_000,
+  F_CPU_ACTUAL: 600_000_000,
+}
+
 /** Functions and objects the sandbox provides to sketches (used by the transpiler's unknown-name check). */
 export const BUILTIN_NAMES: readonly string[] = [
   ...Object.keys(ARDUINO_CONSTANTS),
@@ -98,6 +117,7 @@ export const BUILTIN_NAMES: readonly string[] = [
   'bit', 'F', 'Serial', 'Wire', 'Servo', 'SPI', 'SPISettings',
   'attachInterrupt', 'detachInterrupt', 'digitalPinToInterrupt', 'interrupts', 'noInterrupts', 'pulseIn', 'pulseInLong',
   'tone', 'noTone', 'bitWrite', 'bitSet', 'bitClear', 'analogReference', 'analogReadResolution',
+  'analogWriteResolution', 'analogWriteFrequency',
 ]
 
 /** Real Arduino functions the simulator does not model (for a friendlier error). */

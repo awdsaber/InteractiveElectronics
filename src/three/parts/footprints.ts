@@ -185,6 +185,7 @@ export function moduleSize(part: PartPlacement): { w: number; d: number } {
   const variant = str(part, 'variant', '')
   if (variant === 'uno') return { w: 6.86, d: 5.33 }
   if (variant === 'nano') return { w: 4.32, d: 1.78 }
+  if (variant === 'teensy41') return { w: 6.1, d: 1.8 }
   return { w: num(part, 'w', 3), d: num(part, 'd', 2) }
 }
 
@@ -192,7 +193,7 @@ export function moduleSize(part: PartPlacement): { w: number; d: number } {
 export function modulePins(part: PartPlacement): number {
   const variant = str(part, 'variant', '')
   if (variant === 'nano') return 15
-  if (variant === 'uno') return 0
+  if (variant === 'uno' || variant === 'teensy41') return 0
   const { w } = moduleSize(part)
   return Math.max(0, Math.round(num(part, 'pins', Math.floor(w / PITCH) - 1)))
 }

@@ -453,8 +453,48 @@ function NanoModule({ part, state }: PartProps) {
   )
 }
 
+/** Teensy 4.1 silk, pin order along each row from the USB end (PJRC pinout card) */
+const TEENSY41_BACK = ['VIN', 'GND', '3.3V', '23', '22', '21', '20', '19', '18', '17', '16', '15', '14', '13', 'GND', '41', '40', '39', '38', '37', '36', '35', '34', '33']
+const TEENSY41_FRONT = ['GND', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '3.3V', '24', '25', '26', '27', '28', '29', '30', '31', '32']
+
+/**
+ * Teensy 4.1 carrier (61 × 18 mm): the bare PCB with its two 24-pad rows 0.6" apart, pin labels and
+ * outline. USB end at −x, the VIN row at −z. The lesson places the chips, connectors and headers as
+ * their own parts so each one can be inspected.
+ */
+function Teensy41Module({ part }: PartProps) {
+  const { w, d } = moduleSize(part)
+  const rowZ = 0.762
+  const color = part.color ?? str(part, 'color', '#2d6a43')
+  const standoff = num(part, 'standoff', 0)
+  const art = boardArt(`teensy41:${w}:${d}`, {
+    color,
+    w,
+    d,
+    draw: (ctx, u, v, s) => {
+      for (let i = 0; i < 24; i++) {
+        const x = (i - 11.5) * PITCH
+        padRing(ctx, u(x), v(rowZ), 0.075 * s)
+        padRing(ctx, u(x), v(-rowZ), 0.075 * s)
+        silkText(ctx, TEENSY41_BACK[i], u(x), v(-rowZ + 0.17), 0.06 * s)
+        silkText(ctx, TEENSY41_FRONT[i], u(x), v(rowZ - 0.17), 0.06 * s)
+      }
+      ctx.strokeStyle = C.silk
+      ctx.lineWidth = 0.015 * s
+      ctx.strokeRect(u(-w / 2 + 0.05), v(-d / 2 + 0.05), (w - 0.1) * s, (d - 0.1) * s)
+      silkText(ctx, str(part, 'title', 'Teensy 4.1'), u(0.15), v(0.5), 0.12 * s)
+    },
+  })
+  return (
+    <group>
+      <BoardSlab w={w} d={d} y={standoff} art={art} />
+    </group>
+  )
+}
+
 function ModuleBody(p: PartProps) {
   const v = str(p.part, 'variant', '')
+  if (v === 'teensy41') return <Teensy41Module {...p} />
   if (v === 'uno') return <UnoModule {...p} />
   if (v === 'nano') return <NanoModule {...p} />
   return <GenericModule {...p} />

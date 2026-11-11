@@ -12,7 +12,7 @@ export const tracks: Track[] = [
   { id: 'T1', name: 'Passives', blurb: 'Resistors, capacitors, inductors and transformers.' },
   { id: 'T2', name: 'Semiconductors', blurb: 'Diodes, LEDs, transistors, op-amps and regulators.' },
   { id: 'T3', name: 'Digital', blurb: 'Logic gates, flip-flops, timers and conversion.' },
-  { id: 'T4', name: 'Microcontrollers', blurb: 'The Uno, the ESP32-S3, interrupts and timers.' },
+  { id: 'T4', name: 'Microcontrollers', blurb: 'The Uno, the ESP32-S3, the Teensy 4.1, interrupts and timers.' },
   { id: 'T5', name: 'Motors & drivers', blurb: 'H-bridges, steppers, servos and encoders.' },
   { id: 'T6', name: 'Sensors', blurb: 'IMUs, rangefinders, load cells and thermistors.' },
   { id: 'T7', name: 'Professional', blurb: 'Buses, grounding, thermal, PCB design and the capstone.' },
@@ -24,7 +24,7 @@ export const TRACK_ORDER: Record<TrackId, string[]> = {
   T1: ['resistor-codes-divider', 'capacitor-rc', 'inductor-rl', 'rlc-resonance', 'ac-oscilloscope', 'transformer'],
   T2: ['diode-rectifier', 'led-resistor', 'zener', 'transistor-switch', 'mosfet-switch', 'opamp-basics', 'regulators-linear-buck'],
   T3: ['logic-gates', 'flipflops-counters', 'timer-555', 'adc-dac-pwm'],
-  T4: ['arduino-uno', 'esp32-s3', 'interrupts-timers'],
+  T4: ['arduino-uno', 'esp32-s3', 'teensy-41', 'interrupts-timers'],
   T5: ['tb6612fng', 'l298n', 'a4988-stepper', 'pca9685-servo', 'encoders'],
   T6: ['mpu6050-imu', 'ultrasonic-hcsr04', 'loadcell-hx711', 'thermistor'],
   T7: [
