@@ -9,6 +9,7 @@ import { defaultFloor } from '../engine/bench/readouts'
 import { findTrigger } from '../engine/bench/sampleRing'
 import { formatSI } from '../engine/sim/format'
 import type { Lesson, Readout, ScopeChannel, ScopeSource } from '../engine/types'
+import { GameController } from './GameController'
 import { LogicAnalyzer } from './LogicAnalyzer'
 import { RadioSeg } from './RadioSeg'
 import { Sweep, columnPath, parseSource, seq125, sourceKey, withValue } from './scopeView'
@@ -25,8 +26,8 @@ const PRE = 0.2 // trigger point: 2 divisions from the left
 const PER_DIV = withValue(seq125(1e-6, 100), 0.25)
 const TIME_DIV = seq125(1e-6, 5)
 
-type View = 'scope' | 'chart' | 'logic'
-const VIEW_LABEL: Record<View, string> = { scope: 'Oscilloscope', chart: 'Strip chart', logic: 'Logic analyzer' }
+type View = 'scope' | 'chart' | 'logic' | 'hid'
+const VIEW_LABEL: Record<View, string> = { scope: 'Oscilloscope', chart: 'Strip chart', logic: 'Logic analyzer', hid: 'Game controller' }
 
 interface Chan {
   key: string
@@ -401,7 +402,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
     return b.instrumentConfig()
   })
 
-  const views: View[] = defaults?.logic ? ['scope', 'chart', 'logic'] : ['scope', 'chart']
+  const views: View[] = ['scope', 'chart', ...(defaults?.logic ? (['logic'] as const) : []), ...(defaults?.hid ? (['hid'] as const) : [])]
   const [view, setView] = useState<View>(defaults?.view ?? (defaults?.chart && !defaults.scope ? 'chart' : 'scope'))
   const [chans, setChans] = useState<Chan[]>(() => initialChans(lesson, boot.scope))
   const sd = defaults?.scope
@@ -456,7 +457,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
       const b = bench()
       const c = cfg.current
       const s = st.current
-      if (c.view === 'logic') return // the logic analyzer draws itself
+      if (c.view === 'logic' || c.view === 'hid') return // the logic analyzer and the game controller draw themselves
       if (c.view === 'chart') {
         const cw = b.chart.writes
         if (chartCanvas.current && (cw !== s.chartWrites || s.dirty)) {
@@ -589,7 +590,7 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
             {VIEW_LABEL[v]}
           </button>
         ))}
-        <span className="inst-note">{view === 'logic' ? 'bus timing laid out at the real bit rate, µs resolution' : 'sampled every sim step, edge substeps included'}</span>
+        <span className="inst-note">{view === 'logic' ? 'bus timing laid out at the real bit rate, µs resolution' : view === 'hid' ? 'what the computer receives: the last input report' : 'sampled every sim step, edge substeps included'}</span>
       </div>
 
       <div className="inst-body" id={`${uid}-panel-scope`} role="tabpanel" aria-labelledby={`${uid}-tab-scope`} hidden={view !== 'scope'}>
@@ -716,6 +717,12 @@ export function Instruments({ lesson, bench }: InstrumentsProps) {
           </fieldset>
         </div>
       </div>
+
+      {defaults?.hid && (
+        <div className="inst-body inst-body-hid" id={`${uid}-panel-hid`} role="tabpanel" aria-labelledby={`${uid}-tab-hid`} hidden={view !== 'hid'}>
+          <GameController bench={bench} instance={defaults.hid.instance} active={view === 'hid'} />
+        </div>
+      )}
 
       {defaults?.logic && (
         <div className="inst-body" id={`${uid}-panel-logic`} role="tabpanel" aria-labelledby={`${uid}-tab-logic`} hidden={view !== 'logic'}>

@@ -1689,3 +1689,131 @@ input[type='range']:active::-webkit-slider-thumb {
     font-size: 13px;
   }
 }
+
+/* ───────── game controller (usb-hid) tab ───────── */
+.hid-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font: 600 13px var(--mono);
+}
+.hid-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--paper-2);
+  align-self: center;
+}
+.hid-dot[data-on] {
+  background: var(--ok);
+}
+.hid-sub {
+  font: 500 11px var(--mono);
+  color: var(--ink-3);
+}
+.hid-axes {
+  display: grid;
+  gap: 8px;
+}
+.hid-axis {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 96px 70px;
+  align-items: center;
+  gap: 10px;
+}
+.hid-axis-name {
+  font: 600 12px var(--mono);
+}
+.hid-axis-name em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.hid-bar {
+  position: relative;
+  height: 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  background: var(--paper);
+  overflow: hidden;
+}
+.hid-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--blue);
+  opacity: 0.8;
+}
+.hid-game {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--warn);
+}
+.hid-num {
+  font: 600 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.hid-num small {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.hid-v {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.hid-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+.hid-btn {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 5px 2px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-3);
+  font: 600 12px var(--mono);
+}
+.hid-btn small {
+  font: 500 8.5px var(--mono);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.hid-btn[data-on] {
+  background: var(--blue);
+  color: var(--card);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.hid-btn[data-ghost] {
+  background: var(--warn);
+  border-style: dashed;
+}
+.hid-desc {
+  margin: 0;
+  padding-left: 16px;
+  font: 500 11px/1.45 var(--mono);
+  color: var(--ink-2);
+}
+.hid-bytes {
+  display: block;
+  width: 100%;
+  font: 600 12px/1.5 var(--mono);
+  word-break: break-all;
+}
+@media (max-width: 720px) {
+  .hid-axis {
+    grid-template-columns: 70px minmax(0, 1fr) 80px;
+  }
+  .hid-v {
+    display: none;
+  }
+}

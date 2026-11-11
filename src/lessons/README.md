@@ -152,6 +152,8 @@ instruments: {
 
 A `pin` channel on a bus pin (Uno: 1 TX, 18/19 SDA/SCL, 11/12/13 MOSI/MISO/SCK) shows that bus; another pin shows what the sketch drives on it. A `node` wired to a PIN element (through R ≤ 1 Ω or a closed switch) follows that pin, so a failure that rewires it shows up; other nodes are thresholded at `vth` once per frame.
 
+**Game controller.** Add a `usb-hid` behavior and `instruments.hid: { instance: '<its instance>' }` (optionally `view: 'hid'`) to get a **Game controller** tab: one bar per axis with its raw count and voltage, a lamp per button (a ghost, reported with no switch closed, is drawn dashed), the report descriptor in words and the last report's bytes. `T4/leo-bodnar-bu0836.ts` is the reference.
+
 ## Sim speed (`sim.speed`)
 The controls strip offers ×0.01, ×0.1, ×1, ×10 and ×100. `sim: { speed: 0.1 }` sets the lesson's starting speed. Slow motion still steps at `sim.dt`; it takes one step whenever a whole dt of sim time has built up. Time-lapse is capped at `sim.stepsPerFrame` steps per frame (default 30 × speed). When the cap holds the sim back, the strip shows "running slower than real time" (or "capped at ×N" above real time). With a fine `dt` (µs), even ×1 may be capped: set `speed` below 1 for those lessons.
 
