@@ -39,6 +39,9 @@
 //   per (rad/s)² (illustrative: 0.5 g rms at 1560 rad/s ≈ 15 000 rpm, a 3 V coin ERM),
 //   motorId 'vib', dlpf 0..6 (applied to CONFIG when it changes), addr 0x68, alpha 0.98, refHz 100,
 //   calSeconds 1, seed 1, and nodes sda 'sda', scl 'scl', vdd '3v3', ad0 'ad0'.
+//   perStep 0: with 1 and a behavior key as pitchSource, sample and latch every solve (onStep) on that
+//   behavior's value from the same step (ctx.readNow; list it first), adding its `<key>_ax_g` / `<key>_az_g`
+//   (the robot's own acceleration at the sensor, g) to the accelerometer.
 
 import type { Behavior, BehaviorContext } from '../types'
 
@@ -136,6 +139,32 @@ interface State {
   pGyroCal: number
   pFilt: number
   pAccel: number
+  /** the signal chain's constants for one sample of k.h seconds */
+  k: ChainConsts
+  /** per-step mode: the last solve's time, and the source's linear-acceleration keys */
+  stepT: number
+  axKey: string
+  azKey: string
+  /** the shaker, from the last tick */
+  vibA: number
+  fVib: number
+  omegaM: number
+}
+
+interface ChainConsts {
+  h: number
+  cfg: number
+  kA: number
+  kG: number
+  aA: number
+  aG: number
+  sA: number
+  sG: number
+  vibSensed: number
+  bias: number
+  mount: number
+  alpha: number
+  refDt: number
 }
 
 const states = new WeakMap<BehaviorContext, State>()
@@ -205,6 +234,13 @@ function state(ctx: BehaviorContext): State {
       pGyroCal: 0,
       pFilt: 0,
       pAccel: 0,
+      k: { h: 0, cfg: -1, kA: 1, kG: 1, aA: 0, aG: 0, sA: 0, sG: 0, vibSensed: 0, bias: 0, mount: 0, alpha: 0.98, refDt: 0.01 },
+      stepT: 0,
+      axKey: '',
+      azKey: '',
+      vibA: 0,
+      fVib: 0,
+      omegaM: 0,
     }
     resetRegs(s)
     restartReference(ctx, s)
@@ -407,6 +443,118 @@ function advanceTruth(ctx: BehaviorContext, s: State, mode: number, t: number, h
   return rate
 }
 
+/** filter and noise constants for one internal sample of h seconds at the current DLPF setting (into s.k) */
+function chainConstants(ctx: BehaviorContext, s: State, h: number): void {
+  const p = ctx.params
+  const k = s.k
+  const cfg = dlpfOf(s)
+  const tauA = DLPF.accelDelayMs[cfg] / 1000
+  const tauG = DLPF.gyroDelayMs[cfg] / 1000
+  const bwA = DLPF.accelBw[cfg]
+  const bwG = DLPF.gyroBw[cfg]
+  k.kA = tauA > 0 ? 1 - Math.exp(-h / tauA) : 1
+  k.kG = tauG > 0 ? 1 - Math.exp(-h / tauG) : 1
+  k.aA = Math.exp(-2 * Math.PI * bwA * h)
+  k.aG = Math.exp(-2 * Math.PI * bwG * h)
+  k.sA = num(p.accelNoise, 400e-6) * Math.sqrt(bwA) * Math.sqrt(1 - k.aA * k.aA)
+  k.sG = num(p.gyroNoise, 0.005) * Math.sqrt(bwG) * Math.sqrt(1 - k.aG * k.aG)
+  k.vibSensed = s.vibA / Math.sqrt(1 + (s.fVib / bwA) ** 2)
+  k.bias = num(p.gyroBias, 2.1) + num(p.biasTempco, 0.03) * (num(p.tempC, 25) - 25)
+  k.mount = num(p.mountOffsetDeg, 0)
+  k.alpha = num(p.alpha, 0.98)
+  k.refDt = 1 / num(p.refHz, 100)
+  k.h = h
+  k.cfg = cfg
+}
+
+/**
+ * One internal sample of h seconds (constants in s.k): true rate w (°/s) at the current s.theta, plus the
+ * sensor's non-gravity specific force (g, sensor axes) linAx / linAz; updates the sensed values and the
+ * reference filter.
+ */
+function sampleOnce(s: State, w: number, linAx: number, linAz: number, omegaM: number, found: boolean): void {
+  const k = s.k
+  const h = k.h
+  const th = (s.theta + k.mount) * D2R
+  // gyro Y, °/s
+  s.gLp += k.kG * (w + k.bias - s.gLp)
+  s.nG = k.aG * s.nG + k.sG * gauss(s)
+  s.gyroY = s.gLp + s.nG
+  s.nGx = k.aG * s.nGx + k.sG * gauss(s)
+  s.nGz = k.aG * s.nGz + k.sG * gauss(s)
+  // accelerometer, g
+  s.axLp += k.kA * (-Math.sin(th) + linAx - s.axLp)
+  s.azLp += k.kA * (Math.cos(th) + linAz - s.azLp)
+  s.nX = k.aA * s.nX + k.sA * gauss(s)
+  s.nY = k.aA * s.nY + k.sA * gauss(s)
+  s.nZ = k.aA * s.nZ + k.sA * gauss(s)
+  s.phase += omegaM * h + 0.2 * gauss(s) * (omegaM > 0 ? 1 : 0) // ERM speed jitter
+  if (s.phase > 2 * Math.PI) s.phase %= 2 * Math.PI
+  s.ax = s.axLp + s.nX + k.vibSensed * Math.sin(s.phase)
+  s.ay = s.nY
+  s.az = s.azLp + s.nZ + 0.5 * k.vibSensed * Math.cos(s.phase)
+
+  // reference filter at refHz, on the quantised samples
+  s.refAcc += h
+  if (found && s.refAcc >= k.refDt - 1e-9) {
+    const refDt = k.refDt
+    s.refAcc -= refDt
+    const gl = gyroLsb(s)
+    const al = accelLsb(s)
+    const rateRaw = Math.round(s.gyroY * gl) / gl
+    const pa = Math.atan2(-Math.round(s.ax * al), Math.round(s.az * al)) * R2D
+    s.pAccel = pa
+    if (!s.started) {
+      s.started = true
+      s.pGyro = pa
+      s.pGyroCal = pa
+      s.pFilt = pa
+    } else s.pGyro += rateRaw * refDt
+    if (s.calLeft > 0) {
+      s.calSum += rateRaw
+      s.calN++
+      s.calLeft -= refDt
+      s.pGyroCal = pa
+      s.pFilt = pa
+      if (s.calLeft <= 1e-9) s.calBias = s.calSum / s.calN
+    } else {
+      const r = rateRaw - s.calBias
+      s.pGyroCal += r * refDt
+      s.pFilt = k.alpha * (s.pFilt + r * refDt) + (1 - k.alpha) * pa
+    }
+  }
+}
+
+/** per-step mode: the source is another behavior and `perStep` is set, so every solve samples and latches */
+const perStepMode = (ctx: BehaviorContext) => num(ctx.params.perStep, 0) >= 0.5 && !['tweak', 'profile'].includes(str(ctx.params.pitchSource, 'tweak'))
+
+/**
+ * Per-step sampling (params.perStep 1, pitchSource another behavior's key): one internal sample per solve,
+ * on that behavior's value as published in this very step (ctx.readNow, so it must be listed before this
+ * one), latched into the registers at once, so a sketch running 1 ms behind the circuit reads data at most
+ * a step old instead of a frame old.
+ */
+function onStep(ctx: BehaviorContext, t: number): void {
+  if (!perStepMode(ctx)) return
+  const s = state(ctx)
+  if (!s.thetaInit) return // the first tick sets up the source
+  const h = t - s.stepT
+  s.stepT = t
+  if (!(h > 1e-9) || h > 0.05) return
+  const src = s.srcKey
+  const now = ctx.readNow?.(src)
+  if (now === undefined) return
+  const r = ctx.readNow?.(s.rateKey)
+  const w = r ?? (now - s.theta) / h
+  s.theta = now
+  if (s.k.h !== h || s.k.cfg !== dlpfOf(s)) chainConstants(ctx, s, h)
+  const lax = ctx.readNow?.(s.axKey) ?? 0
+  const laz = ctx.readNow?.(s.azKey) ?? 0
+  sampleOnce(s, w, lax, laz, s.omegaM, s.found)
+  s.srcPrev = now
+  latch(s, num(ctx.params.tempC, 25))
+}
+
 function tick(ctx: BehaviorContext, dt: number): void {
   const s = state(ctx)
   const p = ctx.params
@@ -419,6 +567,8 @@ function tick(ctx: BehaviorContext, dt: number): void {
     if (s.srcKey !== srcName) {
       s.srcKey = srcName
       s.rateKey = `${srcName}_rate`
+      s.axKey = `${srcName}_ax_g`
+      s.azKey = `${srcName}_az_g`
       s.srcPrev = ctx.read?.(srcName) ?? s.theta
     }
     target = ctx.read?.(srcName) ?? s.srcPrev
@@ -456,84 +606,33 @@ function tick(ctx: BehaviorContext, dt: number): void {
   const omegaM = Math.abs(sol ? (sol.extraOf ? sol.extraOf(mid, s.motorKey) : (sol.extra[s.motorKey] ?? 0)) || 0 : 0)
   const vibA = num(p.vibGain, 2.9e-7) * omegaM * omegaM // peak, g
   s.vibRms = vibA < 1e-6 ? 0 : vibA / Math.SQRT2 // a stopped motor's last µrad/s is no vibration
-  const fVib = omegaM / (2 * Math.PI)
-
-  // ── filter constants for the current DLPF setting ──
+  s.vibA = vibA
+  s.fVib = omegaM / (2 * Math.PI)
+  s.omegaM = omegaM
   const cfg = dlpfOf(s)
-  const bwA = DLPF.accelBw[cfg]
-  const bwG = DLPF.gyroBw[cfg]
-  const tauA = DLPF.accelDelayMs[cfg] / 1000
-  const tauG = DLPF.gyroDelayMs[cfg] / 1000
-  let n = Math.max(1, Math.round(dt / H))
-  if (n > MAX_SAMPLES) n = MAX_SAMPLES
-  const h = dt > 0 ? dt / n : H
-  const kA = tauA > 0 ? 1 - Math.exp(-h / tauA) : 1
-  const kG = tauG > 0 ? 1 - Math.exp(-h / tauG) : 1
-  const aA = Math.exp(-2 * Math.PI * bwA * h)
-  const aG = Math.exp(-2 * Math.PI * bwG * h)
-  const sA = num(p.accelNoise, 400e-6) * Math.sqrt(bwA) * Math.sqrt(1 - aA * aA)
-  const sG = num(p.gyroNoise, 0.005) * Math.sqrt(bwG) * Math.sqrt(1 - aG * aG)
-  const vibSensed = vibA / Math.sqrt(1 + (fVib / bwA) ** 2)
   const tempC = num(p.tempC, 25)
-  const bias = num(p.gyroBias, 2.1) + num(p.biasTempco, 0.03) * (tempC - 25)
-  const mount = num(p.mountOffsetDeg, 0)
-  const alpha = num(p.alpha, 0.98)
-  const refDt = 1 / num(p.refHz, 100)
-  const t0 = ctx.t - dt
 
-  for (let k = 0; k < n; k++) {
-    const ts = t0 + (k + 1) * h
-    const w = advanceTruth(ctx, s, mode, ts, h, target, rate, k, n)
-    const th = (s.theta + mount) * D2R
-    // gyro Y, °/s
-    s.gLp += kG * (w + bias - s.gLp)
-    s.nG = aG * s.nG + sG * gauss(s)
-    s.gyroY = s.gLp + s.nG
-    s.nGx = aG * s.nGx + sG * gauss(s)
-    s.nGz = aG * s.nGz + sG * gauss(s)
-    // accelerometer, g
-    s.axLp += kA * (-Math.sin(th) - s.axLp)
-    s.azLp += kA * (Math.cos(th) - s.azLp)
-    s.nX = aA * s.nX + sA * gauss(s)
-    s.nY = aA * s.nY + sA * gauss(s)
-    s.nZ = aA * s.nZ + sA * gauss(s)
-    s.phase += omegaM * h + 0.2 * gauss(s) * (omegaM > 0 ? 1 : 0) // ERM speed jitter
-    if (s.phase > 2 * Math.PI) s.phase %= 2 * Math.PI
-    s.ax = s.axLp + s.nX + vibSensed * Math.sin(s.phase)
-    s.ay = s.nY
-    s.az = s.azLp + s.nZ + 0.5 * vibSensed * Math.cos(s.phase)
-
-    // reference filter at refHz, on the quantised samples
-    s.refAcc += h
-    if (found && s.refAcc >= refDt - 1e-9) {
-      s.refAcc -= refDt
-      const gl = gyroLsb(s)
-      const al = accelLsb(s)
-      const rateRaw = Math.round(s.gyroY * gl) / gl
-      const pa = Math.atan2(-Math.round(s.ax * al), Math.round(s.az * al)) * R2D
-      s.pAccel = pa
-      if (!s.started) {
-        s.started = true
-        s.pGyro = pa
-        s.pGyroCal = pa
-        s.pFilt = pa
-      } else s.pGyro += rateRaw * refDt
-      if (s.calLeft > 0) {
-        s.calSum += rateRaw
-        s.calN++
-        s.calLeft -= refDt
-        s.pGyroCal = pa
-        s.pFilt = pa
-        if (s.calLeft <= 1e-9) s.calBias = s.calSum / s.calN
-      } else {
-        const r = rateRaw - s.calBias
-        s.pGyroCal += r * refDt
-        s.pFilt = alpha * (s.pFilt + r * refDt) + (1 - alpha) * pa
-      }
+  if (mode === 2 && perStepMode(ctx)) {
+    // onStep samples and latches; the tick refreshes the constants (a DLPF, bias or alpha change) and publishes
+    chainConstants(ctx, s, s.k.h > 0 ? s.k.h : H)
+  } else {
+    // ── filter constants for the current DLPF setting ──
+    let n = Math.max(1, Math.round(dt / H))
+    if (n > MAX_SAMPLES) n = MAX_SAMPLES
+    const h = dt > 0 ? dt / n : H
+    chainConstants(ctx, s, h)
+    const t0 = ctx.t - dt
+    const lax = mode === 2 ? (ctx.read?.(s.axKey) ?? 0) : 0
+    const laz = mode === 2 ? (ctx.read?.(s.azKey) ?? 0) : 0
+    for (let k = 0; k < n; k++) {
+      const ts = t0 + (k + 1) * h
+      const w = advanceTruth(ctx, s, mode, ts, h, target, rate, k, n)
+      sampleOnce(s, w, lax, laz, omegaM, found)
     }
+    if (mode === 2) s.srcPrev = target
+    latch(s, tempC)
   }
-  if (mode === 2) s.srcPrev = target
-  latch(s, tempC)
+  const bias = s.k.bias
 
   ctx.publish('pitch_true', s.theta)
   ctx.publish('pitch_accel', found ? s.pAccel : 0)
@@ -552,6 +651,7 @@ function tick(ctx: BehaviorContext, dt: number): void {
 export const behavior: Behavior = {
   id: 'imu-mpu6050',
   libraries: (ctx) => makeLibrary(ctx),
+  onStep,
   init(ctx) {
     const s = state(ctx)
     ctx.mcu.attachI2c(0x68, device(ctx, s, 0x68))
@@ -564,6 +664,12 @@ export const behavior: Behavior = {
       resetRegs(s)
       restartReference(ctx, s)
     } else if (ev === 'upload') restartReference(ctx, s)
+    if (ev === 'power-on' || ev === 'upload') {
+      // see the bus now: a sketch whose setup() runs before the next tick (an await between the upload and
+      // the first frame) must find the chip, not the unpowered bus of the last tick
+      s.busOk = ctx.powered && busHealthy(ctx)
+      s.chipAddr = chipAddress(ctx)
+    }
     else if (ev === 'break' || ev === 'repair') {
       // the wiring changed: see the new bus at once (the restarted setup() may probe it before
       // the next tick)

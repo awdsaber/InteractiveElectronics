@@ -208,6 +208,8 @@ export interface DevParams {
   j: number
   b: number
   load: number
+  /** prescribed shaft speed, rad/s (NaN: the motor integrates its own mechanics) */
+  wSet: number
   /** 1 when the element is disabled (stamps open) */
   off: number
   /** avalanche clamp voltage (0 = none), dynamic resistance, knee offset (zener with rz too) */
@@ -424,6 +426,7 @@ function blankParams(): DevParams {
     j: 0,
     b: 0,
     load: 0,
+    wSet: NaN,
     off: 0,
     vb: 0,
     rz: 0,
@@ -543,6 +546,7 @@ export function prepareDevice(d: Dev): void {
       p.j = el.j ?? MOTOR_J
       p.b = el.b ?? 0
       p.load = el.load ?? 0
+      p.wSet = typeof el.omegaSet === 'number' && Number.isFinite(el.omegaSet) ? el.omegaSet : NaN
       break
     default:
       break
@@ -1271,6 +1275,12 @@ export function stampDevice(d: Dev, sys: LinearSystem, ctx: StampCtx): void {
       addA(sys, ib, ib, -p.r - lr)
       addA(sys, ib, iw, -p.ke)
       if (tran) addB(sys, ib, -lr * ctx.st[d.st])
+      if (p.wSet === p.wSet) {
+        // prescribed speed: a behavior owns the shaft's mechanics (it reads the torque kt·i back)
+        addA(sys, iw, iw, 1)
+        addB(sys, iw, p.wSet)
+        return
+      }
       // mechanical: kt·i - b·ω - Tload(ω) - (J/dt)(ω - ωprev) = 0
       const w0 = x[iw]
       const th = Math.tanh(w0 / MOTOR_LOAD_W)

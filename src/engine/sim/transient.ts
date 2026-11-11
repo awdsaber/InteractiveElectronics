@@ -427,6 +427,13 @@ export function createTransient(netlist: Netlist, dt: number, opts: TransientOpt
       const el = setElementKey(old, key, value)
       current = { ...current, elements: current.elements.map((e) => (e === old ? el : e)) }
       const dev = compiled.byId.get(id)
+      if (dev && el.type === 'MOTOR' && key === 'omegaSet' && typeof value === 'number' && Number.isFinite(value) && dev.p.wSet === dev.p.wSet) {
+        // a new prescribed shaft speed (a co-simulated load, every step) only moves the motor's right-hand
+        // side, which every solve restamps: the cached matrices and their LU stay valid
+        dev.el = el
+        dev.p.wSet = value
+        return
+      }
       if (dev && layoutSignature(el) === layoutSignature(old)) {
         // same matrix layout: swap in a re-prepared device (copy-on-write, so Solutions
         // already handed out keep measuring with the parameters they were solved with)

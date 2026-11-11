@@ -260,6 +260,48 @@ describe('imu-mpu6050: true pitch from elsewhere', () => {
     expect(maxErr).toBeLessThan(1.5)
   })
 
+  it('perStep samples the source every solve, so a sketch reads data a step old, not a frame old', async () => {
+    // the robot publishes its pitch from onStep (a ramp of 100 °/s) and a 0.2 g forward acceleration
+    const robot: Behavior = {
+      id: 'robot',
+      onStep(ctx, t) {
+        ctx.publish('pitch', 100 * t)
+        ctx.publish('pitch_rate', 100)
+        ctx.publish('pitch_ax_g', 0.2)
+        ctx.publish('pitch_az_g', 0)
+      },
+    }
+    // the sketch reads raw gyro Y every 2 ms and keeps the largest spread between successive reads
+    const code = `#include <Wire.h>
+      int last = 0; long changes = 0; long reads = 0;
+      void setup() { Serial.begin(115200); mpu.initialize(); last = mpu.getAccelerationX(); }
+      void loop() {
+        int ax = mpu.getAccelerationX();
+        reads++;
+        if (ax != last) changes++;
+        last = ax;
+        if (reads % 100 == 0) { Serial.print("chg:"); Serial.println(changes * 100 / reads); }
+        delay(2);
+      }`
+    const reg = { 'imu-mpu6050': imu, robot, 'serial-plotter': (await import('./serial-plotter')).behavior }
+    const b = bench(code, reg, ['robot', { id: 'imu-mpu6050', instance: 'imu', params: { pitchSource: 'robot.pitch', perStep: 1, seed: 3 } }, 'serial-plotter'])
+    const s = await run(b, 1)
+    // the true pitch is the same step's value (ctx.readNow), not last frame's
+    expect(Math.abs(P(s, 'pitch_true') - 100 * b.t)).toBeLessThan(0.2)
+    // nearly every 2 ms read sees a fresh register value (a frame-latched register would repeat ~8 times)
+    expect(s.published['serial-plotter.chg']).toBeGreaterThan(90)
+    // the accelerometer sees gravity plus the 0.2 g push: accel pitch = atan2(sin θ − 0.2, cos θ)
+    const th = (P(s, 'pitch_true') * Math.PI) / 180
+    near(P(s, 'pitch_accel'), (Math.atan2(Math.sin(th) - 0.2, Math.cos(th)) * 180) / Math.PI, 0.1)
+  })
+
+  it('a setup() that runs before the first tick (an await after the upload) still finds the chip', async () => {
+    const b = bench(`void setup() { Serial.begin(115200); mpu.initialize(); Serial.println(mpu.testConnection() ? "found" : "missing"); } void loop() { delay(10); }`)
+    await new Promise((r) => setTimeout(r, 0))
+    await run(b, 0.1)
+    expect(b.snapshot().serial).toContain('found')
+  })
+
   it("pitchSource 'profile' sweeps a sine", async () => {
     const b = bench(IDLE, undefined, [{ id: 'imu-mpu6050', instance: 'imu', params: { pitchSource: 'profile', profileAmp: 15, profileHz: 0.25 } }])
     let hi = -99

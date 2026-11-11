@@ -556,6 +556,7 @@ export function createBench(lesson: Lesson, opts: BenchOptions = {}): Bench {
         published[`${r.instance}.${key}`] = value
       },
       read: (key) => readView[key],
+      readNow: (key) => published[key],
       setParam(elementId, key, value) {
         const k = `${elementId}\u0000${key}`
         if (live[k] === value) return

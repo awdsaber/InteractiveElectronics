@@ -3,10 +3,11 @@
 // (250 ms ease from y + 3, staggered); the exploded view lifts mount layers apart.
 
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Group } from 'three'
 import type { BenchSnapshot } from '../engine/bench/simLoop'
-import type { Lesson, PartPlacement } from '../engine/types'
+import type { BoardDynamic, Lesson, PartPlacement } from '../engine/types'
+import { dynamicPose, easePose, ridesOnBody, type Pose } from './dynamicPose'
 import { PALETTES, type Settings } from '../ui/types'
 import { BenchBase } from './BenchBase'
 import { Callout, type CalloutTone } from './Callout'
@@ -227,6 +228,40 @@ function PartLabel({ part, state, labels }: { part: PartPlacement; state: PartRe
   return <Callout text={c.text} anchor={anchor} offset={calloutOffset(part)} tone={c.tone} hidden={c.hidden} target={part.id} />
 }
 
+/**
+ * The moving board (BoardSpec.dynamic): lift, travel and pitch about the pivot, eased between the ~15 Hz
+ * snapshots so the tilt reads smoothly (src/three/dynamicPose.ts).
+ */
+function DynamicBody({ spec, published, children }: { spec: BoardDynamic; published: Record<string, number>; children: ReactNode }) {
+  const outer = useRef<Group>(null)
+  const rot = useRef<Group>(null)
+  const cur = useRef<Pose>({ pitch: 0, travel: 0 })
+  const invalidate = useThree((s) => s.invalidate)
+  const { pitch, travel } = dynamicPose(spec, published)
+  const want = useRef<Pose>({ pitch: 0, travel: 0 })
+  useEffect(() => {
+    want.current = { pitch, travel }
+    invalidate()
+  }, [pitch, travel, invalidate])
+  const [px, py, pz] = spec.pivot
+  const lift = spec.lift ?? 0
+  useFrame((_, dt) => {
+    const moving = easePose(cur.current, want.current, Math.min(dt, 0.1))
+    const o = outer.current
+    const r = rot.current
+    if (o) o.position.set(px + cur.current.travel, py + lift, pz)
+    if (r) r.rotation.z = -cur.current.pitch
+    if (moving) invalidate()
+  })
+  return (
+    <group ref={outer} position={[px, py + lift, pz]}>
+      <group ref={rot}>
+        <group position={[-px, -py, -pz]}>{children}</group>
+      </group>
+    </group>
+  )
+}
+
 export interface BoardProps {
   lesson: Lesson
   snap: BenchSnapshot
@@ -287,26 +322,42 @@ export function Board({ lesson, snap, settings, selected = null, guideFocus = nu
   const tour = pcb && board.layers ? tourState(lesson, snap, tweaks) : null
   const tourPartState = (p: PartPlacement, s: PartRenderState): PartRenderState =>
     tour && tour.view !== 'all' && p.mount !== 'offboard' ? { ...s, visible: false } : s
+  const slot = (p: PartPlacement) => (
+    <PartSlot
+      key={p.id}
+      part={liveParams(p, snap)}
+      state={tourPartState(p, partState(lesson, p, snap))}
+      layer={tour && p.mount !== 'offboard' ? 0 : explodeLayer(p, breadboard)}
+      exploded={exploded}
+      baseLift={tour && p.mount !== 'offboard' ? partsLift(true) : 0}
+      anim={anims.current.get(p.id)!}
+      labels={settings.labels}
+      onHover={onSelect ? onHover : undefined}
+      onPick={onSelect}
+      onGroup={onGroup}
+    />
+  )
+  /* the PCB is the bottom layer: it stays put while the rest lifts off it */
+  const pcbNode = pcb && (tour ? <PcbLayers lesson={lesson} snap={snap} tour={tour} color={color} /> : <Pcb spec={board} color={color} />)
+  const dyn = board.dynamic
   return (
     <group>
       {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={mat.center} />}
-      {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
-      {pcb && (tour ? <PcbLayers lesson={lesson} snap={snap} tour={tour} color={color} /> : <Pcb spec={board} color={color} />)}
-      {board.parts.map((p) => (
-        <PartSlot
-          key={p.id}
-          part={liveParams(p, snap)}
-          state={tourPartState(p, partState(lesson, p, snap))}
-          layer={tour && p.mount !== 'offboard' ? 0 : explodeLayer(p, breadboard)}
-          exploded={exploded}
-          baseLift={tour && p.mount !== 'offboard' ? partsLift(true) : 0}
-          anim={anims.current.get(p.id)!}
-          labels={settings.labels}
-          onHover={onSelect ? onHover : undefined}
-          onPick={onSelect}
-          onGroup={onGroup}
-        />
-      ))}
+      {dyn ? (
+        <>
+          {/* a board that moves: the PCB and its parts are one rigid body (a robot's chassis) */}
+          <DynamicBody spec={dyn} published={snap.published}>
+            {pcbNode}
+            {board.parts.filter((p) => ridesOnBody(dyn, p.id)).map(slot)}
+          </DynamicBody>
+          {board.parts.filter((p) => !ridesOnBody(dyn, p.id)).map(slot)}
+        </>
+      ) : (
+        <>
+          {pcbNode}
+          {board.parts.map(slot)}
+        </>
+      )}
       {guideFocus && guideFocus !== selected && guideFocus !== hovered && (
         <PartHighlight key={`g-${guideFocus}`} object={() => groups.current.get(guideFocus)} mode="guide" />
       )}
