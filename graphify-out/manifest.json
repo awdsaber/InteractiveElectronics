@@ -216,15 +216,15 @@
     "semantic_hash": ""
   },
   "src/three/parts/footprints.ts": {
-    "mtime": 1794003642.2188997,
-    "seen": 1794010374.609711,
-    "ast_hash": "2ed8b37318254f2d58cbc13a4b2fd077",
+    "mtime": 1794416649.0422952,
+    "seen": 1794416822.0081508,
+    "ast_hash": "13420da103336bb4f59be48405ce72a9",
     "semantic_hash": ""
   },
   "src/three/parts/frame.tsx": {
-    "mtime": 1794007463.3959115,
-    "seen": 1794010374.609711,
-    "ast_hash": "864aae6a9a58b74259586decfbe78e0b",
+    "mtime": 1794416649.0432954,
+    "seen": 1794416822.0081508,
+    "ast_hash": "7010594d6f057f756694537d277e56f1",
     "semantic_hash": ""
   },
   "src/three/parts/index.ts": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/misc.tsx": {
-    "mtime": 1794139550.2117841,
-    "seen": 1794139625.502901,
-    "ast_hash": "66a0aea6365f38b0aebb3fd8ad1da05c",
+    "mtime": 1794416649.0442984,
+    "seen": 1794416822.0081508,
+    "ast_hash": "5a36b8312ed4c1c6e38c0b76b0847720",
     "semantic_hash": ""
   },
   "src/three/parts/motion.tsx": {
@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/types.ts": {
-    "mtime": 1794150566.19248,
-    "seen": 1794150961.881968,
-    "ast_hash": "234d7d1a1aff0ce814a97d0f6296bc93",
+    "mtime": 1794416649.0452964,
+    "seen": 1794416822.0081508,
+    "ast_hash": "03bec39a2191551e5e8c4ab2dc40d92d",
     "semantic_hash": ""
   },
   "src/three/textures.ts": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794416065.3556569,
-    "seen": 1794416263.0223563,
-    "ast_hash": "7f94ba72bcaa25425e70ced134aa7d28",
+    "mtime": 1794416649.031293,
+    "seen": 1794416822.0081508,
+    "ast_hash": "9d80545873bd7dc620a242c9c5d256f9",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -822,9 +822,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/soldering-rework.md": {
-    "mtime": 1794002159.6356208,
-    "seen": 1794010374.609711,
-    "ast_hash": "3b823c4281362c361be373e960e80e56",
+    "mtime": 1794416649.0292907,
+    "seen": 1794416822.0081508,
+    "ast_hash": "2b23ac3f78c96cbd9c055d79c284f4f0",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/thermal-design.md": {
@@ -984,21 +984,21 @@
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794416065.4722195,
-    "seen": 1794416263.0223563,
-    "ast_hash": "e8019c87052e0f155a5a472f66fb95b7",
+    "mtime": 1794416649.0412958,
+    "seen": 1794416822.0081508,
+    "ast_hash": "fc6ca8ea29d6d9612afa54d5ff39d88d",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794416065.363652,
-    "seen": 1794416263.0223563,
-    "ast_hash": "0dd65fb826be6fc3845b7a5a557c65a4",
+    "mtime": 1794416649.032292,
+    "seen": 1794416822.0081508,
+    "ast_hash": "e3a7f094a587da54146ab5784c1a28bd",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794416065.4270687,
-    "seen": 1794416263.0223563,
-    "ast_hash": "e6ee715c753a6201cc3d835cbc43ece9",
+    "mtime": 1794416649.0353005,
+    "seen": 1794416822.0081508,
+    "ast_hash": "79230c8f81fc690d5e1368310d1ae35b",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -2451,6 +2451,36 @@
     "mtime": 1794416065.5414832,
     "seen": 1794416263.0223563,
     "ast_hash": "dbd93c993484a325cff9eabcfc8a1252",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/solder-joints.test.ts": {
+    "mtime": 1794416649.0332916,
+    "seen": 1794416822.0081508,
+    "ast_hash": "02e4eb27df187c570e8da7a850f6beaf",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/solder-joints.ts": {
+    "mtime": 1794416649.0342965,
+    "seen": 1794416822.0081508,
+    "ast_hash": "811db496843e53a790e4e7e308dca2e0",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/soldering-rework.guide.test.ts": {
+    "mtime": 1794416649.037296,
+    "seen": 1794416822.0081508,
+    "ast_hash": "d4cd3b762e2507f637487d376b419b92",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/soldering-rework.test.ts": {
+    "mtime": 1794416649.038296,
+    "seen": 1794416822.0081508,
+    "ast_hash": "8ece0d5e389c4a274d88d7cf76e08c44",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/soldering-rework.ts": {
+    "mtime": 1794416649.0402975,
+    "seen": 1794416822.0081508,
+    "ast_hash": "e2a999347b147f163413faf03a104ca8",
     "semantic_hash": ""
   },
   "package-lock.json": {
