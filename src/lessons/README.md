@@ -50,6 +50,9 @@ The template above is a skeleton. `T2/led-resistor.ts` is the complete reference
 ## Part inspector and `facts`
 Clicking a part (or its callout pill) opens the part inspector: label, kind, `role`, a turning close-up, the band decode for resistors, live I / V / P / Tj of its `circuitIds` elements and their use of each `rating`. Give a part a `circuitIds` link and a real `rating` and the card fills itself. Optionally add `facts: string[]`, short datasheet lines shown under "Datasheet", e.g. `facts: ['Vf 2.0 V typ. at 20 mA', 'IF 30 mA abs. max']`. Use real datasheet values and name the condition; leave `facts` out rather than guess.
 
+## PCB manufacturing layers (`board.layers`)
+A `mat` board can carry its real layer data: `board.layers` (`PcbLayersSpec` in `engine/types.ts`) lists the top and bottom copper traces (polylines in board units, widths in mm, optionally live through `widthParam` / `ampsParam` such as `'tr.widthMm'`), pours, vias, pad nets (`'part:padIndex'`), pour pads with or without thermal relief, decoupling pairs, fiducials, silk text and the fab's rules. The board is then drawn layer by layer (`src/three/PcbLayers.tsx`): **Exploded view** peels it into bottom copper, FR-4 core, top copper, solder mask and silkscreen, with the drill hits through them. Add the `pcb-tour` behavior to get a layer-isolation enum tweak (`behavior:<instance>.view`) and a DRC overlay toggle (`.drc`); the DRC is `src/engine/pcb/drc.ts`. `T7/pcb-design-workflow.ts` is the reference.
+
 ## Layout helpers (`layout.ts`)
 - `bbHole(bb, col, row)` gives a breadboard hole: columns 1–30, rows a–j, rails '+t' '-t' '-b' '+b'.
 - `between(a, b)` places a 2-lead part. A resistor at rot 0 spans 4 holes; an LED spans 1, with the cathode at −x.

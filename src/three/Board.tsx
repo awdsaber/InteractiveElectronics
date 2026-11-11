@@ -15,6 +15,9 @@ import { partPosition, partRegistry, type PartRenderState } from './parts'
 import { matFrame } from './autoFrame'
 import { calloutOffset, partHeight } from './parts/frame'
 import { Pcb } from './Pcb'
+import { PcbLayers } from './PcbLayers'
+import { tourState } from './pcbTour'
+import { partsLift } from '../engine/pcb/layers'
 import { rgbGlow } from './rgbGlow'
 
 const DROP_H = 3
@@ -143,6 +146,8 @@ interface SlotProps extends PickHandlers {
   state: PartRenderState
   layer: number
   exploded: boolean
+  /** extra exploded-view lift (a peeled PCB layer stack sits under the parts) */
+  baseLift?: number
   anim: Anim
   labels: boolean
 }
@@ -150,7 +155,7 @@ interface SlotProps extends PickHandlers {
 /** a press that moved further than this (px) was an orbit drag, not a click */
 const CLICK_SLOP = 6
 
-function PartSlot({ part, state, layer, exploded, anim, labels, onHover, onPick, onGroup }: SlotProps) {
+function PartSlot({ part, state, layer, exploded, baseLift = 0, anim, labels, onHover, onPick, onGroup }: SlotProps) {
   const ref = useRef<Group>(null)
   const invalidate = useThree((s) => s.invalidate)
   const id = part.id
@@ -181,7 +186,7 @@ function PartSlot({ part, state, layer, exploded, anim, labels, onHover, onPick,
     const now = performance.now()
     const k = Math.min(1, Math.max(0, (now - anim.dropAt) / DROP_MS))
     const drop = (1 - easeOut(k)) * DROP_H
-    const target = exploded ? layer * LIFT : 0
+    const target = exploded ? layer * LIFT + baseLift : 0
     anim.lift += (target - anim.lift) * 0.16
     if (Math.abs(target - anim.lift) < 0.002) anim.lift = target
     g.position.y = drop + anim.lift
@@ -232,9 +237,11 @@ export interface BoardProps {
   guideFocus?: string | null
   /** click a part to inspect it; without this the parts are not pickable */
   onSelect?: (id: string) => void
+  /** live tweak values (the PCB layer tour reads its view from them while unpowered) */
+  tweaks?: Record<string, number>
 }
 
-export function Board({ lesson, snap, settings, selected = null, guideFocus = null, onSelect }: BoardProps) {
+export function Board({ lesson, snap, settings, selected = null, guideFocus = null, onSelect, tweaks }: BoardProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const groups = useRef(new Map<string, Group>())
   const gl = useThree((s) => s.gl)
@@ -276,18 +283,23 @@ export function Board({ lesson, snap, settings, selected = null, guideFocus = nu
 
   const mat = useMemo(() => matFrame(board), [board])
   const [w, d] = mat.size
+  // a board with manufacturing layers: the layer tour (peel, isolate, DRC); isolating a layer hides the parts on it
+  const tour = pcb && board.layers ? tourState(lesson, snap, tweaks) : null
+  const tourPartState = (p: PartPlacement, s: PartRenderState): PartRenderState =>
+    tour && tour.view !== 'all' && p.mount !== 'offboard' ? { ...s, visible: false } : s
   return (
     <group>
       {board.base !== 'none' && <BenchBase size={[w + 2, d + 2]} center={mat.center} />}
       {/* the PCB is the bottom layer: it stays put while the rest lifts off it */}
-      {pcb && <Pcb spec={board} color={color} />}
+      {pcb && (tour ? <PcbLayers lesson={lesson} snap={snap} tour={tour} color={color} /> : <Pcb spec={board} color={color} />)}
       {board.parts.map((p) => (
         <PartSlot
           key={p.id}
           part={liveParams(p, snap)}
-          state={partState(lesson, p, snap)}
-          layer={explodeLayer(p, breadboard)}
+          state={tourPartState(p, partState(lesson, p, snap))}
+          layer={tour && p.mount !== 'offboard' ? 0 : explodeLayer(p, breadboard)}
           exploded={exploded}
+          baseLift={tour && p.mount !== 'offboard' ? partsLift(true) : 0}
           anim={anims.current.get(p.id)!}
           labels={settings.labels}
           onHover={onSelect ? onHover : undefined}

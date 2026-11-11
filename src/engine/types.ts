@@ -324,6 +324,64 @@ export interface BoardSpec {
    */
   frame?: { size: [number, number]; center?: [number, number] }
   parts: PartPlacement[]
+  /**
+   * the board's manufacturing layers (copper, pours, vias, drill, mask, silk and DRC rules). With it the
+   * PCB is drawn layer by layer: the exploded view peels the stack apart and the `pcb-tour` behavior
+   * isolates one layer or overlays the DRC (src/engine/pcb, src/three/PcbLayers.tsx)
+   */
+  layers?: PcbLayersSpec
+}
+
+/** a copper trace: a polyline in board units, its width in mm */
+export interface PcbTrace {
+  id: string
+  net: string
+  pts: [number, number][]
+  /** width, mm */
+  w: number
+  /** the current it must carry, A: the DRC sizes it with IPC-2221 */
+  amps?: number
+  /** the width follows a behavior param live: '<instance>.<param>' (published value, then tweak, then default) */
+  widthParam?: string
+  /** the design current follows a behavior param live, as `widthParam` */
+  ampsParam?: string
+  /** the netlist element this trace is (burns show on it) */
+  elementId?: string
+}
+
+export interface PcbVia {
+  at: [number, number]
+  net: string
+  /** finished drill, mm */
+  drill: number
+  /** pad (land) diameter, mm */
+  pad: number
+}
+
+export interface PcbLayersSpec {
+  /** finished board thickness, mm (core + copper) */
+  thicknessMm: number
+  /** outer copper weight, oz/ft² */
+  copperOz: number
+  /** the copper weight follows a behavior param live, as PcbTrace.widthParam */
+  copperOzParam?: string
+  top: PcbTrace[]
+  bottom: PcbTrace[]
+  /** copper pours: the net fills the layer, cleared by `clearance` mm round other nets */
+  pours?: { net: string; layer: 'top' | 'bottom'; clearance: number }[]
+  vias?: PcbVia[]
+  /** pad nets: 'part:padIndex' → net (pads not listed belong to no pour) */
+  padNets?: Record<string, string>
+  /** pads joined to a pour: relief false is a solid connection (no thermal relief spokes) */
+  pourPads?: { part: string; pad: number; relief: boolean }[]
+  /** decoupling capacitors and the IC pad each one serves */
+  decoupling?: { cap: string; ic: string; pad: number; pin: string; maxMm: number }[]
+  /** pick-and-place camera marks: bare copper dots, mm diameter */
+  fiducials?: { at: [number, number]; d: number }[]
+  /** extra silkscreen text */
+  silk?: { text: string; at: [number, number]; size?: number }[]
+  /** the fab's design rules, mm (riseC: the allowed IPC-2221 temperature rise) */
+  rules: { minTrace: number; minClearance: number; minAnnular: number; riseC: number }
 }
 
 // ───────────────────────── Lesson ─────────────────────────

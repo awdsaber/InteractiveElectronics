@@ -208,6 +208,33 @@ const behaviorRef = z.union([
   }),
 ])
 
+const pt = z.tuple([num, num])
+const pcbTrace = z.object({
+  id: z.string().min(1),
+  net: z.string().min(1),
+  pts: z.array(pt).min(2),
+  w: num.positive(),
+  amps: num.nonnegative().optional(),
+  widthParam: z.string().optional(),
+  ampsParam: z.string().optional(),
+  elementId: z.string().optional(),
+})
+const pcbLayers = z.object({
+  thicknessMm: num.positive(),
+  copperOz: num.positive(),
+  copperOzParam: z.string().optional(),
+  top: z.array(pcbTrace),
+  bottom: z.array(pcbTrace),
+  pours: z.array(z.object({ net: z.string(), layer: z.enum(['top', 'bottom']), clearance: num.nonnegative() })).optional(),
+  vias: z.array(z.object({ at: pt, net: z.string(), drill: num.positive(), pad: num.positive() })).optional(),
+  padNets: z.record(z.string(), z.string()).optional(),
+  pourPads: z.array(z.object({ part: z.string(), pad: z.number().int().nonnegative(), relief: z.boolean() })).optional(),
+  decoupling: z.array(z.object({ cap: z.string(), ic: z.string(), pad: z.number().int().nonnegative(), pin: z.string(), maxMm: num.positive() })).optional(),
+  fiducials: z.array(z.object({ at: pt, d: num.positive() })).optional(),
+  silk: z.array(z.object({ text: z.string(), at: pt, size: num.positive().optional() })).optional(),
+  rules: z.object({ minTrace: num.positive(), minClearance: num.positive(), minAnnular: num.nonnegative(), riseC: num.positive() }),
+})
+
 export const lessonSchema = z.object({
   id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'kebab-case id'),
   fig: z.number().int().min(1),
@@ -223,6 +250,7 @@ export const lessonSchema = z.object({
     base: z.enum(['mat', 'breadboard-only', 'none']).optional(),
     frame: z.object({ size: z.tuple([num.positive(), num.positive()]), center: z.tuple([num, num]).optional() }).optional(),
     parts: z.array(part),
+    layers: pcbLayers.optional(),
   }),
   circuit: z.object({ elements: z.array(element).min(1) }),
   powerElementId: z.string().min(1),
@@ -305,6 +333,14 @@ export function validateLesson(l: unknown, registry: Record<string, Pick<Behavio
   for (const id of new Set(dupEl)) errs.push(`circuit: duplicate element id "${id}"`)
   const partIds = lesson.board.parts.map((p) => p.id)
   for (const id of new Set(partIds.filter((id, i) => partIds.indexOf(id) !== i))) errs.push(`board.parts: duplicate part id "${id}"`)
+  const lay = lesson.board.layers
+  if (lay) {
+    const known = new Set(partIds)
+    for (const p of lay.pourPads ?? []) if (!known.has(p.part)) errs.push(`board.layers.pourPads: no part "${p.part}"`)
+    for (const d of lay.decoupling ?? []) for (const id of [d.cap, d.ic]) if (!known.has(id)) errs.push(`board.layers.decoupling: no part "${id}"`)
+    const tids = [...lay.top, ...lay.bottom].map((t) => t.id)
+    for (const id of new Set(tids.filter((id, i) => tids.indexOf(id) !== i))) errs.push(`board.layers: duplicate trace id "${id}"`)
+  }
 
   for (const p of lesson.board.parts)
     for (const c of p.circuitIds ?? []) if (!has(c)) errs.push(`board.parts.${p.id}.circuitIds: no element "${c}"`)
