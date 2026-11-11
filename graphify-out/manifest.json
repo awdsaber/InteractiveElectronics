@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794224366.9104047,
-    "seen": 1794224535.4952052,
-    "ast_hash": "4e1e9bb1694d57f92a9939dae0851837",
+    "mtime": 1794414556.116688,
+    "seen": 1794414713.3635876,
+    "ast_hash": "482944cd965c83901c7b5750a16e1a81",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -792,9 +792,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/debugging-instruments.md": {
-    "mtime": 1794002159.5206685,
-    "seen": 1794010374.609711,
-    "ast_hash": "6df6ff7fd7cd27d322ed44e18b444861",
+    "mtime": 1794414556.115178,
+    "seen": 1794414713.3635876,
+    "ast_hash": "3a5c753f7b59849234c26d361a10355e",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pcb-design-workflow.md": {
@@ -810,9 +810,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/power-grounding-emc.md": {
-    "mtime": 1794001682.5991812,
-    "seen": 1794010374.609711,
-    "ast_hash": "6f8ebba47cc14e2a0182fe9c2ab9ca99",
+    "mtime": 1794225171.8713343,
+    "seen": 1794225529.7668304,
+    "ast_hash": "c20037c78ab22a6350d0a8258f7d6abd",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/serial-protocols.md": {
@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794224366.9119403,
-    "seen": 1794224535.4952052,
-    "ast_hash": "7a85900f7e9eefe348b0eaed079e8d14",
+    "mtime": 1794414556.117688,
+    "seen": 1794414713.3635876,
+    "ast_hash": "1f5cca869547ffa2ab9ab78d07be3a7b",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
@@ -2130,15 +2130,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/logic-analyzer.test.ts": {
-    "mtime": 1794224366.9139404,
-    "seen": 1794224535.4942052,
-    "ast_hash": "18a2bea34764d9b8122321bf92f21905",
+    "mtime": 1794414556.1216898,
+    "seen": 1794414713.3625884,
+    "ast_hash": "4f734f930cb475891dfe28201bd17c1e",
     "semantic_hash": ""
   },
   "src/engine/behaviors/logic-analyzer.ts": {
-    "mtime": 1794224366.91494,
-    "seen": 1794224535.4942052,
-    "ast_hash": "c7f5f9b63615d2348a9ec8a957cf018f",
+    "mtime": 1794414556.123689,
+    "seen": 1794414713.3625884,
+    "ast_hash": "f3caacf66d682cfc10b2d29706b41100",
     "semantic_hash": ""
   },
   "src/engine/behaviors/pid-tune.test.ts": {
@@ -2154,9 +2154,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/thermal-network.test.ts": {
-    "mtime": 1794223526.8119397,
-    "seen": 1794224535.4942052,
-    "ast_hash": "e86ca1fa6013bf1e0e77c03460ebc048",
+    "mtime": 1794225455.4284625,
+    "seen": 1794225529.7668304,
+    "ast_hash": "26f090854e52ef24b2ef480a3f072fc2",
     "semantic_hash": ""
   },
   "src/engine/behaviors/thermal-network.ts": {
@@ -2259,6 +2259,72 @@
     "mtime": 1794224366.9305577,
     "seen": 1794224535.4952052,
     "ast_hash": "be56c4457774ff657514d0894f2d7264",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/tmp36.test.ts": {
+    "mtime": 1794225171.874332,
+    "seen": 1794225529.7668304,
+    "ast_hash": "ff40b88b577f95a9d1e8265d6d537324",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/tmp36.ts": {
+    "mtime": 1794225171.874332,
+    "seen": 1794225529.7668304,
+    "ast_hash": "a6badaadbc7ed0183103f885026fc6a9",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/power-grounding-emc.test.ts": {
+    "mtime": 1794225171.8753328,
+    "seen": 1794225529.7668304,
+    "ast_hash": "2a0520d47fddcf313613574ede5a84d9",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/power-grounding-emc.ts": {
+    "mtime": 1794225171.8753328,
+    "seen": 1794225529.7668304,
+    "ast_hash": "2aa84bfb027499afebd9e8afd7b7f356",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/intermittent.test.ts": {
+    "mtime": 1794414556.118688,
+    "seen": 1794414713.3625884,
+    "ast_hash": "e817a470ac2446e5e9316bd33beb0361",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/intermittent.ts": {
+    "mtime": 1794414556.119689,
+    "seen": 1794414713.3625884,
+    "ast_hash": "6154ac8594ab308df2ccd6f7c289b1f2",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/probe-load.test.ts": {
+    "mtime": 1794414556.123689,
+    "seen": 1794414713.3625884,
+    "ast_hash": "47c64e2384d725ab1958365c078acd3b",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/probe-load.ts": {
+    "mtime": 1794414556.125195,
+    "seen": 1794414713.3625884,
+    "ast_hash": "8cd389ac8525a0c4b9ec94170b277b83",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/debugging-instruments.guide.test.ts": {
+    "mtime": 1794414556.1262012,
+    "seen": 1794414713.3635876,
+    "ast_hash": "3984837fc93d3d1f5f2e1c04058a4895",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/debugging-instruments.test.ts": {
+    "mtime": 1794414556.1272008,
+    "seen": 1794414713.3635876,
+    "ast_hash": "8cd091c9d42c3f3e407b07a873a54e7d",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/debugging-instruments.ts": {
+    "mtime": 1794414556.128202,
+    "seen": 1794414713.3635876,
+    "ast_hash": "b01f30579ca2f2019aa35a82a6840c42",
     "semantic_hash": ""
   },
   "package-lock.json": {
