@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794416065.423068,
-    "seen": 1794416263.0223563,
-    "ast_hash": "def48548fbe6c7d5beff9f25a9928b84",
+    "mtime": 1794420754.4600046,
+    "seen": 1794420985.5195775,
+    "ast_hash": "59409c3b67e127e38861362a54b26da9",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794416649.031293,
-    "seen": 1794416822.0081508,
-    "ast_hash": "9d80545873bd7dc620a242c9c5d256f9",
+    "mtime": 1794420754.3590472,
+    "seen": 1794420985.520086,
+    "ast_hash": "408adada1d127bcca963cc0ac3ef0939",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -366,9 +366,9 @@
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
-    "mtime": 1794139808.2827935,
-    "seen": 1794139894.4167566,
-    "ast_hash": "a343532b89815875bbe4ca711f28d366",
+    "mtime": 1794420754.4378655,
+    "seen": 1794420985.5185776,
+    "ast_hash": "93f290449e049529ba837f7fdd606adb",
     "semantic_hash": ""
   },
   "src/engine/sim/failures.test.ts": {
@@ -438,15 +438,15 @@
     "semantic_hash": ""
   },
   "src/engine/sim/transient.test.ts": {
-    "mtime": 1794010690.4672005,
-    "seen": 1794010720.4361825,
-    "ast_hash": "f364bfc4da403c5a77ea313cb5f5e511",
+    "mtime": 1794420754.4473839,
+    "seen": 1794420985.5195775,
+    "ast_hash": "2ce852eb428a48e43f5548217c751240",
     "semantic_hash": ""
   },
   "src/engine/sim/transient.ts": {
-    "mtime": 1794217015.0778232,
-    "seen": 1794217128.3673193,
-    "ast_hash": "77e6af9459f5aef53bf4b52be25bc3c6",
+    "mtime": 1794420754.451395,
+    "seen": 1794420985.5195775,
+    "ast_hash": "8d3eaa05d83e99d3fc5807ec8995b864",
     "semantic_hash": ""
   },
   "src/three/bake.test.ts": {
@@ -786,9 +786,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/capstone-balancing-robot.md": {
-    "mtime": 1794002136.4191885,
-    "seen": 1794010374.609711,
-    "ast_hash": "176887a120e08ff47b0e211ae7199e8b",
+    "mtime": 1794420754.3550446,
+    "seen": 1794420985.520086,
+    "ast_hash": "87ce52193a0f87650039955db96af991",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/debugging-instruments.md": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794415842.0778382,
-    "seen": 1794416045.6805084,
-    "ast_hash": "4e6908ce9d6e0b7184496f81eb9b7d98",
+    "mtime": 1794420754.4032385,
+    "seen": 1794420985.5185776,
+    "ast_hash": "859a4c4532346b5df04d4c32c1bac2a4",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794416065.39889,
-    "seen": 1794416263.0223563,
-    "ast_hash": "8f6b0a35a88588245a6129bd91e17e71",
+    "mtime": 1794420754.4157822,
+    "seen": 1794420985.5185776,
+    "ast_hash": "50a6d05108fdd4577b6d8a301e527eee",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -984,21 +984,21 @@
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794416649.0412958,
-    "seen": 1794416822.0081508,
-    "ast_hash": "fc6ca8ea29d6d9612afa54d5ff39d88d",
+    "mtime": 1794420754.493369,
+    "seen": 1794420985.5195775,
+    "ast_hash": "b5dc51badf7481154badcd6fa0eadeef",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794416649.032292,
-    "seen": 1794416822.0081508,
-    "ast_hash": "e3a7f094a587da54146ab5784c1a28bd",
+    "mtime": 1794420754.3635745,
+    "seen": 1794420985.520086,
+    "ast_hash": "80cf7bb9f79604f1997d21d3fc61212a",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794416649.0353005,
-    "seen": 1794416822.0081508,
-    "ast_hash": "79230c8f81fc690d5e1368310d1ae35b",
+    "mtime": 1794420754.4685304,
+    "seen": 1794420985.520086,
+    "ast_hash": "b1fcfa0581956b60844d8fac71fd66f0",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -1224,21 +1224,21 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/imu-mpu6050.test.ts": {
-    "mtime": 1794023434.577392,
-    "seen": 1794023462.5061505,
-    "ast_hash": "6c26ea8accdc6933767446f580665f24",
+    "mtime": 1794420754.3730917,
+    "seen": 1794420985.5185776,
+    "ast_hash": "f83be34b2c154efcb52ffd3abbae9d58",
     "semantic_hash": ""
   },
   "src/engine/behaviors/imu-mpu6050.ts": {
-    "mtime": 1794023434.5783908,
-    "seen": 1794023462.5061505,
-    "ast_hash": "74d9a712e5862750f0ce0ddcea09659d",
+    "mtime": 1794420754.385673,
+    "seen": 1794420985.5185776,
+    "ast_hash": "46a3c22b8cd56505fbc5dcfa54c1077a",
     "semantic_hash": ""
   },
   "src/engine/bench/behaviorLinks.test.ts": {
-    "mtime": 1794217444.3018363,
-    "seen": 1794217764.9072645,
-    "ast_hash": "e56da14f4979545bbe550cfe2e1f653f",
+    "mtime": 1794420754.3991964,
+    "seen": 1794420985.5185776,
+    "ast_hash": "da480780d7c3e6d4f10447c05336c761",
     "semantic_hash": ""
   },
   "src/lessons/T6/mpu6050-imu.test.ts": {
@@ -2142,15 +2142,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/pid-tune.test.ts": {
-    "mtime": 1794223989.1310227,
-    "seen": 1794224535.4942052,
-    "ast_hash": "341f8a1edf7318fc7af64e432de4bff3",
+    "mtime": 1794420754.3886726,
+    "seen": 1794420985.5185776,
+    "ast_hash": "05be1b3229700b3ac5cf3829d39c20de",
     "semantic_hash": ""
   },
   "src/engine/behaviors/pid-tune.ts": {
-    "mtime": 1794223989.132031,
-    "seen": 1794224535.4942052,
-    "ast_hash": "1d8161e3b160979a7a0de2ad9aae43a2",
+    "mtime": 1794420754.395196,
+    "seen": 1794420985.5185776,
+    "ast_hash": "1b7d5d158c735046128c7dc019b4855a",
     "semantic_hash": ""
   },
   "src/engine/behaviors/thermal-network.test.ts": {
@@ -2481,6 +2481,60 @@
     "mtime": 1794416649.0402975,
     "seen": 1794416822.0081508,
     "ast_hash": "e2a999347b147f163413faf03a104ca8",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/balance-bot.ts": {
+    "mtime": 1794420754.365579,
+    "seen": 1794420985.5185776,
+    "ast_hash": "c373732edfa9cccf4685f6a35b3019c2",
+    "semantic_hash": ""
+  },
+  "src/engine/robot/pendulum.test.ts": {
+    "mtime": 1794420754.4217918,
+    "seen": 1794420985.5185776,
+    "ast_hash": "81bc39838a5a18a0c04bba6e56065c18",
+    "semantic_hash": ""
+  },
+  "src/engine/robot/pendulum.ts": {
+    "mtime": 1794420754.4283288,
+    "seen": 1794420985.5185776,
+    "ast_hash": "dc517f83a7ca8838f40dcc68a267b404",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/capstone-balancing-robot.guide.test.ts": {
+    "mtime": 1794420754.4715319,
+    "seen": 1794420985.5195775,
+    "ast_hash": "4376f964578974f953102678ec59fb23",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/capstone-balancing-robot.perf.test.ts": {
+    "mtime": 1794420754.4735308,
+    "seen": 1794420985.5195775,
+    "ast_hash": "aebcb3aad017b53ad2a343972db59db7",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/capstone-balancing-robot.test.ts": {
+    "mtime": 1794420754.4818456,
+    "seen": 1794420985.5195775,
+    "ast_hash": "70ebd15bcc05dc6abbd99f33ad648362",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/capstone-balancing-robot.ts": {
+    "mtime": 1794420754.4848468,
+    "seen": 1794420985.5195775,
+    "ast_hash": "831137cee26e2a07482f36b5b5949ee9",
+    "semantic_hash": ""
+  },
+  "src/three/dynamicPose.test.ts": {
+    "mtime": 1794420754.496366,
+    "seen": 1794420985.5195775,
+    "ast_hash": "fb4cf247541c434fb5840e3f0e71ca97",
+    "semantic_hash": ""
+  },
+  "src/three/dynamicPose.ts": {
+    "mtime": 1794420754.504093,
+    "seen": 1794420985.5195775,
+    "ast_hash": "6f3f4366d41107c0d1a78dd1e66f36c0",
     "semantic_hash": ""
   },
   "package-lock.json": {
