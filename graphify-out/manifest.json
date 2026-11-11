@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794420754.4600046,
-    "seen": 1794420985.5195775,
-    "ast_hash": "59409c3b67e127e38861362a54b26da9",
+    "mtime": 1794426308.3458717,
+    "seen": 1794426552.5891886,
+    "ast_hash": "317ff7d4338cf6704886435850ea3a3a",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "docs/spec.md": {
-    "mtime": 1793999582.6827564,
-    "seen": 1794010374.609711,
-    "ast_hash": "8ebf590ba73735e8a0ca05fad92130bb",
+    "mtime": 1794426308.310235,
+    "seen": 1794426552.5891886,
+    "ast_hash": "bee71b444da0a910fd57ae5b59506186",
     "semantic_hash": ""
   },
   "index.html": {
@@ -192,9 +192,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/boards.tsx": {
-    "mtime": 1794003642.2158873,
-    "seen": 1794010374.609711,
-    "ast_hash": "f8d1ea8f19e503497bc983ba0c91430d",
+    "mtime": 1794426308.3744714,
+    "seen": 1794426552.5891886,
+    "ast_hash": "385e75d4a2c0f5c2c3934aa1d8f101f9",
     "semantic_hash": ""
   },
   "src/three/parts/common.tsx": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "src/three/parts/footprints.ts": {
-    "mtime": 1794416649.0422952,
-    "seen": 1794416822.0081508,
-    "ast_hash": "13420da103336bb4f59be48405ce72a9",
+    "mtime": 1794426308.3799932,
+    "seen": 1794426552.5891886,
+    "ast_hash": "40f05d08a19442b817659ba1c0b492dc",
     "semantic_hash": ""
   },
   "src/three/parts/frame.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794420754.3590472,
-    "seen": 1794420985.520086,
-    "ast_hash": "408adada1d127bcca963cc0ac3ef0939",
+    "mtime": 1794426308.3072367,
+    "seen": 1794426552.5891886,
+    "ast_hash": "13b18a9ee67380759579d49ae2107b68",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/constants.ts": {
-    "mtime": 1794003667.447661,
-    "seen": 1794010374.609711,
-    "ast_hash": "ccb1f57748b981a812133500e5849580",
+    "mtime": 1794426308.3207648,
+    "seen": 1794426552.5891886,
+    "ast_hash": "c228b75749e9e3f1b26716cdc8c6f053",
     "semantic_hash": ""
   },
   "src/engine/mcu/index.ts": {
@@ -360,9 +360,9 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794415842.0818386,
-    "seen": 1794416045.6805084,
-    "ast_hash": "2d027bfd2fef5c8aa9061cc469ed9eb0",
+    "mtime": 1794426308.3298242,
+    "seen": 1794426552.5891886,
+    "ast_hash": "8370857af6a738084e52253c930663d4",
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794420754.4032385,
-    "seen": 1794420985.5185776,
-    "ast_hash": "859a4c4532346b5df04d4c32c1bac2a4",
+    "mtime": 1794426308.3142352,
+    "seen": 1794426552.5891886,
+    "ast_hash": "84319edc5fc5b37eb4e5db18c462c2ad",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794420754.4157822,
-    "seen": 1794420985.5185776,
-    "ast_hash": "50a6d05108fdd4577b6d8a301e527eee",
+    "mtime": 1794426308.3177688,
+    "seen": 1794426552.5891886,
+    "ast_hash": "ff74d06ce2382397c87a36a21e2b4981",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -960,9 +960,9 @@
     "semantic_hash": ""
   },
   "src/lessons/index.ts": {
-    "mtime": 1794007463.3859005,
-    "seen": 1794010374.609711,
-    "ast_hash": "a518adf0c75b92d1354852442f59ad48",
+    "mtime": 1794426308.3694654,
+    "seen": 1794426552.5891886,
+    "ast_hash": "463d2e8ced03f81429cef5783fee78f9",
     "semantic_hash": ""
   },
   "src/lessons/layout.ts": {
@@ -2535,6 +2535,36 @@
     "mtime": 1794420754.504093,
     "seen": 1794420985.5195775,
     "ast_hash": "6f3f4366d41107c0d1a78dd1e66f36c0",
+    "semantic_hash": ""
+  },
+  "src/engine/mcu/teensy41.test.ts": {
+    "mtime": 1794426308.3232832,
+    "seen": 1794426552.5891886,
+    "ast_hash": "d20249174ba2e7080856854831e99152",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/teensy-41.guide.test.ts": {
+    "mtime": 1794426308.3514016,
+    "seen": 1794426552.5891886,
+    "ast_hash": "bf2272afedd6a8ef5a0b34fc3ca47028",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/teensy-41.test.ts": {
+    "mtime": 1794426308.361926,
+    "seen": 1794426552.5891886,
+    "ast_hash": "89ffbaac979378de637870ed608d34e1",
+    "semantic_hash": ""
+  },
+  "src/lessons/T4/teensy-41.ts": {
+    "mtime": 1794426308.3654315,
+    "seen": 1794426552.5891886,
+    "ast_hash": "691a40b7e73eb8aa8ec87b01bc8661c5",
+    "semantic_hash": ""
+  },
+  "docs/curriculum/T4/teensy-41.md": {
+    "mtime": 1794426308.3017118,
+    "seen": 1794426552.5891886,
+    "ast_hash": "2c40d2de6f3a17c9bcecd24b9fbbbcf3",
     "semantic_hash": ""
   },
   "package-lock.json": {
