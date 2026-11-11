@@ -11,6 +11,8 @@
 - **Behaviors:** `usbc-source`, `pcb-tour`, `mcu-supply`, `serial-plotter`
 - **transient:** true
 
+> **As built (2026-11-11):** the lesson centres on the layer tour and a power trace that matters. The board is `ATELIER POWER rev A` (70 × 45 mm, 2-layer, 1.6 mm FR-4, 1 oz): a 12 V barrel jack feeds a 2 A screw-terminal output through one top-copper trace that is a real R in the netlist (`trace-heat`, IPC-2221 heating), loaded by a bench electronic load (`e-load`, constant current). An ATmega328P-AU section (ISP header, C1/C2 decoupling) is placed and routed for the DRC but not simulated. Behaviors: `trace-heat`, `e-load`, `pcb-tour` (the tour: Exploded view peels bottom copper, core, top copper, mask and silk; `view` isolates one; `drc` overlays four deliberate violations: the 2 A trace at 0.30 mm, a 0.10 mm SCK/MISO gap, C2 14 mm from AVCC and J2's ground pad with no thermal relief). Deferred: the USB-C sink and `usbc-source`, the bring-up sketch, the paste layer. Figures below were checked: 1 A → 16.3 mil² → 0.30 mm and 2 A → 42.4 mil² → 0.78 mm (outer layer, 1 oz = 1.378 mil, 10 °C rise); 0.15 mm = 6 mil; 1.6 mm FR-4 with 1 oz on both sides has a 1.53 mm core.
+
 ## Learning goals
 
 1. Walk through the professional flow: schematic and ERC, footprints, stack-up and outline, placement, routing, pours, DRC, then fabrication outputs (Gerber, drill, BOM, pick-and-place) and assembly.
@@ -179,7 +181,7 @@ A PCB is designed in stages, each with its own check.
 1. **Schematic + ERC:** every pin connected or marked no-connect, and power flags in place.
 2. **Footprints:** chosen against the datasheet's land pattern. Check pinouts: the MCP1700 in SOT-23 is GND, VOUT, VIN, which differs from many other LDOs.
 3. **Placement:** connectors at the edges, decoupling capacitors next to their pins, and the crystal right beside the MCU.
-4. **Routing:** power first. IPC-2221 for outer layers is I = 0.048 × ΔT^0.44 × A^0.725 (A in mil²). For 1 A and ΔT = 10 °C: A ≈ 16 mil², which is 16 / 1.378 ≈ 12 mil ≈ **0.30 mm** wide in 1 oz copper. Signals can use the fab's minimum, often 0.15 mm.
+4. **Routing:** power first. IPC-2221 for outer layers is I = 0.048 × ΔT^0.44 × A^0.725 (A in mil²). For 1 A and ΔT = 10 °C: A ≈ 16 mil², which is 16 / 1.378 ≈ 12 mil ≈ **0.30 mm** wide in 1 oz copper. For 2 A: A ≈ 42 mil², ≈ 31 mil ≈ **0.78 mm** (0.39 mm in 2 oz). Signals can use the fab's minimum, often 0.15 mm.
 5. **Ground pour** on the bottom, stitched with vias.
 6. **DRC** with the fab's rules (trace/space, drill, annular ring, mask dams).
 7. **Outputs:** Gerbers, drill file, BOM, and CPL (pick-and-place centroids). Fiducials let the assembly machine find the board.

@@ -100,7 +100,7 @@ export default function App() {
       }
     >
       <Suspense fallback={<div className="bench-loading">Setting out the bench…</div>}>
-        <BenchScene lesson={lesson} snap={snap} settings={settings} selected={s.selectedPart} guideFocus={guideFocus} onSelect={s.selectPart} view={s.view} />
+        <BenchScene lesson={lesson} snap={snap} settings={settings} selected={s.selectedPart} guideFocus={guideFocus} onSelect={s.selectPart} view={s.view} tweaks={s.tweaks} />
       </Suspense>
       {s.view.partId && (
         <button type="button" className="pill view-reset" onClick={s.resetView}>

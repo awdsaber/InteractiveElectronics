@@ -26,6 +26,8 @@ export interface BenchSceneProps {
   onSelect?: (id: string) => void
   /** camera request: frame a part, or the board (partId null); `seq` changes per request */
   view?: { partId: string | null; seq: number }
+  /** live tweak values (for the PCB layer tour) */
+  tweaks?: Record<string, number>
 }
 
 /**
@@ -155,7 +157,7 @@ function WobbleTicker({ wobble }: { wobble: number }) {
   return null
 }
 
-export default function BenchScene({ lesson, snap, settings, selected = null, guideFocus = null, onSelect, view }: BenchSceneProps) {
+export default function BenchScene({ lesson, snap, settings, selected = null, guideFocus = null, onSelect, view, tweaks }: BenchSceneProps) {
   const smoking = Object.values(snap.partBurnt).some(Boolean)
   const live = snap.assembly.running || smoking
   return (
@@ -173,7 +175,7 @@ export default function BenchScene({ lesson, snap, settings, selected = null, gu
       <WobbleClock />
       <WobbleTicker wobble={settings.wobble} />
       <Camera lesson={lesson} view={view} />
-      <Board lesson={lesson} snap={snap} settings={settings} selected={selected} guideFocus={guideFocus} onSelect={onSelect} />
+      <Board lesson={lesson} snap={snap} settings={settings} selected={selected} guideFocus={guideFocus} onSelect={onSelect} tweaks={tweaks} />
       {import.meta.env.DEV && <DevPartProbe />}
     </Canvas>
     </CalloutHost>
