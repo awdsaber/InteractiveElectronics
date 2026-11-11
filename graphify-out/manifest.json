@@ -18,15 +18,15 @@
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1794217444.2907727,
-    "seen": 1794217764.906265,
-    "ast_hash": "67a6e8562084dfcd247af8435d6faa7c",
+    "mtime": 1794416065.3586547,
+    "seen": 1794416263.021355,
+    "ast_hash": "aca9ed2d78fb5e679cc8473bfe14fede",
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794415842.0828388,
-    "seen": 1794416045.6805084,
-    "ast_hash": "36d68ba039cc2a55e1db194c0539d4e2",
+    "mtime": 1794416065.423068,
+    "seen": 1794416263.0223563,
+    "ast_hash": "def48548fbe6c7d5beff9f25a9928b84",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794415842.0613184,
-    "seen": 1794416045.6815085,
-    "ast_hash": "beeac7108773f2aa29a80ae7bd961d4e",
+    "mtime": 1794416065.3556569,
+    "seen": 1794416263.0223563,
+    "ast_hash": "7f94ba72bcaa25425e70ced134aa7d28",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -798,9 +798,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pcb-design-workflow.md": {
-    "mtime": 1794001819.648094,
-    "seen": 1794010374.609711,
-    "ast_hash": "69ef78679f86224636d6ed0ebe382a1c",
+    "mtime": 1794416065.3513067,
+    "seen": 1794416263.0223563,
+    "ast_hash": "d2e30c6224b167c241e7191bf45f610f",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pid-motor-control.md": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/engine/lessonSchema.ts": {
-    "mtime": 1794224366.9169402,
-    "seen": 1794224535.4942052,
-    "ast_hash": "971a63e0503d0dba5660f5f3eafa6092",
+    "mtime": 1794416065.39889,
+    "seen": 1794416263.0223563,
+    "ast_hash": "8f6b0a35a88588245a6129bd91e17e71",
     "semantic_hash": ""
   },
   "src/lessons/T2/led-resistor.ts": {
@@ -978,27 +978,27 @@
     "semantic_hash": ""
   },
   "src/three/BenchScene.tsx": {
-    "mtime": 1794217444.588076,
-    "seen": 1794217764.9072645,
-    "ast_hash": "179f02290144801bb98354c90b6ffa44",
+    "mtime": 1794416065.458184,
+    "seen": 1794416263.0223563,
+    "ast_hash": "c44aea9521906a5fe6adbbbd77fc7715",
     "semantic_hash": ""
   },
   "src/three/Board.tsx": {
-    "mtime": 1794217444.595585,
-    "seen": 1794217764.9072645,
-    "ast_hash": "585a41c0e8e3620f1dc9ef338257bb51",
+    "mtime": 1794416065.4722195,
+    "seen": 1794416263.0223563,
+    "ast_hash": "e8019c87052e0f155a5a472f66fb95b7",
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794415842.0643184,
-    "seen": 1794416045.6815085,
-    "ast_hash": "8f1f37c738823ccc6db356c8bf1a4c0c",
+    "mtime": 1794416065.363652,
+    "seen": 1794416263.0223563,
+    "ast_hash": "0dd65fb826be6fc3845b7a5a557c65a4",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
-    "mtime": 1794224366.9240313,
-    "seen": 1794224535.4952052,
-    "ast_hash": "9ac0ee36e1eae8c3d13b006c17e66981",
+    "mtime": 1794416065.4270687,
+    "seen": 1794416263.0223563,
+    "ast_hash": "e6ee715c753a6201cc3d835cbc43ece9",
     "semantic_hash": ""
   },
   "docs/plans/m2-video-lessons.md": {
@@ -2337,6 +2337,120 @@
     "mtime": 1794415842.076839,
     "seen": 1794416045.6805084,
     "ast_hash": "a6a7d6fde0fcbcf8bb574187d54f1c18",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/e-load.ts": {
+    "mtime": 1794416065.3832276,
+    "seen": 1794416263.021355,
+    "ast_hash": "6e4ee46aed7aca7fc739b64c7e2356e6",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/pcb-tour.test.ts": {
+    "mtime": 1794416065.3852267,
+    "seen": 1794416263.021355,
+    "ast_hash": "93e4a618904eb6dfc9e5b77a7d4d9994",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/pcb-tour.ts": {
+    "mtime": 1794416065.3873594,
+    "seen": 1794416263.021355,
+    "ast_hash": "c89a272f05a89f8ed7c3384db16ac0ad",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/trace-heat.test.ts": {
+    "mtime": 1794416065.3903692,
+    "seen": 1794416263.021355,
+    "ast_hash": "5dd951eecb27841f4a6c36ff71698534",
+    "semantic_hash": ""
+  },
+  "src/engine/behaviors/trace-heat.ts": {
+    "mtime": 1794416065.3923686,
+    "seen": 1794416263.021355,
+    "ast_hash": "e2066699f1c59b2c49aebe1cb4542862",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/drc.test.ts": {
+    "mtime": 1794416065.4019,
+    "seen": 1794416263.0223563,
+    "ast_hash": "b554b786568a2633ac8af4a9f5557c84",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/drc.ts": {
+    "mtime": 1794416065.4049795,
+    "seen": 1794416263.0223563,
+    "ast_hash": "0ca6d98bdce70507b4f5eddccd4818a3",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/ipc2221.test.ts": {
+    "mtime": 1794416065.4059882,
+    "seen": 1794416263.0223563,
+    "ast_hash": "fdbfd41300db15049c6ec763af366ca9",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/ipc2221.ts": {
+    "mtime": 1794416065.4095318,
+    "seen": 1794416263.0223563,
+    "ast_hash": "4cb363913bf5d1d9458f712382cda044",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/layers.test.ts": {
+    "mtime": 1794416065.4115317,
+    "seen": 1794416263.0223563,
+    "ast_hash": "7651a753fe0dd31e06c19b675c0eb838",
+    "semantic_hash": ""
+  },
+  "src/engine/pcb/layers.ts": {
+    "mtime": 1794416065.4165344,
+    "seen": 1794416263.0223563,
+    "ast_hash": "8f658838ec652b2b4cb67b7a64867b3c",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pcb-design-workflow.guide.test.ts": {
+    "mtime": 1794416065.4295797,
+    "seen": 1794416263.0223563,
+    "ast_hash": "024b5dea88ecf60d682f0272e6ed2f7c",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pcb-design-workflow.test.ts": {
+    "mtime": 1794416065.4315934,
+    "seen": 1794416263.0223563,
+    "ast_hash": "fe91c8e7df606373d6fe804b9780061b",
+    "semantic_hash": ""
+  },
+  "src/lessons/T7/pcb-design-workflow.ts": {
+    "mtime": 1794416065.4345915,
+    "seen": 1794416263.0223563,
+    "ast_hash": "670c462851fad4e614c2a39a35e60054",
+    "semantic_hash": ""
+  },
+  "src/three/PcbLayers.tsx": {
+    "mtime": 1794416065.4762464,
+    "seen": 1794416263.0223563,
+    "ast_hash": "24310dc1dd8110f1b53041fe0f1a5751",
+    "semantic_hash": ""
+  },
+  "src/three/pcbLayerArt.ts": {
+    "mtime": 1794416065.5279503,
+    "seen": 1794416263.0223563,
+    "ast_hash": "5b5e933a0bfe8df507d07222ed79b99a",
+    "semantic_hash": ""
+  },
+  "src/three/pcbPads.ts": {
+    "mtime": 1794416065.5339503,
+    "seen": 1794416263.0223563,
+    "ast_hash": "5dcd3e7c3bc6275a067b0b2188bb77aa",
+    "semantic_hash": ""
+  },
+  "src/three/pcbTour.test.ts": {
+    "mtime": 1794416065.5374727,
+    "seen": 1794416263.0223563,
+    "ast_hash": "cf70cd85122a0ab4d5395f9a4848c198",
+    "semantic_hash": ""
+  },
+  "src/three/pcbTour.ts": {
+    "mtime": 1794416065.5414832,
+    "seen": 1794416263.0223563,
+    "ast_hash": "dbd93c993484a325cff9eabcfc8a1252",
     "semantic_hash": ""
   },
   "package-lock.json": {
