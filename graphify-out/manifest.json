@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "src/engine/types.ts": {
-    "mtime": 1794224366.9224613,
-    "seen": 1794224535.4952052,
-    "ast_hash": "ec603adca0f112ec3745820360c0db18",
+    "mtime": 1794415842.0828388,
+    "seen": 1794416045.6805084,
+    "ast_hash": "36d68ba039cc2a55e1db194c0539d4e2",
     "semantic_hash": ""
   },
   "src/main.tsx": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "docs/decisions.md": {
-    "mtime": 1794414556.116688,
-    "seen": 1794414713.3635876,
-    "ast_hash": "482944cd965c83901c7b5750a16e1a81",
+    "mtime": 1794415842.0613184,
+    "seen": 1794416045.6815085,
+    "ast_hash": "beeac7108773f2aa29a80ae7bd961d4e",
     "semantic_hash": ""
   },
   "src/audio/music.test.ts": {
@@ -354,15 +354,15 @@
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.test.ts": {
-    "mtime": 1794001394.4148166,
-    "seen": 1794010374.609711,
-    "ast_hash": "968518efdd37b5a47b5d069da45846d0",
+    "mtime": 1794415842.079839,
+    "seen": 1794416045.6805084,
+    "ast_hash": "747e46e801adc71d1a2b3b105cbcb83f",
     "semantic_hash": ""
   },
   "src/engine/mcu/virtualMcu.ts": {
-    "mtime": 1794224366.9199474,
-    "seen": 1794224535.4942052,
-    "ast_hash": "83853efcabd3bbddd8d4edd757666f46",
+    "mtime": 1794415842.0818386,
+    "seen": 1794416045.6805084,
+    "ast_hash": "2d027bfd2fef5c8aa9061cc469ed9eb0",
     "semantic_hash": ""
   },
   "src/engine/sim/devices.ts": {
@@ -804,9 +804,9 @@
     "semantic_hash": ""
   },
   "docs/curriculum/T7/pid-motor-control.md": {
-    "mtime": 1794223989.1259615,
-    "seen": 1794224535.4952052,
-    "ast_hash": "041da04496f3217933c21a8c7ccd6d4c",
+    "mtime": 1794415842.0593183,
+    "seen": 1794416045.6815085,
+    "ast_hash": "692dc4a2e24df5ee8740a60dfea27398",
     "semantic_hash": ""
   },
   "docs/curriculum/T7/power-grounding-emc.md": {
@@ -930,9 +930,9 @@
     "semantic_hash": ""
   },
   "src/engine/bench/simLoop.ts": {
-    "mtime": 1794224366.9159346,
-    "seen": 1794224535.4942052,
-    "ast_hash": "c0e4d60464e6c902e87343a7fa962479",
+    "mtime": 1794415842.0778382,
+    "seen": 1794416045.6805084,
+    "ast_hash": "4e6908ce9d6e0b7184496f81eb9b7d98",
     "semantic_hash": ""
   },
   "src/engine/bench/store.test.ts": {
@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/README.md": {
-    "mtime": 1794414556.117688,
-    "seen": 1794414713.3635876,
-    "ast_hash": "1f5cca869547ffa2ab9ab78d07be3a7b",
+    "mtime": 1794415842.0643184,
+    "seen": 1794416045.6815085,
+    "ast_hash": "8f1f37c738823ccc6db356c8bf1a4c0c",
     "semantic_hash": ""
   },
   "src/lessons/README.md": {
@@ -1008,15 +1008,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/tb6612.test.ts": {
-    "mtime": 1794010482.3685102,
-    "seen": 1794010498.2890127,
-    "ast_hash": "842ad579b2220b3705ba9cf6c8bd0a4b",
+    "mtime": 1794415842.0738397,
+    "seen": 1794416045.6805084,
+    "ast_hash": "7af427aab847ec3bec06bb2bb04f7ba5",
     "semantic_hash": ""
   },
   "src/engine/behaviors/tb6612.ts": {
-    "mtime": 1794010354.7518709,
-    "seen": 1794010374.609711,
-    "ast_hash": "92bd14a2334a57eaf1cd83cef6018601",
+    "mtime": 1794415842.074838,
+    "seen": 1794416045.6805084,
+    "ast_hash": "95b0191fae05d9f233852c3feb50b3c5",
     "semantic_hash": ""
   },
   "src/lessons/T5/tb6612fng.test.ts": {
@@ -1914,9 +1914,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/hcsr04.ts": {
-    "mtime": 1794220877.2876644,
-    "seen": 1794221944.8605325,
-    "ast_hash": "a5b93ccd71b73d32d869a9379fcf50f7",
+    "mtime": 1794415842.0653155,
+    "seen": 1794416045.6805084,
+    "ast_hash": "c2982ca1d05bd898817f3e5f9af3bf07",
     "semantic_hash": ""
   },
   "src/engine/behaviors/hx711.test.ts": {
@@ -1932,9 +1932,9 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/irq-bounce.ts": {
-    "mtime": 1794218483.2533734,
-    "seen": 1794221944.8605325,
-    "ast_hash": "a9c7ea1ce18c7b25194aeef624c09e42",
+    "mtime": 1794415842.067826,
+    "seen": 1794416045.6805084,
+    "ast_hash": "c9275ba1ffc066189389d3dd664ed911",
     "semantic_hash": ""
   },
   "src/engine/behaviors/ntc.test.ts": {
@@ -1962,15 +1962,15 @@
     "semantic_hash": ""
   },
   "src/engine/behaviors/quad-encoder.test.ts": {
-    "mtime": 1794221878.809498,
-    "seen": 1794221944.8615339,
-    "ast_hash": "802236acc526cb1a31b7b5d1d880cfc8",
+    "mtime": 1794415842.0698347,
+    "seen": 1794416045.6805084,
+    "ast_hash": "71d4fc0b1283ac0d717929eaeb1216b7",
     "semantic_hash": ""
   },
   "src/engine/behaviors/quad-encoder.ts": {
-    "mtime": 1794221878.8104994,
-    "seen": 1794221944.8615339,
-    "ast_hash": "5079ff162d0d6ae8c0ca1b36375dfc28",
+    "mtime": 1794415842.0718334,
+    "seen": 1794416045.6805084,
+    "ast_hash": "d87104d794b1ed6b4a01778f6c835502",
     "semantic_hash": ""
   },
   "src/engine/behaviors/tach-gen.ts": {
@@ -2202,15 +2202,15 @@
     "semantic_hash": ""
   },
   "src/lessons/T7/pid-motor-control.test.ts": {
-    "mtime": 1794223989.133032,
-    "seen": 1794224535.4952052,
-    "ast_hash": "3448a4b181d34007d888df4182656f4a",
+    "mtime": 1794415842.0848396,
+    "seen": 1794416045.6815085,
+    "ast_hash": "52f802196f9a215bb36c7fde6b31f1d8",
     "semantic_hash": ""
   },
   "src/lessons/T7/pid-motor-control.ts": {
-    "mtime": 1794223989.1340303,
-    "seen": 1794224535.4952052,
-    "ast_hash": "6ec4d6729afd765645694b5c502d6a73",
+    "mtime": 1794415842.0868394,
+    "seen": 1794416045.6815085,
+    "ast_hash": "c7610affdb8032a9c288b8ef5c65833c",
     "semantic_hash": ""
   },
   "src/lessons/T7/serial-protocols.guide.test.ts": {
@@ -2325,6 +2325,18 @@
     "mtime": 1794414556.128202,
     "seen": 1794414713.3635876,
     "ast_hash": "b01f30579ca2f2019aa35a82a6840c42",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/loopDelay.test.ts": {
+    "mtime": 1794415842.07584,
+    "seen": 1794416045.6805084,
+    "ast_hash": "1a967c57f1b4908b04c2314412311f69",
+    "semantic_hash": ""
+  },
+  "src/engine/bench/mcuLockstep.test.ts": {
+    "mtime": 1794415842.076839,
+    "seen": 1794416045.6805084,
+    "ast_hash": "a6a7d6fde0fcbcf8bb574187d54f1c18",
     "semantic_hash": ""
   },
   "package-lock.json": {
